@@ -1,0 +1,48 @@
+%% Memoir layout setup
+
+%% NOTE: You are strongly advised not to change any of them unless you
+%% know what you are doing.  These settings strongly interact in the
+%% final look of the document.
+
+% Dependencies
+\usepackage{bfhlogo}
+\usepackage{etoolbox}% http://ctan.org/pkg/etoolbox
+
+\makeatletter
+%%begin novalidate
+%% Titlepage adjustments
+\pretitle{\vspace{0pt plus 0.7fill}\begin{center}\Huge}
+\posttitle{\end{center}\par}
+\preauthor{\par\begin{center}\let\and\\\Large}
+\postauthor{\end{center}}
+\predate{\par\begin{center}\Large}
+\postdate{\end{center}}
+%%end novalidate
+\def\@advisors{}
+\newcommand{\advisors}[1]{\def\@advisors{#1}}
+\def\@department{}
+\newcommand{\department}[1]{\def\@department{#1}}
+\def\@thesistype{}
+\newcommand{\thesistype}[1]{\def\@thesistype{#1}}
+
+\renewcommand{\maketitlehooka}{\noindent\bfhlogo[2cm]}
+
+\renewcommand{\maketitlehookb}{\vspace{1in}%
+  \par\begin{center}\Large\sffamily\@thesistype\end{center}}
+
+\renewcommand{\maketitlehookd}{%
+  \vfill\par
+  \begin{flushright}
+    \sffamily
+    \@advisors\par
+    \@department, BFH
+  \end{flushright}
+}
+
+% Fix the chapters (unnecessary space)
+\patchcmd{\@makechapterhead}{\vspace*{50\p@}}{}{}{}% Removes space above \chapter head
+\patchcmd{\@makeschapterhead}{\vspace*{50\p@}}{}{}{}% Removes space above \chapter* head
+
+\makeatother
+
+\setlength{\droptitle}{-48pt}
