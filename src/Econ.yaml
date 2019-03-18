@@ -1,0 +1,66 @@
+%YAML:1.0
+
+#--------------------------------------------------------------------------------------------
+# Camera Parameters. Adjust them!
+#--------------------------------------------------------------------------------------------
+
+# Camera calibration and distortion parameters (OpenCV) 
+Camera.fx: 743.8041254687444
+Camera.fy: 743.8041254687444
+Camera.cx: 365.86266803741455
+Camera.cy: 238.70182609558105
+
+Camera.width: 752
+Camera.height: 480
+
+# stereo baseline times fx (in mm)
+#Camera.bf: 3242.2
+#Camera.bf: 258.0
+Camera.bf: 45.1932
+
+LEFT.height: 480
+LEFT.width: 752
+LEFT.D: !!opencv-matrix
+   rows: 1
+   cols: 5
+   dt: d
+   data: [ 0.12598132,-0.22447148, 0.00074527, 0.00802387, 0.09229389]
+LEFT.K: !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data: [745.19597471,  0.        ,392.53720339,  0.        ,744.58417273,233.69856607,  0.        ,  0.        ,  1.        ]
+LEFT.R: !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data: [ 0.99935708,-0.00462812, 0.0355528 , 0.00464915, 0.99998906,-0.00050886,-0.03555006, 0.00067382, 0.99936767]
+LEFT.P: !!opencv-matrix
+   rows: 3
+   cols: 4
+   dt: d
+   data: [743.80412547,  0.        ,365.86266804,  0.        ,  0.        ,743.80412547,238.7018261 ,  0.        ,  0.        ,  0.        ,  1.        ,  0.        ]
+
+RIGHT.height: 480
+RIGHT.width: 752
+RIGHT.D: !!opencv-matrix
+   rows: 1
+   cols: 5
+   dt: d
+   data: [ 0.11779527,-0.17293219, 0.00237161, 0.00838884, 0.05137548]
+RIGHT.K: !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data: [743.80514347,  0.        ,397.50160762,  0.        ,743.02407821,235.43815466,  0.        ,  0.        ,  1.        ]
+RIGHT.R: !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data: [ 0.99924419,-0.00242938, 0.03879632, 0.00241153, 0.99999696, 0.00050704,-0.03879743,-0.0004131 , 0.99924701]
+RIGHT.P: !!opencv-matrix
+   rows: 3
+   cols: 4
+   dt: d
+   data: [ 743.80412547,   0.        , 365.86266804,-268.37466442,   0.        , 743.80412547, 238.7018261 ,   0.        ,   0.        ,   0.        ,   1.        ,   0.        ]
+

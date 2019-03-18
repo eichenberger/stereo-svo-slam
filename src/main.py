@@ -2,122 +2,96 @@ import cv2
 import argparse
 import numpy as np
 import math
+import io
 from glumpy import app
 import matplotlib.pyplot as plt
 
+import yaml
+
+from stereo_slam import StereoSLAM
+
 from pointcloudviewer import PointCloudViewer, rot_mat
+from econ_utils import set_auto_exposure
 
-class CornerDetector:
-    def __init__(self):
-        self.detector = cv2.FastFeatureDetector_create(threshold=8)
-        self.keypoints = None
-        self.descriptors = None
+class EconInput():
+    def __init__(self, camera, hidraw, settings):
+        self.cap = cv2.VideoCapture(camera)
+        set_auto_exposure(args.hidraw)
+        self.settings  = cv2.FileStorage(settings, cv2.FILE_STORAGE_READ)
 
-    def detect_keypoints(self, image):
-        self.keypoints = self.detector.detect(image)
+    def read(self):
+        ret, image = self.cap.read()
+        gray_r = cv2.extractChannel(image, 1);
+        gray_l = cv2.extractChannel(image, 2);
 
-class StereoSLAM:
-    def __init__(self, baseline, fx, fy, cx, cy):
-        self.detector = CornerDetector()
-        self.keypoints = None
-        self.left = None
-        self.right = None
-        self.baseline = baseline
-        self.fx = fx
-        self.fy = fy
-        self.cx = cx
-        self.cy = cy
-
-    def new_image(self, left, right):
-        self.left = left
-        self.right = right
-        self.detector.detect_keypoints(left)
-        self.keypoints = self.detector.keypoints
-
-        self._calculate_depth()
-
-    def _calculate_depth(self):
-        window_size = 7
-        search_x = 40
-        search_y = 3
-        dx_list = []
-        dy_list = []
-        diff_list = []
-        keypoints_valid = []
-
-        key = 0
-        for index, keypoint in enumerate(self.keypoints):
-            diff_max = math.inf
-            x = int(keypoint.pt[0])
-            y = int(keypoint.pt[1])
-            x1 = x-window_size
-            x2 = x+window_size
-            y1 = y-window_size
-            y2 = y+window_size
-
-            if x1 < 0 or x2 >= self.left.shape[1] or y1 < search_y or y2 >= (self.left.shape[0]-search_y):
-                continue
-
-            templ = self.left[y1:y2,x1:x2]
-            roi = self.right[y1-search_y:y2+search_y,x1:x2+search_x]
-
-            matches = cv2.matchTemplate(roi, templ, cv2.TM_SQDIFF)
-            matches_norm = matches.copy()
-            minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(matches)
-            if minVal > 3000:
-                continue
-            matches_norm = cv2.normalize(matches, matches_norm)
-            minVal2, maxVal, minLoc2, maxLoc = cv2.minMaxLoc(matches_norm)
-            if minVal2 > 0.005:
-                continue
-            dx_list.append(minLoc[0] + window_size)
-            dy_list.append(minLoc[1] + window_size)
-            diff_list.append(minVal)
-            keypoints_valid.append(keypoint)
+        return gray_l, gray_r
 
 
-        keypoints_right = [0]*len(dx_list)
-        matches = [0]*len(dx_list)
-        x = [0]*len(dx_list)
-        y = [0]*len(dx_list)
-        disp = [0]*len(dx_list)
-        for index, keypoint in enumerate(keypoints_valid):
-            x[index] = keypoint.pt[0]
-            y[index] = keypoint.pt[1]
-            disp[index] = dx_list[index]
-            keypoints_right[index] = cv2.KeyPoint(x[index]+dx_list[index], y[index]+dy_list[index], diff_list[index])
-            matches[index] = cv2.DMatch(index ,index, diff_list[index])
+class VideoInput():
+    def __init__(self, left, right, settings):
+        self.capl = cv2.VideoCapture(left)
+        self.capr = cv2.VideoCapture(right)
+        #skip first 10 images
+        self.capl.set(cv2.CAP_PROP_POS_FRAMES, 10)
+        self.capr.set(cv2.CAP_PROP_POS_FRAMES, 10)
+        self.settings = cv2.FileStorage(settings, cv2.FILE_STORAGE_READ)
 
-        result = self.left.copy()
-        result = cv2.drawMatches(self.left, keypoints_valid, self.right, keypoints_right, matches, result)
+        l_d = self.settings.getNode('LEFT.D').mat()
+        l_k = self.settings.getNode('LEFT.K').mat()
+        l_r = self.settings.getNode('LEFT.R').mat()
+        l_p = self.settings.getNode('LEFT.P').mat()
+        l_width = int(self.settings.getNode('LEFT.width').real())
+        l_height = int(self.settings.getNode('LEFT.height').real())
 
-        x = np.array(x)
-        y = np.array(y)
-        points = np.empty((len(keypoints_valid), 3))
-        points[:,2] = self.baseline/np.array(disp)
-        points[:,0] = ((x - self.cx)/self.fx)*points[:,2]
-        points[:,1] = ((y - self.cy)/self.fy)*points[:,2]
+        r_d = self.settings.getNode('RIGHT.D').mat()
+        r_k = self.settings.getNode('RIGHT.K').mat()
+        r_r = self.settings.getNode('RIGHT.R').mat()
+        r_p = self.settings.getNode('RIGHT.P').mat()
+        r_width = int(self.settings.getNode('RIGHT.width').real())
+        r_height = int(self.settings.getNode('RIGHT.height').real())
 
-        colors = np.empty((len(keypoints_valid), 3))
-        intensity = self.left[y.astype(np.uint32),x.astype(np.uint32)]
-        intensity = intensity/255.0
-        colors[:,0] = intensity
-        colors[:,1] = intensity
-        colors[:,2] = intensity
+        cv2.initUndistortRectifyMap
+        self.m1l, self.m2l = cv2.initUndistortRectifyMap(l_k, l_d, l_r, l_p, (l_width, l_height), cv2.CV_32F)
+        self.m1r, self.m2r = cv2.initUndistortRectifyMap(r_k, r_d, r_r, r_p, (r_width, r_height), cv2.CV_32F)
 
-        self.points = points
-        self.colors = colors
-        print("points found: " + str(len(points)))
-        cv2.imshow("result", result)
+
+    def read(self):
+        ret, iml = self.capl.read()
+        ret, imr = self.capr.read()
+
+        tm = cv2.TickMeter()
+        tm.start()
+
+        gray_l = cv2.cvtColor(iml, cv2.COLOR_RGB2GRAY)
+        gray_r = cv2.cvtColor(imr, cv2.COLOR_RGB2GRAY)
+
+        gray_l = cv2.remap(gray_l, self.m1l, self.m2l, cv2.INTER_LINEAR)
+        gray_r = cv2.remap(gray_r, self.m1r, self.m2r, cv2.INTER_LINEAR)
+        tm.stop()
+
+        print(f'rectification took: {tm.getTimeMilli()} ms')
+
+        return gray_l, gray_r
 
 
 def main():
     parser = argparse.ArgumentParser(description='Edge slam test')
-    parser.add_argument('camera', help='camera to use', type=str)
+
+    subparsers = parser.add_subparsers()
+    econ_parser = subparsers.add_parser(name='econ', description='use econ input')
+    econ_parser.add_argument('camera', help='camera to use', type=str)
+    econ_parser.add_argument('hidraw', help='camera hidraw device', type=str)
+    econ_parser.add_argument('settings', help='settings file', type=str)
+    econ_parser.set_defaults(func=lambda args: EconInput(args.camera, args.hidraw, args.settings))
+
+    video_parser = subparsers.add_parser(name='video', description='use video input')
+    video_parser.add_argument('left', help='left video input', type=str)
+    video_parser.add_argument('right', help='right video input', type=str)
+    video_parser.add_argument('settings', help='settings file', type=str)
+    video_parser.set_defaults(func=lambda args: VideoInput(args.left, args.right, args.settings))
 
     args = parser.parse_args()
-
-    cap = cv2.VideoCapture(args.camera)
+    camera = args.func(args)
 
     slam = StereoSLAM(45.1932, 680.0, 680.0, 357.0, 225.0)
 
@@ -127,22 +101,19 @@ def main():
     pcv.set_camera_pose(pose)
 
     def read_frame(dt):
-        ret, image = cap.read()
-
-        gray_r = cv2.extractChannel(image, 1);
-        gray_l = cv2.extractChannel(image, 2);
+        gray_l, gray_r = camera.read()
 
         tm = cv2.TickMeter()
         tm.start()
         slam.new_image(gray_l, gray_r)
         tm.stop()
         print(f"processing took: {tm.getTimeSec()}")
-        pcv.add_points(slam.points, slam.colors)
+        # pcv.add_points(slam.points, slam.colors)
         if cv2.waitKey(1) == ord('q'):
             app.quit()
 
 
-    app.clock.schedule_interval(read_frame, 0.1)
+    app.clock.schedule_interval(read_frame, 0.05)
     app.run()
 
     cap.release()

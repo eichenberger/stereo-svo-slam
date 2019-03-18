@@ -47,8 +47,8 @@ A SLAM library must be written which runs at 30 fps on stereo gray scale images 
 A first implementation of the library shall be based on SVO. However, it's not mandatory to be the exact SVO algorithm.
 \subsubsection{Plane Detection \#45}
 The library must provide a mechanism to detect points laying on a plane and to remove redundant points.
-\subsubsection{Mesh Creation \#46}
-The library must create a mesh from the sparse point cloud. The mesh shall contain textures from corresponding images.
+\subsubsection{Plane Mesh Creation \#46}
+The library must create a plane mesh from the sparse point cloud. The mesh shall contain textures from corresponding images.
 \subsubsection{IMU Integration \#47}
 The library must provide an interface to feed data from an IMU to estimate the motion model.
 \subsubsection{Relocation \#48}
@@ -69,7 +69,7 @@ The application shall have a feature to export a generated map for further use.
 The application shall have a mechanism to load a pre-generated map that can be used to do relocation.
 
 \section{Planning}
-The master thesis is honored with 27 ECTS. 1 ECTS consumes 25-30h which results in a total of 675-810h. Assuming the lower effort and 8 working hours per day, we have to spend 84.375 working days. Because the thesis is done part time a full year can be used. We assume one year has 48 weeks. During the first 16 weeks only 1.5 days can be used for the master thesis (because of additional modules). This means during the first 16 weeks we only work 24 days on the project. 60.375 days are left for the last 32 weeks. This results in 1.89 days work during the 32 weeks. This leaves room for vacation and problems. Figure \ref{fig:gantt} shows the initial planing. The first implementation of the algorithm takes much longer than the rest because only 1.5 days can be spent for the thesis during this period.
+The master thesis is honored with 27 ECTS. 1 ECTS consumes 30h which results in a total of 810h. Assuming 8.5 working hours per day, we have to spend 95.29 working days. Because the thesis is done part time a full year can be used. We assume one year has 48 weeks. During the first 16 weeks only 1.5 days can be used for the master thesis (because of additional modules). This means during the first 16 weeks we only work 24 days on the project. 71.29 days are left for the last 32 weeks. This results in 2.228 days work during the 32 weeks. Figure \ref{fig:gantt} shows the initial planing. The first implementation of the algorithm takes longer than the rest because only 1.5 days can be spent for the thesis during this period.
 
 \begin{figure}[H]
 	\includegraphics[width=1.0\textwidth]{img/gantt.png}
