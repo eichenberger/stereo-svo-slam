@@ -18,15 +18,14 @@ class DepthCalculator:
         window_size = 7
         search_x = 40
         search_y = 3
-        disparity = []
         #dy_list = []
-        diff_list = []
-        keypoints2d = []
 
         keypoints = self.detector.detect_keypoints(left)
+        keypoints2d = np.zeros((2, len(keypoints)))
+        disparity = np.zeros((1, len(keypoints)))
 
         key = 0
-        for index, keypoint in enumerate(keypoints):
+        for i, keypoint in enumerate(keypoints):
             diff_max = math.inf
             x = int(keypoint.pt[0])
             y = int(keypoint.pt[1])
@@ -44,22 +43,20 @@ class DepthCalculator:
             matches = cv2.matchTemplate(roi, templ, cv2.TM_SQDIFF)
             matches_norm = matches.copy()
             minVal, maxVal, minLoc, maxLoc = cv2.minMaxLoc(matches)
-            #if minVal > 10000:
-            #    continue
             matches_norm = cv2.normalize(matches, matches_norm)
             minVal2, maxVal, minLoc2, maxLoc = cv2.minMaxLoc(matches_norm)
-            #if minVal2 > 0.5:
-            #    continue
-            disparity.append(minLoc[0] + window_size)
-            #dy_list.append(minLoc[1] + window_size)
-            diff_list.append(minVal)
-            keypoints2d.append([keypoint.pt[0], keypoint.pt[1]])
+
+            # The location of the minimum the left point of the window
+            # therefore the middle point is at left point + window_size
+            disparity[0, i] = (minLoc[0] + window_size)
+            keypoints2d[0, i] = keypoint.pt[0]
+            keypoints2d[1, i] = keypoint.pt[1]
 
         keypoints2d = np.asarray(keypoints2d)
-        keypoints3d = np.empty((keypoints2d.shape[0], 3))
-        keypoints3d [:,2] = self.baseline/np.array(disparity)
-        keypoints3d [:,0] = ((keypoints2d[:,0] - self.cx)/self.fx)*keypoints3d [:,2]
-        keypoints3d [:,1] = ((keypoints2d[:,1] - self.cy)/self.fy)*keypoints3d [:,2]
+        keypoints3d = np.empty((3, keypoints2d.shape[1]))
+        keypoints3d [2,:] = self.baseline/disparity
+        keypoints3d [0,:] = ((keypoints2d[0,:] - self.cx)/self.fx)*keypoints3d [2,:]
+        keypoints3d [1,:] = ((keypoints2d[1,:] - self.cy)/self.fy)*keypoints3d [2,:]
 
         return keypoints2d, keypoints3d
 

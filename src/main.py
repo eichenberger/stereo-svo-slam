@@ -4,7 +4,6 @@ import numpy as np
 import math
 import io
 from glumpy import app
-import matplotlib.pyplot as plt
 
 import yaml
 

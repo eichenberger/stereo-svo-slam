@@ -4,9 +4,9 @@ import math
 
 from keyframe import KeyFrame
 from pose_estimator import PoseEstimator
-from rotation_matrix import rotation_matrix
 from depth_calculator import DepthCalculator
 from depth_adjustment import DepthAdjustment
+from draw_kps import draw_kps
 
 class StereoSLAM:
     def __init__(self, baseline, fx, fy, cx, cy):
@@ -24,7 +24,7 @@ class StereoSLAM:
         self.keyframes = []
 
         self.depth_calculator = DepthCalculator(self.baseline, self.fx, self.fy, self.cx, self.cy)
-        self.depth_adjustment = DepthAdjustment()
+        # self.depth_adjustment = DepthAdjustment()
 
     def new_image(self, left, right):
         self.left = left
@@ -35,37 +35,28 @@ class StereoSLAM:
         else:
             new_pose = self._estimate_pose()
             self.motion_model =  new_pose - self.pose
-
             self.pose = new_pose
 
-            self.depth_adjustment(self.keyframes[-1], new_pose)
 
-            extrinsic = np.zeros((3,4))
-            extrinsic[:,0:3] = rotation_matrix(self.pose[3:])
-            extrinsic[:,3] = np.transpose(self.pose[0:3])
+            depth_adjustment = DepthAdjustment()
+            keypoints3d_new_estimate, prop = depth_adjustment.adjust_depth(self.keyframes[-1],
+                                          self.left,
+                                          self.pose,
+                                          self.fx, self.fy,
+                                          self.cx, self.cy)
 
-            keypoints3d = np.ones((4, len(self.keyframes[-1].keypoints3d)))
-            keypoints3d[0:3, :] = np.transpose(self.keyframes[-1].keypoints3d)
-            estimated_keypoints2d = np.matmul(extrinsic, keypoints3d)
-            estimated_keypoints2d = (estimated_keypoints2d * [[self.fx],[self.fy], [1]])/ estimated_keypoints2d[2,:] + [[self.cx],[self.cy], [0]]
+            # Update position of keypoints with new estimated but less
+            # probability
+            self.keyframes[-1].keypoints3d = self.keyframes[-1].keypoints3d*(1-prop) \
+                + keypoints3d_new_estimate*prop
 
-            keypoints_new_ocv = [None]*estimated_keypoints2d.shape[1]
-            keypoints_old_ocv = [None]*estimated_keypoints2d.shape[1]
-            matches = [None]*estimated_keypoints2d.shape[1]
-
-            for i in range(estimated_keypoints2d.shape[1]):
-                keypoints_new_ocv [i] = cv2.KeyPoint(estimated_keypoints2d[0,i], estimated_keypoints2d[1, i], 1)
-                keypoints_old_ocv [i] = cv2.KeyPoint(self.keyframes[-1].keypoints2d[i, 0], self.keyframes[-1].keypoints2d[i, 1], 1)
-                matches[i] = cv2.DMatch(i ,i, 1)
-
-            result = self.keyframes[-1].image.copy()
-            result = cv2.drawMatches(self.keyframes[-1].image,
-                                     keypoints_old_ocv,
-                                     self.left, keypoints_new_ocv, matches, result)
-
-            cv2.imshow("Matches", result)
-            cv2.waitKey(1)
-
+#            draw_kps(new_pose, self.left,
+#                     self.keyframes[-1].image,
+#                     self.keyframes[-1].keypoints2d,
+#                     self.keyframes[-1].keypoints3d,
+#                     self.fx, self.fy,
+#                     self.cx, self.cy)
+#
 
     def _estimate_pose(self):
         kf = self.keyframes[-1]
@@ -75,4 +66,4 @@ class StereoSLAM:
 
     def _calculate_depth(self):
         keypoints2d, keypoints3d = self.depth_calculator.calculate_depth(self.left, self.right)
-        self.keyframes.append(KeyFrame(self.left, keypoints2d, keypoints3d, self.pose)
+        self.keyframes.append(KeyFrame(self.left, keypoints2d, keypoints3d, self.pose))

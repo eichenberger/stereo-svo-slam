@@ -64,8 +64,8 @@ class CornerDetector:
 
                 keypoints.extend(selection)
 
-        result = cv2.drawKeypoints(edge, keypoints, edge)
-        plt.imshow(result)
-        plt.show()
+        #result = cv2.drawKeypoints(edge, keypoints, edge)
+        #plt.imshow(result)
+        #plt.show()
 
         return keypoints
