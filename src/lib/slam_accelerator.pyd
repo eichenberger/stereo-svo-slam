@@ -1,0 +1,1 @@
+cdef double c_get_intensity_diff(unsigned char[:, :] image1, unsigned char[:, :] image2, double[:] keypoint1, double[:] keypoint2, double errorval) nogil

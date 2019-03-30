@@ -5,8 +5,9 @@ import math
 from keyframe import KeyFrame
 from pose_estimator import PoseEstimator
 from depth_calculator import DepthCalculator
-from depth_adjustment import DepthAdjustment
 from draw_kps import draw_kps
+
+from image_operators import adjust_depth
 
 class StereoSLAM:
     def __init__(self, baseline, fx, fy, cx, cy):
@@ -37,13 +38,14 @@ class StereoSLAM:
             self.motion_model =  new_pose - self.pose
             self.pose = new_pose
 
-
-            depth_adjustment = DepthAdjustment()
-            keypoints3d_new_estimate, prop = depth_adjustment.adjust_depth(self.keyframes[-1],
-                                          self.left,
-                                          self.pose,
-                                          self.fx, self.fy,
-                                          self.cx, self.cy)
+            kf = self.keyframes[-1]
+            keypoints3d_new_estimate, prop = adjust_depth(kf.image,
+                                                          self.left,
+                                                          kf.keypoints3d,
+                                                          kf.keypoints2d,
+                                                          self.pose,
+                                                          self.fx, self.fy,
+                                                          self.cx, self.cy)
 
             # Update position of keypoints with new estimated but less
             # probability

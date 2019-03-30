@@ -4,10 +4,13 @@ from Cython.Build import cythonize
 
 ext_modules = [
     Extension("image_operators",
-              sources=["lib/image_operators.pyx"],
-              libraries=["m"]  # Unix-like specific
+              sources=["lib/slam_accelerator.pyx",
+                       "lib/depth_adjustment_helper.cpp"],
+              libraries=["m", "opencv_core"],  # Unix-like specific
+              extra_compile_args=['-std=c++11'],
+              language='c++'
               )
 ]
 
 setup(name="Demos",
-      ext_modules=cythonize(ext_modules))
+      ext_modules=cythonize(ext_modules, compiler_directives={'language_level': 3}))
