@@ -7,7 +7,7 @@ from pose_estimator import PoseEstimator
 from depth_calculator import DepthCalculator
 from draw_kps import draw_kps
 
-from image_operators import adjust_depth
+from image_operators import DepthAdjuster
 
 class StereoSLAM:
     def __init__(self, baseline, fx, fy, cx, cy):
@@ -39,18 +39,22 @@ class StereoSLAM:
             self.pose = new_pose
 
             kf = self.keyframes[-1]
-            keypoints3d_new_estimate, prop = adjust_depth(kf.image,
-                                                          self.left,
-                                                          kf.keypoints3d,
-                                                          kf.keypoints2d,
-                                                          self.pose,
-                                                          self.fx, self.fy,
-                                                          self.cx, self.cy)
+            ad = DepthAdjuster()
+            ad.set_image(kf.image)
+            ad.set_new_image(self.left)
+            ad.set_keypoints3d(kf.keypoints3d)
+            ad.set_keypoints2d(kf.keypoints2d)
+            ad.set_pose(self.pose)
+            ad.set_fx(self.fx)
+            ad.set_fy(self.fy)
+            ad.set_cx(self.cx)
+            ad.set_cy(self.cy)
 
-            # Update position of keypoints with new estimated but less
-            # probability
-            self.keyframes[-1].keypoints3d = self.keyframes[-1].keypoints3d*(1-prop) \
-                + keypoints3d_new_estimate*prop
+            new_z, cost = ad.adjust_depth()
+
+            MAX_PROP = 0.5
+            prop = MAX_PROP*np.exp(-(cost))
+            kf.keypoints3d[2,:] = (prop * new_z) + (1-prop)*kf.keypoints3d[2,:]
 
 #            draw_kps(new_pose, self.left,
 #                     self.keyframes[-1].image,
@@ -58,7 +62,7 @@ class StereoSLAM:
 #                     self.keyframes[-1].keypoints3d,
 #                     self.fx, self.fy,
 #                     self.cx, self.cy)
-#
+
 
     def _estimate_pose(self):
         kf = self.keyframes[-1]

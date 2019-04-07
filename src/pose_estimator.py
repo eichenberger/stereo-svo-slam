@@ -33,7 +33,7 @@ class PoseEstimator:
                                  method = 'lm')
 
 
-        print(f"guess: {pose_guess}, optimized: {res.x}")
+        print(f"Guess: {pose_guess}")
         print(f"New pose: {res.x}")
         print(f"Cost: {res.cost}")
 
