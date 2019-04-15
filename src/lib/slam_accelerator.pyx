@@ -34,7 +34,14 @@ cdef extern from "depth_adjustment_helper.hpp":
         double *keypoint1,
         double *keypoint2,
         double errorval) nogil
-
+    cdef double c_get_total_intensity_diff(unsigned char *image1,
+        unsigned char *image2,
+        unsigned int image_width,
+        unsigned int image_height,
+        double *keypoint1,
+        double *keypoint2,
+        unsigned int n_keypoints,
+        double *diff) nogil
 
 cdef class DepthAdjuster:
 
@@ -96,30 +103,27 @@ def transform_keypoints(double[:] pose, double[:,:] keypoints3d,
     cdef double[:,:] keypoints2d = np.zeros((3, keypoints3d.shape[1]))
     c_transform_keypoints(&pose[0], &keypoints3d[0,0], keypoints3d.shape[1],
                           fx, fy, cx, cy, &keypoints2d[0,0])
-    return np.asarray(keypoints2d)
+    return np.asarray(keypoints2d)[0:2,:]
 
 def get_intensity_diff(unsigned char[:, :] image1, unsigned char[:, :] image2, double[:] keypoint1, double[:] keypoint2, double errorval):
-    return c_get_intensity_diff(&image1[0,0], 
-                                &image2[0,0], 
-                                image1.shape[1], 
-                                image1.shape[0], 
-                                &keypoint1[0], 
-                                &keypoint2[0], 
+    return c_get_intensity_diff(&image1[0,0],
+                                &image2[0,0],
+                                image1.shape[1],
+                                image1.shape[0],
+                                &keypoint1[0],
+                                &keypoint2[0],
                                 errorval)
 
-@boundscheck(False)
-@wraparound(False)
 def get_total_intensity_diff(unsigned char[:,:] image1, unsigned char[:,:] image2, double[:,:] keypoints1, double[:,:] keypoints2):
-    cdef double[:] diff = np.zeros((keypoints2.shape[1]), dtype=np.float64)
-    cdef int i
-    with nogil, parallel():
-        for i in prange(keypoints2.shape[1]):
-            diff[i] = c_get_intensity_diff(&image1[0,0], 
-                                           &image2[0,0], 
-                                           image1.shape[1], 
-                                           image1.shape[0], 
-                                           [keypoints1[:,i][0], keypoints1[:,i][1]], 
-                                           [keypoints2[:,i][0], keypoints2[:,i][1]], 
-                                           0)
+    cdef double[:] diff = np.empty((keypoints2.shape[1]), dtype=np.float64)
+
+    c_get_total_intensity_diff(&image1[0,0],
+                               &image2[0,0],
+                               image1.shape[1],
+                               image1.shape[0],
+                               &keypoints1[0,0],
+                               &keypoints2[0,0],
+                               keypoints1.shape[1],
+                               &diff[0])
 
     return np.asarray(diff)

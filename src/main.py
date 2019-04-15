@@ -99,8 +99,8 @@ def main():
     pose = np.append(rot_mat([0, 0, 0]), [[0],[0],[0]], axis=1)
     pcv.set_camera_pose(pose)
 
+    gray_l, gray_r = camera.read()
     def read_frame(dt):
-        gray_l, gray_r = camera.read()
 
         tm = cv2.TickMeter()
         tm.start()

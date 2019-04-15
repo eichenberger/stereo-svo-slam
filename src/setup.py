@@ -6,8 +6,8 @@ ext_modules = [
     Extension("image_operators",
               sources=["lib/slam_accelerator.pyx",
                        "lib/depth_adjustment_helper.cpp"],
-              libraries=["m", "opencv_core"],  # Unix-like specific
-              extra_compile_args=['-std=c++11'],
+              libraries=["m", "opencv_core", 'omp'],  # Unix-like specific
+              extra_compile_args=['-std=c++11','-fopenmp'],
               language='c++'
               )
 ]

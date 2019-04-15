@@ -125,10 +125,12 @@ void c_transform_keypoints(double* pose,
     Map<Vector3d> pose_vector(pose);
     extrinsic.rightCols(1) = pose_vector;
 
+    // Add a 4th row with ones at the end of the vector
     Matrix<double, 4, Dynamic> kps3d;
     kps3d.setOnes(4, number_of_keypoints);
 
-    Map<MatrixXd> temp_kps((double*)keypoints3d, 3, number_of_keypoints);
+    // Numpy expects RowMajor layout of the data
+    Map<Matrix<double, 3, Dynamic, RowMajor>> temp_kps((double*)keypoints3d, 3, number_of_keypoints);
     kps3d.topLeftCorner(3, number_of_keypoints) = temp_kps;
 
     // Numpy expects RowMajor layout of the data
@@ -160,8 +162,8 @@ static double c_get_sub_pixel(const unsigned char *image,
     double x_floor_prob =  1.0 - (x - x_floor);
     double y_floor_prob =  1.0 - (y - y_floor);
 
-    double x_ceil_prob =  1.0 - (x_ceil - x);
-    double y_ceil_prob =  1.0 - (y_ceil - y);
+    double x_ceil_prob =  1.0 - x_floor_prob;
+    double y_ceil_prob =  1.0 - y_floor_prob;
 
     double sub_pixel_val = 0.0;
 
@@ -173,7 +175,10 @@ static double c_get_sub_pixel(const unsigned char *image,
     return sub_pixel_val;
 }
 
-
+void test()
+{
+    cout << "test" << endl;
+}
 double c_get_intensity_diff(const unsigned char *image1,
         const unsigned char *image2,
         unsigned int image_width,
@@ -182,41 +187,132 @@ double c_get_intensity_diff(const unsigned char *image1,
         const double *keypoint2,
         double errorval)
 {
-    const int MEASUREMENT_DISTANCE = 5;
+    const int MEASUREMENT_DISTANCE = 2;
 
-    int x1 = int(keypoint1[0]);
-    int y1 = int(keypoint1[1]);
+    unsigned int x1 = keypoint1[0];
+    unsigned int y1 = keypoint1[1];
     double x2 = keypoint2[0];
     double y2 = keypoint2[1];
 
-    // If keypoint is outside of second image we ignore it
+    // If keypoint is outside of image ignore it
+    if ((x1 - MEASUREMENT_DISTANCE < 0) ||
+            (x1 + MEASUREMENT_DISTANCE > image_width) ||
+            (y1 - MEASUREMENT_DISTANCE < 0) ||
+            (y1 + MEASUREMENT_DISTANCE > image_height))
+        return errorval;
+
     if ((x2 - MEASUREMENT_DISTANCE < 0) ||
             (x2 + MEASUREMENT_DISTANCE > image_width) ||
             (y2 - MEASUREMENT_DISTANCE < 0) ||
             (y2 + MEASUREMENT_DISTANCE > image_height))
         return errorval;
 
-    double diff = 0;
 
-//    diff =  fabs(image1[y1*image_width + x1] - c_get_sub_pixel(image2, image_width, image_height, x2, y2));
-//    diff += fabs(image1[y1*image_width + x1-1] - c_get_sub_pixel(image2, image_width, image_height, x2-1, y2));
-//    diff += fabs(image1[(y1-1)*image_width + x1] - c_get_sub_pixel(image2, image_width, image_height, x2, y2-1));
-//    diff += fabs(image1[y1*image_width + x1+1] - c_get_sub_pixel(image2, image_width, image_height, x2+1, y2));
-//    diff += fabs(image1[(y1+1)*image_width + x1] - c_get_sub_pixel(image2, image_width, image_height, x2, y2+1));
+    Matrix<double, 5,5> block1;
+    Matrix<double, 5,5> block2;
+
+    {
+        int y,x;
+
+        // block in image 1
+        y = y1-2; x= x1-2; block1(0,0) = image1[y*image_width + x];
+        y = y1-1; x= x1-2; block1(1,0) = image1[y*image_width + x];
+        y = y1-0; x= x1-2; block1(2,0) = image1[y*image_width + x];
+        y = y1+1; x= x1-2; block1(3,0) = image1[y*image_width + x];
+        y = y1+2; x= x1-2; block1(4,0) = image1[y*image_width + x];
+
+        y = y1-2; x= x1-1; block1(0,1) = image1[y*image_width + x];
+        y = y1-1; x= x1-1; block1(1,1) = image1[y*image_width + x];
+        y = y1-0; x= x1-1; block1(2,1) = image1[y*image_width + x];
+        y = y1+1; x= x1-1; block1(3,1) = image1[y*image_width + x];
+        y = y1+2; x= x1-1; block1(4,1) = image1[y*image_width + x];
+
+        y = y1-2; x= x1-0; block1(0,2) = image1[y*image_width + x];
+        y = y1-1; x= x1-0; block1(1,2) = image1[y*image_width + x];
+        y = y1-0; x= x1-0; block1(2,2) = image1[y*image_width + x];
+        y = y1+1; x= x1-0; block1(3,2) = image1[y*image_width + x];
+        y = y1+2; x= x1-0; block1(4,2) = image1[y*image_width + x];
 
 
+        y = y1-2; x= x1+1; block1(0,3) = image1[y*image_width + x];
+        y = y1-1; x= x1+1; block1(1,3) = image1[y*image_width + x];
+        y = y1-0; x= x1+1; block1(2,3) = image1[y*image_width + x];
+        y = y1+1; x= x1+1; block1(3,3) = image1[y*image_width + x];
+        y = y1+2; x= x1+1; block1(4,3) = image1[y*image_width + x];
 
-    diff =  fabs(image1[y1*image_width + x1] - c_get_sub_pixel(image2, image_width, image_height, x2, y2));
-    diff += fabs(image1[y1*image_width + x1-MEASUREMENT_DISTANCE] - c_get_sub_pixel(image2, image_width, image_height, x2-MEASUREMENT_DISTANCE, y2));
-    diff += fabs(image1[(y1-MEASUREMENT_DISTANCE)*image_width + x1] - c_get_sub_pixel(image2, image_width, image_height, x2, y2-MEASUREMENT_DISTANCE));
-    diff += fabs(image1[y1*image_width + x1+MEASUREMENT_DISTANCE] - c_get_sub_pixel(image2, image_width, image_height, x2+MEASUREMENT_DISTANCE, y2));
-    diff += fabs(image1[(y1+MEASUREMENT_DISTANCE)*image_width + x1] - c_get_sub_pixel(image2, image_width, image_height, x2, y2+MEASUREMENT_DISTANCE));
 
-    diff +=  fabs(image1[(y1-MEASUREMENT_DISTANCE)*image_width + x1-MEASUREMENT_DISTANCE] - c_get_sub_pixel(image2, image_width, image_height, x2-MEASUREMENT_DISTANCE, y2-MEASUREMENT_DISTANCE));
-    diff +=  fabs(image1[(y1-MEASUREMENT_DISTANCE)*image_width + x1+MEASUREMENT_DISTANCE] - c_get_sub_pixel(image2, image_width, image_height, x2+MEASUREMENT_DISTANCE, y2-MEASUREMENT_DISTANCE));
+        y = y1-2; x= x1+2; block1(0,4) = image1[y*image_width + x];
+        y = y1-1; x= x1+2; block1(1,4) = image1[y*image_width + x];
+        y = y1-0; x= x1+2; block1(2,4) = image1[y*image_width + x];
+        y = y1+1; x= x1+2; block1(3,4) = image1[y*image_width + x];
+        y = y1+2; x= x1+2; block1(4,4) = image1[y*image_width + x];
+    }
 
-    diff +=  fabs(image1[(y1+MEASUREMENT_DISTANCE)*image_width + x1-MEASUREMENT_DISTANCE] - c_get_sub_pixel(image2, image_width, image_height, x2-MEASUREMENT_DISTANCE, y2+MEASUREMENT_DISTANCE));
-    diff +=  fabs(image1[(y1+MEASUREMENT_DISTANCE)*image_width + x1+MEASUREMENT_DISTANCE] - c_get_sub_pixel(image2, image_width, image_height, x2+MEASUREMENT_DISTANCE, y2+MEASUREMENT_DISTANCE));
+    // block in image 2
+    {
+        double y,x;
+
+        y = y2-2; x= x2-2; block2(0,0) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+        y = y2-1; x= x2-2; block2(1,0) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+        y = y2-0; x= x2-2; block2(2,0) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+        y = y2+1; x= x2-2; block2(3,0) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+        y = y2+2; x= x2-2; block2(4,0) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+
+        y = y2-2; x= x2-1; block2(0,1) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+        y = y2-1; x= x2-1; block2(1,1) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+        y = y2-0; x= x2-1; block2(2,1) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+        y = y2+1; x= x2-1; block2(3,1) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+        y = y2+2; x= x2-1; block2(4,1) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+
+        y = y2-2; x= x2-0; block2(0,2) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+        y = y2-1; x= x2-0; block2(1,2) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+        y = y2-0; x= x2-0; block2(2,2) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+        y = y2+1; x= x2-0; block2(3,2) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+        y = y2+2; x= x2-0; block2(4,2) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+
+
+        y = y2-2; x= x2+1; block2(0,3) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+        y = y2-1; x= x2+1; block2(1,3) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+        y = y2-0; x= x2+1; block2(2,3) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+        y = y2+1; x= x2+1; block2(3,3) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+        y = y2+2; x= x2+1; block2(4,3) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+
+
+        y = y2-2; x= x2+2; block2(0,4) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+        y = y2-1; x= x2+2; block2(1,4) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+        y = y2-0; x= x2+2; block2(2,4) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+        y = y2+1; x= x2+2; block2(3,4) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+        y = y2+2; x= x2+2; block2(4,4) = c_get_sub_pixel(image2, image_width, image_height, x, y);
+    }
+
+    double diff = (block2-block1).lpNorm<1>();
+    if (diff > 50.0) {
+        test();
+        cout << "Diff " << diff << endl;
+        cout << "x1: " << x1 << "x" << y1 << endl;
+        cout << "x2: " << x2 << "x" << y2 << endl;
+    }
 
     return diff;
 }
+
+
+void c_get_total_intensity_diff(const unsigned char *image1,
+        const unsigned char *image2,
+        unsigned int image_width,
+        unsigned int image_height,
+        const double *keypoints1,
+        const double *keypoints2,
+        unsigned int n_keypoints,
+        double *diff)
+{
+//#pragma omp parallel for
+    for (unsigned int i = 0; i < n_keypoints; i++) {
+        double kp1[] = {keypoints1[i], keypoints1[n_keypoints+i]};
+        double kp2[] = {keypoints2[i], keypoints2[n_keypoints+i]};
+        diff[i] = c_get_intensity_diff(image1, image2,
+                image_width, image_height,
+                kp1, kp2, 0);
+    }
+}
+

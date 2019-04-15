@@ -1,7 +1,7 @@
 import cv2
 import matplotlib.pyplot as plt
 
-from transform_keypoints import transform_keypoints
+from image_operators import transform_keypoints
 
 def draw_kps(pose, new_image, old_image, keypoints2d, keypoints3d, fx, fy, cx, cy):
             estimated_keypoints2d = transform_keypoints(pose,
@@ -25,7 +25,7 @@ def draw_kps(pose, new_image, old_image, keypoints2d, keypoints3d, fx, fy, cx, c
                                      matches, result)
 
             cv2.imshow("result", result)
-            cv2.waitKey(200)
+            cv2.waitKey(1)
             #plt.imshow(result)
             #plt.show()
 
