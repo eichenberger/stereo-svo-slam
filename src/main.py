@@ -102,6 +102,7 @@ def main():
     gray_l, gray_r = camera.read()
     def read_frame(dt):
 
+        gray_l, gray_r = camera.read()
         tm = cv2.TickMeter()
         tm.start()
         slam.new_image(gray_l, gray_r)

@@ -27,7 +27,6 @@ class PoseEstimator:
 
 
     def estimate_pose(self, pose_guess):
-        import pdb; pdb.set_trace()  # XXX BREAKPOINT
         res = opt.least_squares(self._optimize_pose, pose_guess,
                                  method = 'lm')
 

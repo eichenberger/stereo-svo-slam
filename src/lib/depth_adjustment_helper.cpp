@@ -187,10 +187,10 @@ double c_get_intensity_diff(const unsigned char *image1,
         const double *keypoint2,
         double errorval)
 {
-    const int MEASUREMENT_DISTANCE = 2;
+    const int MEASUREMENT_DISTANCE = 12;
 
-    unsigned int x1 = keypoint1[0];
-    unsigned int y1 = keypoint1[1];
+    double x1 = keypoint1[0];
+    double y1 = keypoint1[1];
     double x2 = keypoint2[0];
     double y2 = keypoint2[1];
 
@@ -212,40 +212,40 @@ double c_get_intensity_diff(const unsigned char *image1,
     Matrix<double, 5,5> block2;
 
     {
-        int y,x;
+        double y,x;
 
         // block in image 1
-        y = y1-2; x= x1-2; block1(0,0) = image1[y*image_width + x];
-        y = y1-1; x= x1-2; block1(1,0) = image1[y*image_width + x];
-        y = y1-0; x= x1-2; block1(2,0) = image1[y*image_width + x];
-        y = y1+1; x= x1-2; block1(3,0) = image1[y*image_width + x];
-        y = y1+2; x= x1-2; block1(4,0) = image1[y*image_width + x];
+        y = y1-2; x= x1-2; block1(0,0) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+        y = y1-1; x= x1-2; block1(1,0) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+        y = y1-0; x= x1-2; block1(2,0) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+        y = y1+1; x= x1-2; block1(3,0) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+        y = y1+2; x= x1-2; block1(4,0) = c_get_sub_pixel(image1, image_width, image_height, x, y);
 
-        y = y1-2; x= x1-1; block1(0,1) = image1[y*image_width + x];
-        y = y1-1; x= x1-1; block1(1,1) = image1[y*image_width + x];
-        y = y1-0; x= x1-1; block1(2,1) = image1[y*image_width + x];
-        y = y1+1; x= x1-1; block1(3,1) = image1[y*image_width + x];
-        y = y1+2; x= x1-1; block1(4,1) = image1[y*image_width + x];
+        y = y1-2; x= x1-1; block1(0,1) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+        y = y1-1; x= x1-1; block1(1,1) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+        y = y1-0; x= x1-1; block1(2,1) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+        y = y1+1; x= x1-1; block1(3,1) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+        y = y1+2; x= x1-1; block1(4,1) = c_get_sub_pixel(image1, image_width, image_height, x, y);
 
-        y = y1-2; x= x1-0; block1(0,2) = image1[y*image_width + x];
-        y = y1-1; x= x1-0; block1(1,2) = image1[y*image_width + x];
-        y = y1-0; x= x1-0; block1(2,2) = image1[y*image_width + x];
-        y = y1+1; x= x1-0; block1(3,2) = image1[y*image_width + x];
-        y = y1+2; x= x1-0; block1(4,2) = image1[y*image_width + x];
-
-
-        y = y1-2; x= x1+1; block1(0,3) = image1[y*image_width + x];
-        y = y1-1; x= x1+1; block1(1,3) = image1[y*image_width + x];
-        y = y1-0; x= x1+1; block1(2,3) = image1[y*image_width + x];
-        y = y1+1; x= x1+1; block1(3,3) = image1[y*image_width + x];
-        y = y1+2; x= x1+1; block1(4,3) = image1[y*image_width + x];
+        y = y1-2; x= x1-0; block1(0,2) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+        y = y1-1; x= x1-0; block1(1,2) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+        y = y1-0; x= x1-0; block1(2,2) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+        y = y1+1; x= x1-0; block1(3,2) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+        y = y1+2; x= x1-0; block1(4,2) = c_get_sub_pixel(image1, image_width, image_height, x, y);
 
 
-        y = y1-2; x= x1+2; block1(0,4) = image1[y*image_width + x];
-        y = y1-1; x= x1+2; block1(1,4) = image1[y*image_width + x];
-        y = y1-0; x= x1+2; block1(2,4) = image1[y*image_width + x];
-        y = y1+1; x= x1+2; block1(3,4) = image1[y*image_width + x];
-        y = y1+2; x= x1+2; block1(4,4) = image1[y*image_width + x];
+        y = y1-2; x= x1+1; block1(0,3) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+        y = y1-1; x= x1+1; block1(1,3) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+        y = y1-0; x= x1+1; block1(2,3) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+        y = y1+1; x= x1+1; block1(3,3) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+        y = y1+2; x= x1+1; block1(4,3) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+
+
+        y = y1-2; x= x1+2; block1(0,4) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+        y = y1-1; x= x1+2; block1(1,4) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+        y = y1-0; x= x1+2; block1(2,4) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+        y = y1+1; x= x1+2; block1(3,4) = c_get_sub_pixel(image1, image_width, image_height, x, y);
+        y = y1+2; x= x1+2; block1(4,4) = c_get_sub_pixel(image1, image_width, image_height, x, y);
     }
 
     // block in image 2
@@ -286,12 +286,6 @@ double c_get_intensity_diff(const unsigned char *image1,
     }
 
     double diff = (block2-block1).lpNorm<1>();
-    if (diff > 50.0) {
-        test();
-        cout << "Diff " << diff << endl;
-        cout << "x1: " << x1 << "x" << y1 << endl;
-        cout << "x2: " << x2 << "x" << y2 << endl;
-    }
 
     return diff;
 }
@@ -306,7 +300,7 @@ void c_get_total_intensity_diff(const unsigned char *image1,
         unsigned int n_keypoints,
         double *diff)
 {
-//#pragma omp parallel for
+#pragma omp parallel for
     for (unsigned int i = 0; i < n_keypoints; i++) {
         double kp1[] = {keypoints1[i], keypoints1[n_keypoints+i]};
         double kp2[] = {keypoints2[i], keypoints2[n_keypoints+i]};
