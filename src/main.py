@@ -3,13 +3,11 @@ import argparse
 import numpy as np
 import math
 import io
-from glumpy import app
 
 import yaml
 
 from stereo_slam import StereoSLAM
 
-from pointcloudviewer import PointCloudViewer, rot_mat
 from econ_utils import set_auto_exposure
 
 class EconInput():
@@ -94,13 +92,8 @@ def main():
 
     slam = StereoSLAM(45.1932, 680.0, 680.0, 357.0, 225.0)
 
-    pcv = PointCloudViewer()
-
-    pose = np.append(rot_mat([0, 0, 0]), [[0],[0],[0]], axis=1)
-    pcv.set_camera_pose(pose)
-
     gray_l, gray_r = camera.read()
-    def read_frame(dt):
+    def read_frame():
 
         gray_l, gray_r = camera.read()
         tm = cv2.TickMeter()
@@ -108,15 +101,11 @@ def main():
         slam.new_image(gray_l, gray_r)
         tm.stop()
         print(f"processing took: {tm.getTimeSec()}")
-        # pcv.add_points(slam.points, slam.colors)
-        if cv2.waitKey(1) == ord('q'):
-            app.quit()
 
-
-    app.clock.schedule_interval(read_frame, 0.05)
-    app.run()
-
-    cap.release()
+    key = 0
+    while key != ord('q'):
+        read_frame()
+        key = cv2.waitKey(10)
 
 if __name__ == "__main__":
     main()

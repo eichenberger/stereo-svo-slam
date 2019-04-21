@@ -25,7 +25,4 @@ def draw_kps(pose, new_image, old_image, keypoints2d, keypoints3d, fx, fy, cx, c
                                      matches, result)
 
             cv2.imshow("result", result)
-            cv2.waitKey(1)
-            #plt.imshow(result)
-            #plt.show()
 

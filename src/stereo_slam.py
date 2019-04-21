@@ -8,6 +8,8 @@ from depth_calculator import DepthCalculator
 from draw_kps import draw_kps
 
 from image_operators import DepthAdjuster, transform_keypoints
+from pose_refiner import PoseRefiner
+from cloud_refiner import CloudRefiner
 
 class StereoSLAM:
     def __init__(self, baseline, fx, fy, cx, cy):
@@ -25,6 +27,8 @@ class StereoSLAM:
         self.keyframes = []
 
         self.depth_calculator = DepthCalculator(self.baseline, self.fx, self.fy, self.cx, self.cy)
+        self.pose_refiner = PoseRefiner(self.fx, self.fy, self.cx, self.cy)
+        self.cloud_refiner = CloudRefiner(self.fx, self.fy, self.cx, self.cy)
         # self.depth_adjustment = DepthAdjustment()
 
     def new_image(self, left, right):
@@ -48,23 +52,35 @@ class StereoSLAM:
                                                    self.fx, self.fy,
                                                    self.cx, self.cy)
 
-#            kf = self.keyframes[-1]
-#            ad = DepthAdjuster()
-#            ad.set_image(kf.image)
-#            ad.set_new_image(self.left)
-#            ad.set_keypoints3d(kf.keypoints3d)
-#            ad.set_keypoints2d(kf.keypoints2d)
-#            ad.set_pose(self.pose)
-#            ad.set_fx(self.fx)
-#            ad.set_fy(self.fy)
-#            ad.set_cx(self.cx)
-#            ad.set_cy(self.cy)
 
-#            new_z, cost = ad.adjust_depth()
+            kf = self.keyframes[-1]
+            kps2d_prev = np.array(kf.keypoints2d.transpose(), dtype=np.float32)
+            kps2d_next = np.array(self.keypoints2d.transpose(), dtype=np.float32)
+            keypoints2d, status, err = cv2.calcOpticalFlowPyrLK(kf.image,
+                                                                self.left,
+                                                                kps2d_prev,
+                                                                kps2d_next,
+                                                                maxLevel=0,
+                                                                winSize=(21,21),
+                                                                flags=cv2.OPTFLOW_USE_INITIAL_FLOW)
 
-#            MAX_PROP = 0.5
-#            prop = MAX_PROP*np.exp(-(cost))
-#            kf.keypoints3d[2,:] = (prop * new_z) + (1-prop)*kf.keypoints3d[2,:]
+            keypoints2d = cv2.UMat.get(keypoints2d).transpose()
+            status = cv2.UMat.get(status)
+            err = cv2.UMat.get(err)
+
+            valid = (status*(err<1.0)).transpose()
+            keypoints2d = valid*keypoints2d + (1-valid)*self.keypoints2d
+            self.keypoints2d = keypoints2d
+
+            # Not verified yet!
+            self.pose = self.pose_refiner.refine_pose(self.pose,
+                                                      kf.keypoints3d,
+                                                      keypoints2d)
+
+            # Not verified yet, super slow!
+            kf.keypoints3d = self.cloud_refiner.refine_cloud(self.pose,
+                                                             kf.keypoints3d,
+                                                             keypoints2d)
 
             draw_kps(self.pose, self.left,
                      self.keyframes[-1].image,
