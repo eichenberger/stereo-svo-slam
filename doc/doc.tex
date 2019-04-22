@@ -84,7 +84,7 @@ In this chapter we analyse an algorithm that can be used to solve the SLAM probl
 \section{SVO SLAM}
 While ORB SLAM is well documented and can do loop closing, it is difficult to optimize the algorithm for realtime applications.
 
-\subsection{Initialization}
+\subsection{Initialization}\label{sec:initialization}
 In this project we use a stereo camera therefore the initialization step is simpler than in the monocular case. The algorithm performs the following steps.
 \begin{enumerate}
 	\item{Search FAST keypoints on the whole image}
@@ -97,8 +97,98 @@ In this project we use a stereo camera therefore the initialization step is simp
 		\subitem{The difference between these two points is the disparity (1/depth)}
 \end{enumerate}
 
-\subsection{Tracking}
+This step is described in \cite{svo2} section IX.A. We use a multi camera approach. We need to do the initialization step when we get the first frame as well as when we insert a new keyframe.
+
+\subsection{Sparse Image Alignment}
+
+From the initialization step we optain a initial point cloud. We use this point cloud to estimate the pose and motion of the camera. We try to find a Pose that minimizes the photometric error of small patches around the keypoints found in section \ref{sec:initialization}. We do that by minimizing the formula shown in equation \ref{eq:intensity}. We use equation \ref{eq:cm} to project the 3D point cloud to the current frame. By using Levenberg-Marquardt we can minimize the intensity difference by changing the values of the extrinsic matrix $r_{ij}$ and $t_{x,y,z}$. As initial guess for the pose we use the current pose and add the motion model. The motion model is the difference between the pose in the previous frame ($t-1$) and frame $t-2$.
+
+\begin{equation}\label{eq:intensity}
+	I_{TD}=\sum_{i=0}^{i=N}I_{F-1}(x_{F-1,i},y_{F-1,i})-I_{F}(x_{F,i},y_{F,i})
+\end{equation}
+Where:
+\begin{align*}
+	I_{TD} &:					\text{Total intensity difference over all keypoints}\\
+	I_{F-1} &:				\text{Previous grayscale image}\\
+	I_{F} &:					\text{Current grayscale image}\\
+	x_{KF},y_{KF} &:	\text{x,y position in keyframe}\\
+	N &:							\text{Total number of keypoints}\\
+	x_{F},y_{F} &:		\text{x,y posiiton in current frame}
+\end{align*}
+
+\begin{equation}\label{eq:cm}
+  \begin{pmatrix}
+		f_x & \gamma & c_x \\
+		0 & f_y & c_y \\
+		0 & 0 & 1 \\
+	\end{pmatrix}*
+	\begin{pmatrix}
+		r_{11} & r_{12} & r_{13} & t_x \\
+		r_{21} & r_{22} & r_{23} & t_y \\
+		r_{31} & r_{32} & r_{33} & t_z \\
+	\end{pmatrix}
+	\begin{pmatrix}
+		X \\
+		Y \\
+		Z \\
+		1
+	\end{pmatrix}=
+	\begin{pmatrix}
+		u \\
+		v \\
+		s
+  \end{pmatrix}
+\end{equation}
+\begin{equation}\label{eq:cm_normalized}
+	\begin{pmatrix}
+		x \\
+		y
+	\end{pmatrix}=
+	\begin{pmatrix}
+		u/s \\
+		v/s 
+  \end{pmatrix}
+\end{equation}
+Where:
+\begin{align*}
+  X,Y,Z			&: \text{point in the 3D world}\\
+	u,v,s	   	&: \text{point in 2D image not normalize}\\
+	x,y				&: \text{point in 2D image normalized with s}\\
+	f_x,f_y  	&: \text{focal length of the camera}\\
+  c_x,c_y  	&: \text{principal point}\\
+  t_x,t_y,t_z	&: \text{location of the camera}\\
+  r_{ij}	&: \text{part of the rotation matrix}
+\end{align*}
+
+This step is described in \cite{svo2} in section IV.A. We get a first estimate for the pose. However, because we estimate the current pose by using the previous frame we will get a drift in the long term. Therefore, we need to refine the pose by using the keyframe as reference.\\
+If less than 80\% of the keypoints are trackable we need to insert a new keyframe based on the previous frame.
 
 \subsection{Refinement}
+
+The refinement step is necessary to reduce the drift over time by taking the information of the keyframe into account. We use the Lucas-Kanade algorithm to find an Affine transformation Matrix that minimizes the photometric error between all keypoints of the keyframe and the current frame. This will give us a reprojection error. We try to minimize this reprojection error by do ing a bundle adjustment over the pose (motion only) and over the 3D point cloud (structure only).\\
+By using Lucas-Kanade we try to find the following Affine transformation:\\
+\begin{equation}
+	\begin{pmatrix}
+		x'\\
+		y'\\
+	\end{pmatrix}=
+	\begin{pmatrix}
+
+\end{equation}
+This step is described in \cite{svo2} in section IV.B.
+
+\begin{thebibliography}{1}
+
+	\bibitem{svo}
+	Christian Forster et al\\
+	\textit{SVO: Semi-Direct Visual Odometry for Monocular and Multi-Camera Systems}\\
+	doi:10.1109/TRO.2016.2623335
+
+	\bibitem{svo2}
+	Christian Forster et al\\
+	\textit{SVO: Semi-Direct Visual Odometry for Monocular and Multi-Camera Systems}\\
+	doi:10.1109/TRO.2016.2623335
+
+\end{thebibliography}
 
 \end{document}
