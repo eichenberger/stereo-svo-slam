@@ -99,7 +99,7 @@ In this project we use a stereo camera therefore the initialization step is simp
 
 This step is described in \cite{svo2} section IX.A. We use a multi camera approach. We need to do the initialization step when we get the first frame as well as when we insert a new keyframe.
 
-\subsection{Sparse Image Alignment}
+\subsection{Sparse Image Alignment}\label{sec:sia}
 
 From the initialization step we optain a initial point cloud. We use this point cloud to estimate the pose and motion of the camera. We try to find a Pose that minimizes the photometric error of small patches around the keypoints found in section \ref{sec:initialization}. We do that by minimizing the formula shown in equation \ref{eq:intensity}. We use equation \ref{eq:cm} to project the 3D point cloud to the current frame. By using Levenberg-Marquardt we can minimize the intensity difference by changing the values of the extrinsic matrix $r_{ij}$ and $t_{x,y,z}$. As initial guess for the pose we use the current pose and add the motion model. The motion model is the difference between the pose in the previous frame ($t-1$) and frame $t-2$.
 
@@ -161,21 +161,41 @@ Where:
 \end{align*}
 
 This step is described in \cite{svo2} in section IV.A. We get a first estimate for the pose. However, because we estimate the current pose by using the previous frame we will get a drift in the long term. Therefore, we need to refine the pose by using the keyframe as reference.\\
-If less than 80\% of the keypoints are trackable we need to insert a new keyframe based on the previous frame.
+If less than 80\% of the keypoints are trackable we need to insert a new keyframe based on the previous frame. In comparison SVO inserts a new keyframe if the movement is more than 12\% of the average depth. In a first step we try to do it as described, however maybe this needs to change in the future. See \cite{svo2} section X.D for the implementation details.
 
-\subsection{Refinement}
+\subsection{Refinement}\label{sec:refinement}
 
 The refinement step is necessary to reduce the drift over time by taking the information of the keyframe into account. We use the Lucas-Kanade algorithm to find an Affine transformation Matrix that minimizes the photometric error between all keypoints of the keyframe and the current frame. This will give us a reprojection error. We try to minimize this reprojection error by do ing a bundle adjustment over the pose (motion only) and over the 3D point cloud (structure only).\\
-By using Lucas-Kanade we try to find the following Affine transformation:\\
-\begin{equation}
-	\begin{pmatrix}
-		x'\\
-		y'\\
-	\end{pmatrix}=
-	\begin{pmatrix}
 
+Lucas-Kanade tries to find the movement of points by trying to find a movement (dx, dy) that minimizes the intensity difference as shown in equation \ref{eq:lucaskanade}
+\begin{equation}\label{eq:lucaskanade}
+	I(x,y,t)=I(x+dx, y+dy, t+dt)
 \end{equation}
-This step is described in \cite{svo2} in section IV.B.
+Where:
+\begin{align*}
+	I(x,y,t)						&:	\text{intensity in template}\\
+	I(x+dx, y+dy, t+dt) &:	\text{intensity in new image t+dt, moved by dx and dy}
+\end{align*}
+
+Lucas Kanade tries to solve this equation by assuming that the intensity gradient at a keypoint will point in the direction of the movement \cite{lucas_kanade}. The SVO paper doesn't use Lucas Kanade to do the 2d point adjustment. They use the Inverse Compositional method instead. In comparison to Lucas Kanade they will find one Affine Warp matrix that describes the movement of all points. Lucas Kanade as implemented in OpenCV will move each point separate. However, because no Inverse Compositional method is available in OpenCV Lucas Kanade was used as a first implementation. This will be less efficient than using the Inverse Compositional method.
+
+\subsubsection{Pose refinement}
+In section \ref{sec:sia} we estimated the pose of the current frame by using the 3D point cloud and the previous image. Based on the estimated pose we then refined the 2D point position as described in section \ref{sec:refinement}. Now we need to update the estimated pose in regards to the new 2D point position. This is done by minimizing the reprojection error when changing the pose. We use Levenberg-Marquardt to minimize the pose in this step.
+\begin{equation}\label{eq:pose_refinement}
+	min((x - x')^2 + (y -y')^2)
+\end{equation}
+Where:
+\begin{align*}
+	x,y		&: \text{x,y position in image after refinement}\\
+	x',y' &: \text{x,y reprojection of 3D point by using \ref{eq:cm}}
+\end{align*}
+
+\subsubsection{3D cloud refinement}
+After refining the pose we still have a small reprojection error. We can try to minimize this error by adjusting the 3D position for each point. Here we do the same thing as in equation \ref{eq:pose_refinement} but we now change the 3D point position instead of the pose. Because we need to do that for all point this is more computational expensive than the previous step. Instead of Levenberg-Marquardt we use normal Gradient-Descent in this step, because the here described problem is an underdeterminated problem. However, we can still find a local minimum. This step follows section V.B in \cite{svo2}. However, pose and 3D cloud is only updated for the last camera frame. We do not bundle adjust the whole trajectory.
+
+\subsection{Mapping}
+
+Mapping can be solved in a separate thread. The mapping thread decides if a new keyframe must be insert. If no keyframe is required, we can use the current frame to update the depth of the 3D cloud by adjusting the inverse depth with a Kalman Filter. Mapping is not solved yet.
 
 \begin{thebibliography}{1}
 
@@ -188,6 +208,18 @@ This step is described in \cite{svo2} in section IV.B.
 	Christian Forster et al\\
 	\textit{SVO: Semi-Direct Visual Odometry for Monocular and Multi-Camera Systems}\\
 	doi:10.1109/TRO.2016.2623335
+
+	\bibitem{lucas_kandae}
+	OpenCV\\
+	\textit{Optical Flow}\\
+	https://docs.opencv.org/4.0.1/d7/d8b/tutorial\_py\_lucas\_kanade.html
+
+
+	\bibitem{inverse_compositional}
+	S. Baker and I. Matthews\\
+	\textit{Lucas-kanade 20 years on: A unifying framework}
+	Int. J. Comput. Vis., 56(3):221–255, 2004.
+
 
 \end{thebibliography}
 
