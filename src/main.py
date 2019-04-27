@@ -53,8 +53,8 @@ class VideoInput():
         self.capl = cv2.VideoCapture(left)
         self.capr = cv2.VideoCapture(right)
         #skip first 10 images
-        #self.capl.set(cv2.CAP_PROP_POS_FRAMES, 10)
-        #self.capr.set(cv2.CAP_PROP_POS_FRAMES, 10)
+        self.capl.set(cv2.CAP_PROP_POS_FRAMES, 10)
+        self.capr.set(cv2.CAP_PROP_POS_FRAMES, 10)
         self.settings = cv2.FileStorage(settings, cv2.FILE_STORAGE_READ)
 
         l_d = self.settings.getNode('LEFT.D').mat()
@@ -128,7 +128,7 @@ def main():
     key = 0
     while key != ord('q'):
         read_frame()
-        key = cv2.waitKey(10)
+        key = cv2.waitKey(0)
 
 if __name__ == "__main__":
     main()

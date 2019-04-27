@@ -5,7 +5,8 @@ import scipy.optimize as opt
 from slam_accelerator import get_total_intensity_diff, transform_keypoints
 
 class PoseEstimator:
-    def __init__(self, current_image, previous_image, previous_keypoints, keypoints3d, fx, fy, cx, cy):
+    def __init__(self, current_image, previous_image, previous_keypoints,
+                 keypoints3d, fx, fy, cx, cy):
         self.current_image = current_image
         self.previous_image = previous_image
         self.previous_keypoints = previous_keypoints
@@ -34,5 +35,5 @@ class PoseEstimator:
         print(f"New pose: {res.x}")
         print(f"Cost: {res.cost}")
 
-        return res.x
+        return res.x, res.cost
 

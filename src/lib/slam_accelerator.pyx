@@ -9,20 +9,6 @@ from libc.math cimport sin, cos
 ctypedef double (*opt_fun)(const double*)
 
 cdef extern from "slam_accelerator_helper.hpp":
-    cdef cppclass c_DepthAdjuster:
-        c_DepthAdjuster()
-        void adjust_depth(double *new_kps, double* cost)
-        void set_image(unsigned char *image, int rows, int cols)
-        void set_new_image(unsigned char* new_image, int rows, int cols)
-        void set_keypoints3d(double *keypoint3d, int size)
-        void set_keypoints2d(double *keypoints2d, int size)
-        void set_pose(double *pose)
-        void set_fx(double fx)
-        void set_fy(double fy)
-        void set_cx(double cx)
-        void set_cy(double cy)
-
-
     cdef void c_rotation_matrix(double* angle, double* rotation_matrix)
     cdef void c_transform_keypoints(double *pose, double *keypoints3d,
                                int number_of_keypoints, double fx, double fy,
@@ -51,55 +37,6 @@ cdef extern from "slam_accelerator_helper.hpp":
         double *keypoints3d,
         double *keypoints2d,
         int number_of_keypoints) nogil
-
-cdef class DepthAdjuster:
-
-    cdef c_DepthAdjuster *_impl
-    cdef unsigned int count
-
-    def __init__(self):
-        self._impl = new c_DepthAdjuster()
-        self.count = 0
-
-    def __dealloc__(self):
-        del self._impl
-
-    def adjust_depth(self):
-        cdef double[:] new_z
-        cdef double[:] cost
-        new_z = np.empty((self.count))
-        cost = np.empty((self.count))
-        self._impl.adjust_depth(&new_z[0], &cost[0])
-        return np.asarray(new_z), np.asarray(cost)
-
-    def set_image(self,unsigned char[:,:] image):
-        self._impl.set_image(&image[0,0], image.shape[0], image.shape[1])
-
-    def set_new_image(self, unsigned char[:,:] image):
-        self._impl.set_new_image(&image[0,0], image.shape[0], image.shape[1])
-
-    def set_keypoints3d(self, double[:,:] kps):
-        self._impl.set_keypoints3d(&kps[0,0], kps.shape[1])
-        self.count = kps.shape[1]
-
-    def set_keypoints2d(self, double[:,:] kps):
-        self._impl.set_keypoints2d(&kps[0,0], kps.shape[1])
-
-    def set_pose(self, double[:] pose):
-        self._impl.set_pose(&pose[0])
-
-    def set_fx(self, double fx):
-        self._impl.set_fx(fx)
-
-    def set_fy(self, double fy):
-        self._impl.set_fy(fy)
-
-    def set_cx(self, double cx):
-        self._impl.set_cx(cx)
-
-    def set_cy(self, double cy):
-        self._impl.set_cy(cy)
-
 
 def rotation_matrix(double[:] angle):
     cdef double[:,:] rot_mat = np.zeros((3,3))
