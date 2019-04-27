@@ -128,7 +128,7 @@ def main():
     key = 0
     while key != ord('q'):
         read_frame()
-        key = cv2.waitKey(0)
+        key = cv2.waitKey(1)
 
 if __name__ == "__main__":
     main()

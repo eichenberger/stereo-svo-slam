@@ -21,6 +21,7 @@ class PoseEstimator:
                                     self.fx, self.fy,
                                     self.cx, self.cy)
 
+
         diff = get_total_intensity_diff(self.previous_image, self.current_image,
                                         self.previous_keypoints, kps2d)
 
@@ -28,6 +29,7 @@ class PoseEstimator:
 
 
     def estimate_pose(self, pose_guess):
+
         res = opt.least_squares(self._optimize_pose, pose_guess,
                                 method = 'lm')
 
