@@ -8,7 +8,7 @@ from libc.math cimport sin, cos
 
 ctypedef double (*opt_fun)(const double*)
 
-cdef extern from "depth_adjustment_helper.hpp":
+cdef extern from "slam_accelerator_helper.hpp":
     cdef cppclass c_DepthAdjuster:
         c_DepthAdjuster()
         void adjust_depth(double *new_kps, double* cost)
@@ -42,6 +42,15 @@ cdef extern from "depth_adjustment_helper.hpp":
         double *keypoint2,
         unsigned int n_keypoints,
         double *diff) nogil
+
+    cdef void c_refine_cloud(double fx,
+        double fy,
+        double cx,
+        double cy,
+        double *pose,
+        double *keypoints3d,
+        double *keypoints2d,
+        int number_of_keypoints) nogil
 
 cdef class DepthAdjuster:
 
@@ -127,3 +136,8 @@ def get_total_intensity_diff(unsigned char[:,:] image1, unsigned char[:,:] image
                                &diff[0])
 
     return np.asarray(diff)
+
+def refine_cloud(double fx, double fy, double cx, double cy, double[:] pose, double[:,:] keypoints3d, double[:,:] keypoints2d):
+    c_refine_cloud(fx, fy, cx, cy, &pose[0], &keypoints3d[0,0], &keypoints2d[0,0], keypoints3d.shape[1])
+
+    return np.asarray(keypoints3d)

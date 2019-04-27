@@ -1,7 +1,7 @@
 import cv2
 import matplotlib.pyplot as plt
 
-from image_operators import transform_keypoints
+from slam_accelerator import transform_keypoints
 
 def draw_kps(pose, new_image, old_image, keypoints2d, keypoints3d, fx, fy, cx, cy):
             estimated_keypoints2d = transform_keypoints(pose,

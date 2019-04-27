@@ -1,5 +1,5 @@
 #include <iostream>
-#include "depth_adjustment_helper.hpp"
+#include "slam_accelerator_helper.hpp"
 
 using namespace std;
 
@@ -133,18 +133,15 @@ void c_transform_keypoints(double* pose,
     Map<Matrix<double, 3, Dynamic, RowMajor>> temp_kps((double*)keypoints3d, 3, number_of_keypoints);
     kps3d.topLeftCorner(3, number_of_keypoints) = temp_kps;
 
+    Matrix3d intrinsic;
+    intrinsic << fx,0,cx, 0, fy, cy, 0, 0, 1;
+
     // Numpy expects RowMajor layout of the data
     Map<Matrix<double, 3, Dynamic, RowMajor>> kps2d(keypoints2d, 3, number_of_keypoints);
-    kps2d = extrinsic * kps3d;
+    kps2d = intrinsic * extrinsic * kps3d;
 
-    double _focal[] = {fx, fy, 1};
-    Map<Vector3d> focal(_focal);
-    double _pp[] = {cx, cy, 0};
-    Map<Vector3d> principal_point(_pp);
-
-    kps2d = kps2d.array() * focal.array().replicate(1, number_of_keypoints);
+    // Fix scaling
     kps2d = kps2d.array() / kps2d.bottomRows(1).array().replicate(3,1);
-    kps2d = kps2d.array() + principal_point.array().replicate(1, number_of_keypoints);
 }
 
 static double c_get_sub_pixel(const unsigned char *image,
@@ -310,3 +307,75 @@ void c_get_total_intensity_diff(const unsigned char *image1,
     }
 }
 
+class CloudRefiner : public cv::MinProblemSolver::Function
+{
+public:
+    CloudRefiner(double fx, double fy, double cx, double cy,
+            double *pose, Vector2d keypoint2d):
+        fx(fx), fy(fy), cx(cx), cy(cy),
+        pose(pose), keypoint2d(keypoint2d)
+    {}
+
+    double calc(const double* x) const
+    {
+        double kp2d[3];
+        c_transform_keypoints(pose, x, 1, fx, fy, cx, cy, kp2d);
+
+
+        Vector2d kp2d_map(kp2d);
+
+        Vector2d diff = kp2d_map - keypoint2d;
+        return diff.dot(diff);
+    }
+
+    int getDims() const
+    {
+        return 3;
+    }
+
+private:
+    double fx;
+    double fy;
+    double cx;
+    double cy;
+
+    double *pose;
+    Vector2d keypoint2d;
+};
+
+
+void c_refine_cloud(double fx,
+        double fy,
+        double cx,
+        double cy,
+        double *pose,
+        double *keypoints3d,
+        double *keypoints2d,
+        int number_of_keypoints)
+{
+    cv::Ptr<cv::DownhillSolver> solver;
+    cv::Ptr<CloudRefiner> refiner;
+    Map<Matrix<double, 2, Dynamic, RowMajor>> kps2d(keypoints2d, 2, number_of_keypoints);
+    Map<Matrix<double, 3, Dynamic, RowMajor>> kps3d(keypoints3d, 3, number_of_keypoints);
+    // Order is x,y,z of 3d point and x,y in original 2d image.
+    // We only want to modify z
+    double init_steps[] = {0.1,0.1,0.1};
+    double cost[number_of_keypoints];
+    for (int i = 0; i < number_of_keypoints; i++) {
+        // For each point we need to solve the keypoint problem
+        double x0[] = {
+            kps3d(0, i),
+            kps3d(1, i),
+            kps3d(2, i)
+        };
+        solver = cv::DownhillSolver::create();
+        refiner = new CloudRefiner(fx, fy, cx, cy, pose, kps2d.col(i));
+        solver->setFunction(refiner);
+        solver->setInitStep(cv::Mat(3, 1, CV_64F, init_steps));
+
+        cost[i] = solver->minimize(cv::Mat(3,1, CV_64F, x0));
+        kps3d(0, i) = x0[0];
+        kps3d(1, i) = x0[1];
+        kps3d(2, i) = x0[2];
+    }
+}

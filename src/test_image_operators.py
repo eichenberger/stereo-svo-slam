@@ -1,4 +1,4 @@
-import image_operators as imo
+import slam_accelerator as slam
 import numpy as np
 import math
 from math import cos, sin
@@ -40,10 +40,10 @@ def transform_keypoints(pose, keypoints3d, fx, fy, cx, cy):
     kps2d = (kps2d*[[fx],[fy],[1]])/kps2d[2,:] + [[cx],[cy],[0]]
     return kps2d[0:2,:]
 
-print(imo.rotation_matrix(np.array([0.0, 0.0, 0.0])))
-print(imo.rotation_matrix(np.array([math.pi/4, 0.0, 0.0])))
-print(imo.rotation_matrix(np.array([0.0, math.pi/4, 0.0])))
-print(imo.rotation_matrix(np.array([0.0, 0.0, math.pi])))
+print(slam.rotation_matrix(np.array([0.0, 0.0, 0.0])))
+print(slam.rotation_matrix(np.array([math.pi/4, 0.0, 0.0])))
+print(slam.rotation_matrix(np.array([0.0, math.pi/4, 0.0])))
+print(slam.rotation_matrix(np.array([0.0, 0.0, math.pi])))
 
 pose = np.array([1.0,2,3.0,0.0,0.0,0.0])
 kps = np.array([[1.0,3.0],[2.0,4.0],[3.0,5.0]])
@@ -52,7 +52,7 @@ fy = 1.0
 cx = 0.0
 cy = 0.0
 
-kps2d = imo.transform_keypoints(pose, kps, fx, fy, cx, cy)
+kps2d = slam.transform_keypoints(pose, kps, fx, fy, cx, cy)
 kps2d_verify = transform_keypoints(pose, kps, fx, fy, cx, cy)
 diff = kps2d - kps2d_verify
 print(f"kps2d: {kps2d}")
@@ -323,7 +323,7 @@ kps = np.array([[-4.25630576e-01, -2.06632011e+00, -1.89412676e+00,
          5.64915000e+00,  6.45617143e+00,  6.45617143e+00,
          6.45617143e+00]])
 
-kps2d = imo.transform_keypoints(pose, kps, fx, fy, cx, cy)
+kps2d = slam.transform_keypoints(pose, kps, fx, fy, cx, cy)
 kps2d_verify = transform_keypoints(pose, kps, fx, fy, cx, cy)
 diff = kps2d - kps2d_verify
 print(f"kps2d: {kps2d}")
@@ -337,11 +337,11 @@ image2 = (100*np.random.randn(100,100)).astype(np.uint8)
 kps1 = 2.0+np.array([[1.0,2.0,3.0,4.0],[2.0,3.0,4.0,5.0]])
 kps2 = 2.0+np.array([[1.0,2.0,3.0,4.0],[2.0,3.0,4.0,5.0]])
 
-diff = imo.get_total_intensity_diff(image, image2, kps1, kps2)
+diff = slam.get_total_intensity_diff(image, image2, kps1, kps2)
 diff_verify = np.empty((4))
 for i in range(0,4):
     p = np.array([3+i,4+i]).astype(np.float64)
-    diff_verify[i] = imo.get_intensity_diff(image, image2, p, p, 0)
+    diff_verify[i] = slam.get_intensity_diff(image, image2, p, p, 0)
 
 print(f"Diff: {diff}")
 print(f"Diff verify: {diff_verify}")

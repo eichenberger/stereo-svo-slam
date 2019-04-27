@@ -2,7 +2,7 @@ import math
 import numpy as np
 import scipy.optimize as opt
 
-from image_operators import get_total_intensity_diff, transform_keypoints
+from slam_accelerator import get_total_intensity_diff, transform_keypoints
 
 class PoseEstimator:
     def __init__(self, current_image, previous_image, previous_keypoints, keypoints3d, fx, fy, cx, cy):

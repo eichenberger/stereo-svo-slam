@@ -8,29 +8,15 @@ import yaml
 
 from stereo_slam import StereoSLAM
 
-from econ_utils import set_auto_exposure
+from econ_utils import set_auto_exposure, set_manual_exposure
 
 class EconInput():
     def __init__(self, camera, hidraw, settings):
         self.cap = cv2.VideoCapture(camera)
-        set_auto_exposure(args.hidraw)
-        self.settings  = cv2.FileStorage(settings, cv2.FILE_STORAGE_READ)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 752)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        set_manual_exposure(hidraw, 15000)
 
-    def read(self):
-        ret, image = self.cap.read()
-        gray_r = cv2.extractChannel(image, 1);
-        gray_l = cv2.extractChannel(image, 2);
-
-        return gray_l, gray_r
-
-
-class VideoInput():
-    def __init__(self, left, right, settings):
-        self.capl = cv2.VideoCapture(left)
-        self.capr = cv2.VideoCapture(right)
-        #skip first 10 images
-        self.capl.set(cv2.CAP_PROP_POS_FRAMES, 10)
-        self.capr.set(cv2.CAP_PROP_POS_FRAMES, 10)
         self.settings = cv2.FileStorage(settings, cv2.FILE_STORAGE_READ)
 
         l_d = self.settings.getNode('LEFT.D').mat()
@@ -47,7 +33,44 @@ class VideoInput():
         r_width = int(self.settings.getNode('RIGHT.width').real())
         r_height = int(self.settings.getNode('RIGHT.height').real())
 
-        cv2.initUndistortRectifyMap
+        self.m1l, self.m2l = cv2.initUndistortRectifyMap(l_k, l_d, l_r, l_p, (l_width, l_height), cv2.CV_32F)
+        self.m1r, self.m2r = cv2.initUndistortRectifyMap(r_k, r_d, r_r, r_p, (r_width, r_height), cv2.CV_32F)
+
+
+    def read(self):
+        ret, image = self.cap.read()
+        gray_r = cv2.extractChannel(image, 1);
+        gray_l = cv2.extractChannel(image, 2);
+
+        gray_l = cv2.remap(gray_l, self.m1l, self.m2l, cv2.INTER_LINEAR)
+        gray_r = cv2.remap(gray_r, self.m1r, self.m2r, cv2.INTER_LINEAR)
+
+        return gray_l, gray_r
+
+
+class VideoInput():
+    def __init__(self, left, right, settings):
+        self.capl = cv2.VideoCapture(left)
+        self.capr = cv2.VideoCapture(right)
+        #skip first 10 images
+        #self.capl.set(cv2.CAP_PROP_POS_FRAMES, 10)
+        #self.capr.set(cv2.CAP_PROP_POS_FRAMES, 10)
+        self.settings = cv2.FileStorage(settings, cv2.FILE_STORAGE_READ)
+
+        l_d = self.settings.getNode('LEFT.D').mat()
+        l_k = self.settings.getNode('LEFT.K').mat()
+        l_r = self.settings.getNode('LEFT.R').mat()
+        l_p = self.settings.getNode('LEFT.P').mat()
+        l_width = int(self.settings.getNode('LEFT.width').real())
+        l_height = int(self.settings.getNode('LEFT.height').real())
+
+        r_d = self.settings.getNode('RIGHT.D').mat()
+        r_k = self.settings.getNode('RIGHT.K').mat()
+        r_r = self.settings.getNode('RIGHT.R').mat()
+        r_p = self.settings.getNode('RIGHT.P').mat()
+        r_width = int(self.settings.getNode('RIGHT.width').real())
+        r_height = int(self.settings.getNode('RIGHT.height').real())
+
         self.m1l, self.m2l = cv2.initUndistortRectifyMap(l_k, l_d, l_r, l_p, (l_width, l_height), cv2.CV_32F)
         self.m1r, self.m2r = cv2.initUndistortRectifyMap(r_k, r_d, r_r, r_p, (r_width, r_height), cv2.CV_32F)
 
@@ -56,12 +79,12 @@ class VideoInput():
         ret, iml = self.capl.read()
         ret, imr = self.capr.read()
 
-        tm = cv2.TickMeter()
-        tm.start()
-
+        # This is super slow (why?)
         gray_l = cv2.cvtColor(iml, cv2.COLOR_RGB2GRAY)
         gray_r = cv2.cvtColor(imr, cv2.COLOR_RGB2GRAY)
 
+        tm = cv2.TickMeter()
+        tm.start()
         gray_l = cv2.remap(gray_l, self.m1l, self.m2l, cv2.INTER_LINEAR)
         gray_r = cv2.remap(gray_r, self.m1r, self.m2r, cv2.INTER_LINEAR)
         tm.stop()
@@ -100,7 +123,7 @@ def main():
         tm.start()
         slam.new_image(gray_l, gray_r)
         tm.stop()
-        print(f"processing took: {tm.getTimeSec()}")
+        print(f"processing took: {tm.getTimeMilli()} ms")
 
     key = 0
     while key != ord('q'):

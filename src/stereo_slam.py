@@ -7,7 +7,7 @@ from pose_estimator import PoseEstimator
 from depth_calculator import DepthCalculator
 from draw_kps import draw_kps
 
-from image_operators import DepthAdjuster, transform_keypoints
+from slam_accelerator import transform_keypoints
 from pose_refiner import PoseRefiner
 from cloud_refiner import CloudRefiner
 
@@ -72,15 +72,18 @@ class StereoSLAM:
             keypoints2d = valid*keypoints2d + (1-valid)*self.keypoints2d
             self.keypoints2d = keypoints2d
 
-            # Not verified yet!
+            # Needs more testing!
             self.pose = self.pose_refiner.refine_pose(self.pose,
                                                       kf.keypoints3d,
                                                       keypoints2d)
 
-            # Not verified yet, super slow!
-            kf.keypoints3d = self.cloud_refiner.refine_cloud(self.pose,
+            # Needs more testing!
+            keypoints3d_refined = self.cloud_refiner.refine_cloud(self.pose,
                                                              kf.keypoints3d,
                                                              keypoints2d)
+            # Only take refined keypoints that are valid
+            kf.keypoints3d = valid*keypoints3d_refined + (1-valid)*kf.keypoints3d
+
 
             draw_kps(self.pose, self.left,
                      self.keyframes[-1].image,

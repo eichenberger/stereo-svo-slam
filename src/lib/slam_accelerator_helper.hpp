@@ -84,3 +84,12 @@ void c_get_total_intensity_diff(const unsigned char *image1,
         unsigned int n_keypoints,
         double *diff);
 
+void c_refine_cloud(double fx,
+        double fy,
+        double cx,
+        double cy,
+        double *pose,
+        double *keypoints3d,
+        double *keypoints2d,
+        int number_of_keypoints);
+
