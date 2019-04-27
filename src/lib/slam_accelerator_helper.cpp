@@ -38,7 +38,8 @@ void c_transform_keypoints(double* pose,
         double *keypoints2d)
 {
     Matrix<double, 3, 4> extrinsic;
-    Matrix<double, 3, 3> rotation_matrix;
+    // We need RowMajor here, because c_rotation_matrix is also used by numpy
+    Matrix<double, 3, 3, RowMajor> rotation_matrix;
     // Calculate the extrinsic from pose
     c_rotation_matrix(&pose[3], rotation_matrix.data());
     extrinsic.topLeftCorner<3,3>() =  rotation_matrix;
@@ -55,6 +56,10 @@ void c_transform_keypoints(double* pose,
 
     Matrix3d intrinsic;
     intrinsic << fx,0,cx, 0, fy, cy, 0, 0, 1;
+
+    //cout << "rotationmatrix: " << rotation_matrix << endl;
+    //cout << "Intrinsic: " << intrinsic << endl;
+    //cout << "Extrinsic: " << extrinsic << endl;
 
     // Numpy expects RowMajor layout of the data
     Map<Matrix<double, 3, Dynamic, RowMajor>> kps2d(keypoints2d, 3, number_of_keypoints);

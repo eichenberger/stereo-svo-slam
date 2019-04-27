@@ -44,50 +44,52 @@ class StereoSLAM:
         if self.mapping.number_of_keyframes() == 0:
             self.mapping.new_image(left, right, self.pose, 0, 0)
             self.mapping.process_image()
+            kf = self.mapping.get_last_keyframe()
+            self.previous_keypoints2d = kf.keypoints2d
         else:
             kf = self.mapping.get_last_keyframe()
 
-            new_pose, cost = self._estimate_pose(kf, kf.keypoints2d, kf.keypoints3d)
+            new_pose, cost = self._estimate_pose(kf)
             self.motion_model =  new_pose - self.pose
             self.pose =  new_pose
             # We get the pose between the last and the current image.
             # We need to update the global pose
             keypoints2d = transform_keypoints(self.pose,
-                                                   kf.keypoints3d,
-                                                   self.fx, self.fy,
-                                                   self.cx, self.cy)
+                                              kf.keypoints3d,
+                                              self.fx, self.fy,
+                                              self.cx, self.cy)
 
 
-            #kps2d_prev = np.array(kf.keypoints2d.transpose(), dtype=np.float32)
-            #kps2d_next = np.array(keypoints2d.transpose(), dtype=np.float32)
-            #ref_keypoints2d, status, err = cv2.calcOpticalFlowPyrLK(kf.left,
-            #                                                    self.left,
-            #                                                    kps2d_prev,
-            #                                                    kps2d_next,
-            #                                                    maxLevel=0,
-            #                                                    winSize=(21,21),
-            #                                                    flags=cv2.OPTFLOW_USE_INITIAL_FLOW)
+            kps2d_prev = np.array(kf.keypoints2d.transpose(), dtype=np.float32)
+            kps2d_next = np.array(keypoints2d.transpose(), dtype=np.float32)
+            ref_keypoints2d, status, err = cv2.calcOpticalFlowPyrLK(kf.left,
+                                                                self.left,
+                                                                kps2d_prev,
+                                                                kps2d_next,
+                                                                maxLevel=0,
+                                                                winSize=(21,21),
+                                                                flags=cv2.OPTFLOW_USE_INITIAL_FLOW)
 
-            #ref_keypoints2d = cv2.UMat.get(ref_keypoints2d).transpose()
-            #status = cv2.UMat.get(status)
-            #err = cv2.UMat.get(err)
+            ref_keypoints2d = cv2.UMat.get(ref_keypoints2d).transpose()
+            status = cv2.UMat.get(status)
+            err = cv2.UMat.get(err)
 
-            #valid = (status*(err<1.0)).transpose()
-            #keypoints2d = valid*ref_keypoints2d + (1-valid)*keypoints2d
+            valid = (status*(err<1.0)).transpose()
+            keypoints2d = valid*ref_keypoints2d + (1-valid)*keypoints2d
 
-            ## Needs more testing!
-            #self.pose = self.pose_refiner.refine_pose(self.pose,
-            #                                          kf.keypoints3d,
-            #                                          keypoints2d)
+            # Needs more testing!
+            self.pose = self.pose_refiner.refine_pose(self.pose,
+                                                      kf.keypoints3d,
+                                                      keypoints2d)
 
-            ## Needs more testing!
-            #keypoints3d_refined = self.cloud_refiner.refine_cloud(self.pose,
-            #                                                 kf.keypoints3d,
-            #                                                 keypoints2d)
-            ## Only take refined keypoints that are valid
-            #kf.keypoints3d = valid*keypoints3d_refined + (1-valid)*kf.keypoints3d
+            # Needs more testing!
+            keypoints3d_refined = self.cloud_refiner.refine_cloud(self.pose,
+                                                             kf.keypoints3d,
+                                                             keypoints2d)
+            # Only take refined keypoints that are valid
+            kf.keypoints3d = valid*keypoints3d_refined + (1-valid)*kf.keypoints3d
 
-            MARGIN = 12
+            MARGIN = 10
             valid_indexes = (keypoints2d[0,:]>MARGIN) &\
                             (keypoints2d[1,:]>MARGIN) &\
                             (keypoints2d[0,:]<(self.left.shape[1]-MARGIN))&\
@@ -106,11 +108,12 @@ class StereoSLAM:
                      kf.keypoints3d,
                      self.fx, self.fy,
                      self.cx, self.cy)
+            self.previous_keypoints2d = keypoints2d
 
 
-    def _estimate_pose(self, kf, keypoints2d, keypoints3d):
-        estimator = PoseEstimator(self.left, self.prev_left, keypoints2d, keypoints3d,
-                                  self.fx, self.fy, self.cx, self.cy)
+    def _estimate_pose(self, kf):
+        estimator = PoseEstimator(self.left, self.prev_left, self.previous_keypoints2d,
+                                  kf.keypoints3d, self.fx, self.fy, self.cx, self.cy)
         return estimator.estimate_pose(self.pose + self.motion_model)
 
 #    def _calculate_depth(self):

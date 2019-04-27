@@ -4,6 +4,7 @@ import numpy as np
 
 from keyframe import KeyFrame
 from depth_calculator import DepthCalculator
+from slam_accelerator import rotation_matrix
 
 class Mapping:
     def __init__(self, baseline, fx, fy, cx, cy):
@@ -14,9 +15,11 @@ class Mapping:
         self.cost = deque()
         self.keyframes = deque()
         self.quit = False
-        self.max_matches = 16*16
+        self.split_count = 20
+        self.max_matches = self.split_count**2
 
-        self.depth_calculator = DepthCalculator(baseline, fx, fy, cx, cy)
+        self.depth_calculator = DepthCalculator(baseline, fx, fy, cx, cy,
+                                                self.split_count)
 
     def new_image(self, left, right, pose, matches, cost):
         self.left.append(left)
@@ -26,13 +29,14 @@ class Mapping:
         self.cost.append(cost)
 
     def calculate_depth(self, left, right, pose):
-        keypoints3d = np.ones((4,256))
+        keypoints3d = np.ones((4,self.max_matches))
         keypoints2d, keypoints3d[0:3,:] = \
             self.depth_calculator.calculate_depth(left, right)
 
         transformation = np.empty((3,4))
-        transformation[0:3,0:3] = cv2.Rodrigues(pose[3:6])[0]
-        transformation[0:3,3] = pose[0:3]
+        # Why is pinv not the same as rotation matrix from minus angle!
+        transformation[0:3,0:3] = np.linalg.pinv(rotation_matrix(pose[3:6]))
+        transformation[0:3,3] = -pose[0:3]
 
         keypoints3d = np.matmul(transformation, keypoints3d)
 

@@ -6,13 +6,13 @@ from corner_detector import CornerDetector
 from keyframe import KeyFrame
 
 class DepthCalculator:
-    def __init__(self, baseline, fx, fy, cx, cy):
+    def __init__(self, baseline, fx, fy, cx, cy, split_count):
         self.baseline = baseline
         self.fx = fx
         self.fy = fy
         self.cx = cx
         self.cy = cy
-        self.detector = CornerDetector()
+        self.detector = CornerDetector(split_count)
 
     def calculate_depth(self, left, right):
         window_size = 7
@@ -46,7 +46,7 @@ class DepthCalculator:
             matches_norm = cv2.normalize(matches, matches_norm)
             minVal2, maxVal, minLoc2, maxLoc = cv2.minMaxLoc(matches_norm)
 
-            # The location of the minimum the left point of the window
+            # The location of the minimum is the left point of the window
             # therefore the middle point is at left point + window_size
             disparity[0, i] = (minLoc[0] + window_size)
             keypoints2d[0, i] = keypoint.pt[0]

@@ -3,13 +3,13 @@ import matplotlib.pyplot as plt
 from mat_to_points import mat_to_points
 
 class CornerDetector:
-    def __init__(self):
-        self.detector = cv2.FastFeatureDetector_create(threshold=7)
+    def __init__(self, split_count):
+        self.detector = cv2.FastFeatureDetector_create(threshold=3)
         self.keypoints = None
         self.descriptors = None
-        self.split_count = 16
+        self.split_count = split_count
         self.kps_per_block = 1
-        self.margin = 15
+        self.margin = 12
 
     def detect_keypoints(self, image):
         self._keypoints = self.detector.detect(image)
@@ -29,43 +29,30 @@ class CornerDetector:
                 top = self.margin + int(j * sub_height)
                 bottom = self.margin + int((j+1) * sub_height - 1)
 
-                selection_count = 0
-                selection = [None]*self.kps_per_block
+                selection = None
                 for keypoint in self._keypoints:
                     if keypoint.pt[0] < left or keypoint.pt[0] > right \
                             or keypoint.pt[1] < top or keypoint.pt[1] > bottom:
                         continue
 
-                    for k in range(0, self.kps_per_block):
-                        if selection[k] == None:
-                            selection[k] = keypoint
-                            break
-                        elif selection[k].response < keypoint.response:
-                            # Make sure we have sort selection descending
-                            for l in range(k+1, self.kps_per_block):
-                                selection[l] = selection[l-1]
-                            selection[k] = keypoint
-                            break
+                    if selection == None:
+                        selection = keypoint
+                        continue
 
-                selection_count_start = selection_count
-                if selection_count < self.kps_per_block:
+                    elif selection.response < keypoint.response:
+                        selection = keypoint
+                        break
+
+                if selection == None:
                     for k in range(left, right):
                         for l in range(top, bottom):
-                            for m in range(selection_count_start, self.kps_per_block):
-                                if selection[m] == None:
-                                    selection[m] = cv2.KeyPoint(k, l, 1, -1, edge[l, k])
-                                    break
-                                elif selection[m].response < edge[l,k]:
-                                    # Make sure we have sort selection descending
-                                    for n in range(m+1, self.kps_per_block):
-                                        selection[n] = selection[m-1]
-                                    selection[m] = cv2.KeyPoint(k, l, 1, -1, edge[l, k])
-                                    break
+                            if selection == None:
+                                selection = cv2.KeyPoint(k, l, 1, -1, edge[l, k])
+                                break
+                            elif selection.response < edge[l,k]:
+                                selection = cv2.KeyPoint(k, l, 1, -1, edge[l, k])
+                                break
 
-                keypoints.extend(selection)
-
-        #result = cv2.drawKeypoints(edge, keypoints, edge)
-        #plt.imshow(result)
-        #plt.show()
+                keypoints.append(selection)
 
         return keypoints

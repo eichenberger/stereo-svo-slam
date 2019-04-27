@@ -36,16 +36,37 @@ def transform_keypoints(pose, keypoints3d, fx, fy, cx, cy):
     kps3d = np.ones((4, keypoints3d.shape[1]))
     kps3d[0:3, :] = keypoints3d
 
+    intrinsic = np.array([[fx, 0, cx],[0, fy, cy],[0, 0, 1]])
+
     kps2d = np.matmul(extrinsic, kps3d)
-    kps2d = (kps2d*[[fx],[fy],[1]])/kps2d[2,:] + [[cx],[cy],[0]]
+    #kps2d = (kps2d*[[fx],[fy],[1]])/kps2d[2,:] + [[cx],[cy],[0]]
+    kps2d = np.matmul(intrinsic, kps2d)
+    kps2d = kps2d/kps2d[2,:]
     return kps2d[0:2,:]
 
-print(slam.rotation_matrix(np.array([0.0, 0.0, 0.0])))
-print(slam.rotation_matrix(np.array([math.pi/4, 0.0, 0.0])))
-print(slam.rotation_matrix(np.array([0.0, math.pi/4, 0.0])))
-print(slam.rotation_matrix(np.array([0.0, 0.0, math.pi])))
+#print(slam.rotation_matrix(np.array([0.0, 0.0, 0.0])))
+#print(slam.rotation_matrix(np.array([math.pi/4, 0.0, 0.0])))
+#print(slam.rotation_matrix(np.array([0.0, math.pi/4, 0.0])))
+#print(slam.rotation_matrix(np.array([0.0, 0.0, math.pi])))
 
-pose = np.array([1.0,2,3.0,0.0,0.0,0.0])
+rot=np.array([0.0,0.0,0.0])
+rot_mat=slam.rotation_matrix(rot)
+verify=rotation_matrix(rot)
+print(f"slam-verify1: {rot_mat-verify}")
+
+rot=np.array([math.pi/4,0.0,0.0])
+rot_mat=slam.rotation_matrix(rot)
+verify=rotation_matrix(rot)
+print(f"slam-verify2: {rot_mat-verify}")
+
+
+rot=np.array([0.0,0.0,1.0])
+rot_mat=slam.rotation_matrix(rot)
+verify=rotation_matrix(rot)
+import pdb; pdb.set_trace()  # XXX BREAKPOINT
+print(f"slam-verify3: {rot_mat-verify}")
+
+pose = np.array([1.0,2,3.0,0.0,0.0,1.0])
 kps = np.array([[1.0,3.0],[2.0,4.0],[3.0,5.0]])
 fx = 1.0
 fy = 1.0
@@ -53,6 +74,7 @@ cx = 0.0
 cy = 0.0
 
 kps2d = slam.transform_keypoints(pose, kps, fx, fy, cx, cy)
+import pdb; pdb.set_trace()  # XXX BREAKPOINT
 kps2d_verify = transform_keypoints(pose, kps, fx, fy, cx, cy)
 diff = kps2d - kps2d_verify
 print(f"kps2d: {kps2d}")
