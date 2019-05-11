@@ -3,8 +3,10 @@ import argparse
 import numpy as np
 import math
 import io
-
+import asyncio
+import websockets
 import yaml
+import json
 
 from stereo_slam import StereoSLAM
 
@@ -116,19 +118,54 @@ def main():
     slam = StereoSLAM(45.1932, 680.0, 680.0, 357.0, 225.0)
 
     gray_l, gray_r = camera.read()
-    def read_frame():
+    async def read_frame():
+        print("SLAM started")
+        key = 0
+        try:
+            while key != ord('q'):
+                gray_l, gray_r = camera.read()
+                tm = cv2.TickMeter()
+                tm.start()
+                slam.new_image(gray_l, gray_r)
+                tm.stop()
+                print(f"processing took: {tm.getTimeMilli()} ms")
+                key = cv2.waitKey(1)
+                await asyncio.sleep(0.001)
+        except:
+            print(f'camera read done, wait for exit')
 
-        gray_l, gray_r = camera.read()
-        tm = cv2.TickMeter()
-        tm.start()
-        slam.new_image(gray_l, gray_r)
-        tm.stop()
-        print(f"processing took: {tm.getTimeMilli()} ms")
+        while key != ord('q'):
+            key = cv2.waitKey(1)
+            await asyncio.sleep(0.2)
 
-    key = 0
-    while key != ord('q'):
-        read_frame()
-        key = cv2.waitKey(1)
+    async def websocketserver(websocket, path):
+        async for message in websocket:
+            if path == "/keyframes":
+                if message == "get":
+                    keyframes = []
+                    for keyframe in slam.mapping.keyframes:
+                        x = keyframe.keypoints2d[0].astype(np.uint16)
+                        y = keyframe.keypoints2d[1].astype(np.uint16)
+                        colors = keyframe.left[y, x]
+                        keyframes.append({
+                            'keypoints': keyframe.keypoints3d.tolist(),
+                            'pose': keyframe.pose.tolist(),
+                            'colors': colors.tolist()})
+                    encoder = json.JSONEncoder()
+                    await websocket.send(encoder.encode(keyframes))
+
+    async def async_main():
+        slam_task = asyncio.create_task(read_frame())
+        server_task = websockets.serve(websocketserver, 'localhost', 8001)
+
+        # This yields a WebsocketServer object
+        server = await server_task
+
+        # SLAM is the main task
+        await slam_task
+        server.wait_closed()
+
+    asyncio.run(async_main())
 
 if __name__ == "__main__":
     main()

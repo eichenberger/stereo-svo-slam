@@ -15,7 +15,7 @@ class Mapping:
         self.cost = deque()
         self.keyframes = deque()
         self.quit = False
-        self.split_count = 20
+        self.split_count = 15
         self.max_matches = self.split_count**2
 
         self.depth_calculator = DepthCalculator(baseline, fx, fy, cx, cy,

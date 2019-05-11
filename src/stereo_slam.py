@@ -25,7 +25,6 @@ class StereoSLAM:
         # vx, vy, vz, gx, gy, gz
         self.motion_model = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         self.pose = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-        self.keyframes = []
 
         # self.depth_calculator = DepthCalculator(self.baseline, self.fx, self.fy, self.cx, self.cy)
         self.pose_refiner = PoseRefiner(self.fx, self.fy, self.cx, self.cy)
@@ -109,7 +108,6 @@ class StereoSLAM:
                      self.fx, self.fy,
                      self.cx, self.cy)
             self.previous_keypoints2d = keypoints2d
-
 
     def _estimate_pose(self, kf):
         estimator = PoseEstimator(self.left, self.prev_left, self.previous_keypoints2d,
