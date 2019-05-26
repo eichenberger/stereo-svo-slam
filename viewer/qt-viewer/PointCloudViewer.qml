@@ -9,13 +9,27 @@ Scene3D {
     id: scene3d
     aspects: ["input", "logic"]
     property var keyframes
+    property var currentPose: new Float32Array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     property var pointVertices: new Float32Array(0)
     property var pointColors: new Float32Array(0)
-    property var keyframeVertices: new Float32Array(0)
-    property var keyframeIndexes: new Uint32Array(0)
-    property var originalViewMatrix
 
     function reset() {
+        camera.position = Qt.vector3d( 0.0, 0.0, -1.0 );
+        camera.upVector = Qt.vector3d( 0.0, -1.0, 0.0 );
+        camera.viewCenter = Qt.vector3d( 0.0, 0.0, 0.0 );
+    }
+
+    function setTop() {
+        camera.position = Qt.vector3d( 0.0, -5.0, 0.0 );
+        camera.upVector = Qt.vector3d( 0.0, 0.0, 1.0 );
+        camera.viewCenter = Qt.vector3d( 0.0, 0.0, 0.0 );
+    }
+    function setSide() {
+        camera.position = Qt.vector3d( -5.0, 0.0, 0.0 );
+        camera.upVector = Qt.vector3d( 0.0, -1.0, 0.0 );
+        camera.viewCenter = Qt.vector3d( 0.0, 0.0, 0.0 );
+    }
+    function setFront() {
         camera.position = Qt.vector3d( 0.0, 0.0, -1.0 );
         camera.upVector = Qt.vector3d( 0.0, -1.0, 0.0 );
         camera.viewCenter = Qt.vector3d( 0.0, 0.0, 0.0 );
@@ -26,8 +40,7 @@ Scene3D {
             return;
         var floats_per_keyframe = keyframes[0]['keypoints'][0].length*3;
         var _points = new Float32Array(keyframes.length*floats_per_keyframe);
-        var _keyframes = new Float32Array(keyframes.length*3*5);
-        var _keyframeIndexes = new Uint32Array(keyframes.length*16);
+        var _keyframePoses = new Float32Array(keyframes.length*6);
         var _pointColors = new Float32Array(keyframes.length*floats_per_keyframe);;
         for (var i=0; i < keyframes.length; i++) {
             for (var j=0; j < keyframes[i]['keypoints'][0].length; j++) {
@@ -35,66 +48,26 @@ Scene3D {
                 _points[floats_per_keyframe*i+j*3+1] = keyframes[i]['keypoints'][1][j];
                 _points[floats_per_keyframe*i+j*3+2] = keyframes[i]['keypoints'][2][j];
 
-                _pointColors[floats_per_keyframe*i+j*3+0] = keyframes[i]['colors'][j]/255.0;
-                _pointColors[floats_per_keyframe*i+j*3+1] = keyframes[i]['colors'][j]/255.0;
-                _pointColors[floats_per_keyframe*i+j*3+2] = keyframes[i]['colors'][j]/255.0;
+                _pointColors[floats_per_keyframe*i+j*3+0] = keyframes[i]['colors'][j][2]/255.0;
+                _pointColors[floats_per_keyframe*i+j*3+1] = keyframes[i]['colors'][j][1]/255.0;
+                _pointColors[floats_per_keyframe*i+j*3+2] = keyframes[i]['colors'][j][0]/255.0;
             }
 
+            _keyframePoses[i*6+0] = keyframes[i]['pose'][0];
+            _keyframePoses[i*6+1] = keyframes[i]['pose'][1];
+            _keyframePoses[i*6+2] = keyframes[i]['pose'][2];
+            _keyframePoses[i*6+3] = keyframes[i]['pose'][3];
+            _keyframePoses[i*6+4] = keyframes[i]['pose'][4];
+            _keyframePoses[i*6+5] = keyframes[i]['pose'][5];
 
-            // Create camera with lines
-            var cam_size = 0.1;
-            var cam_depth = 0.08;
 
-            _keyframes[i*3*5+0] = keyframes[i]['pose'][0];
-            _keyframes[i*3*5+1] = keyframes[i]['pose'][1];
-            _keyframes[i*3*5+2] = keyframes[i]['pose'][2];
-
-            _keyframes[i*3*5+3] = keyframes[i]['pose'][0]-cam_size;
-            _keyframes[i*3*5+4] = keyframes[i]['pose'][1]+cam_size;
-            _keyframes[i*3*5+5] = keyframes[i]['pose'][2]+cam_depth;
-
-            _keyframes[i*3*5+6] = keyframes[i]['pose'][0]-cam_size;
-            _keyframes[i*3*5+7] = keyframes[i]['pose'][1]-cam_size;
-            _keyframes[i*3*5+8] = keyframes[i]['pose'][2]+cam_depth;
-
-            _keyframes[i*3*5+9] = keyframes[i]['pose'][0]+cam_size;
-            _keyframes[i*3*5+10] = keyframes[i]['pose'][1]-cam_size;
-            _keyframes[i*3*5+11] = keyframes[i]['pose'][2]+cam_depth;
-
-            _keyframes[i*3*5+12] = keyframes[i]['pose'][0]+cam_size;
-            _keyframes[i*3*5+13] = keyframes[i]['pose'][1]+cam_size;
-            _keyframes[i*3*5+14] = keyframes[i]['pose'][2]+cam_depth;
-
-            _keyframeIndexes[i*16+0] = i*5+0;
-            _keyframeIndexes[i*16+1] = i*5+1;
-
-            _keyframeIndexes[i*16+2] = i*5+0;
-            _keyframeIndexes[i*16+3] = i*5+2;
-
-            _keyframeIndexes[i*16+4] = i*5+0;
-            _keyframeIndexes[i*16+5] = i*5+3;
-
-            _keyframeIndexes[i*16+6] = i*5+0;
-            _keyframeIndexes[i*16+7] = i*5+4;
-
-            _keyframeIndexes[i*16+8] = i*5+1;
-            _keyframeIndexes[i*16+9] = i*5+2;
-
-            _keyframeIndexes[i*16+10] = i*5+2;
-            _keyframeIndexes[i*16+11] = i*5+3;
-
-            _keyframeIndexes[i*16+12] = i*5+3;
-            _keyframeIndexes[i*16+13] = i*5+4;
-
-            _keyframeIndexes[i*16+14] = i*5+4;
-            _keyframeIndexes[i*16+15] = i*5+1;
         }
 
         pointVertices = _points;
-        keyframeVertices = _keyframes;
-        keyframeIndexes = _keyframeIndexes;
         pointColors = _pointColors;
+        keyframeCollection.poses = _keyframePoses;
     }
+
 
     Entity {
         id: sceneRoot
@@ -114,6 +87,11 @@ Scene3D {
         OrbitCameraController {
             id: controller
             camera: camera
+        }
+
+        Transform {
+            id: cameraTransformation
+            matrix: camera.viewMatrix
         }
 
         // We need to make sure points are rendered with a fixed size
@@ -202,7 +180,6 @@ Scene3D {
             }
         }
 
-        // Now we create a entity that contains, pointcloud, material and layer information
         Entity {
             components: [pointcloudRenderer, pointCloudMaterial, pointLayer]
         }
@@ -217,7 +194,7 @@ Scene3D {
                 attributeType: Attribute.VertexAttribute
                 vertexBaseType: Attribute.Float
                 vertexSize: 3
-                count: keyframeVertices.length/3
+                count: 5
                 byteOffset: 0
                 byteStride: 3 * 4 // 1 vertex (=3 coordinates) * sizeof(float)
                 name: defaultPositionAttributeName
@@ -227,7 +204,7 @@ Scene3D {
                   attributeType: Attribute.IndexAttribute
                   vertexBaseType: Attribute.UnsignedInt
                   vertexSize: 1
-                  count: keyframeIndexes.length
+                  count: 16
                   byteOffset: 0
                   byteStride: 1 * 4 // 1 index * sizeof(Uint32)
                   buffer: indexBuffer
@@ -235,28 +212,77 @@ Scene3D {
             }
             // This can be the point cloud
             Buffer {
+                property real width: 0.1
+                property real height: 0.08
+                property real depth: 0.07
                 id: keyframeBuffer
                 type: Buffer.VertexBuffer
-                data: keyframeVertices
+                data: new Float32Array([
+                    0,0,0,
+                    -width, height, depth,
+                    -width, -height, depth,
+                    width, -height, depth,
+                    width, height, depth
+                ])
+
             }
 
             Buffer {
                 id: indexBuffer
                 type: Buffer.IndexBuffer
-                data: keyframeIndexes
+                data: new Uint32Array([
+                    0,1,
+                    0,2,
+                    0,3,
+                    0,4,
+                    1,2,
+                    2,3,
+                    3,4,
+                    4,1
+                ])
             }
         }
 
+        NodeInstantiator {
+            id: keyframeCollection
 
-        PhongMaterial {
-            id: wireframeMaterial
-            ambient: "blue"
+            property var poses: new Float32Array()
+            model: poses.length/6
 
+            Entity {
+                Transform {
+                    id: keyframeTransformation
+                    translation: Qt.vector3d(-keyframeCollection.poses[index*6+0], -keyframeCollection.poses[index*6+1], -keyframeCollection.poses[index*6+2])
+                    rotation: fromEulerAngles(Qt.vector3d(-180.0*keyframeCollection.poses[index*6+3]/Math.PI, -180.0*keyframeCollection.poses[index*6+4]/Math.PI, -180.0*keyframeCollection.poses[index*6+5]/Math.PI))
+                }
+
+                PhongMaterial {
+                    id: wireframeMaterial
+                    ambient: "blue"
+
+                }
+
+                components: [keyframeTransformation, keyframeRenderer, wireframeMaterial, pointLayer]
+            }
         }
 
-        // Now we create a entity that contains, pointcloud, material and layer information
         Entity {
-            components: [keyframeRenderer, wireframeMaterial, pointLayer]
+            PhongMaterial {
+                id: poseMaterial
+                ambient: "green"
+
+            }
+            Transform {
+                id: poseTransformation
+
+                property var currentPose: scene3d.currentPose
+
+                translation: Qt.vector3d(-currentPose[0], -currentPose[1], -currentPose[2])
+                rotation: fromEulerAngles(Qt.vector3d(-180.0*currentPose[3]/Math.PI, -180.0*currentPose[4]/Math.PI, -180.0*currentPose[5]/Math.PI))
+            }
+
+            components: [poseTransformation, keyframeRenderer, poseMaterial, pointLayer]
         }
     }
+
 }

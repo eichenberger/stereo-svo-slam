@@ -14,4 +14,5 @@ OTHER_FILES += \
 DISTFILES += \
     KeyFrames.qml \
     PointCloudViewer.qml \
-    SideConfiguration.qml
+    SideConfiguration.qml \
+    Pose.qml

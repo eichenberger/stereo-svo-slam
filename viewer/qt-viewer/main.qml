@@ -57,6 +57,10 @@ Item {
         height: parent.height
 
         onReset: pointcloud.reset()
+
+        onSetTop: pointcloud.setTop()
+        onSetSide: pointcloud.setSide()
+        onSetFront: pointcloud.setFront()
     }
 
     PointCloudViewer
@@ -66,6 +70,7 @@ Item {
         width: parent.width - 100
         height: parent.height
         keyframes: configuration.keyframes
+        currentPose: configuration.pose
     }
 
 

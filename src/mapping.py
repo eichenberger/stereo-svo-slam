@@ -30,7 +30,7 @@ class Mapping:
 
     def calculate_depth(self, left, right, pose):
         keypoints3d = np.ones((4,self.max_matches))
-        keypoints2d, keypoints3d[0:3,:] = \
+        keypoints2d, keypoints3d[0:3,:], err = \
             self.depth_calculator.calculate_depth(left, right)
 
         transformation = np.empty((3,4))
@@ -40,9 +40,11 @@ class Mapping:
 
         keypoints3d = np.matmul(transformation, keypoints3d)
 
+        colors = np.random.randint(0, 255, (keypoints2d.shape[1], 3), dtype=np.uint8)
+
         self.keyframes.append(KeyFrame(left, right,
                                        keypoints2d, keypoints3d,
-                                       pose))
+                                       pose, colors))
 
     def process_image(self):
         left = self.left.popleft()
@@ -57,7 +59,6 @@ class Mapping:
                 cost > 2000000:
             print("Insert new keyframe")
             self.calculate_depth(left, right, pose)
-
 
     def get_last_keyframe(self):
         return self.keyframes[-1]

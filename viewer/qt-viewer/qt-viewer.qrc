@@ -4,5 +4,6 @@
         <file>PointCloudViewer.qml</file>
         <file>KeyFrames.qml</file>
         <file>SideConfiguration.qml</file>
+        <file>Pose.qml</file>
     </qresource>
 </RCC>

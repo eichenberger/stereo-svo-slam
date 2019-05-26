@@ -5,6 +5,7 @@ import math
 from pose_estimator import PoseEstimator
 from depth_calculator import DepthCalculator
 from draw_kps import draw_kps
+from point_aligner import PointAligner
 
 from slam_accelerator import transform_keypoints
 from pose_refiner import PoseRefiner
@@ -58,35 +59,27 @@ class StereoSLAM:
                                               self.fx, self.fy,
                                               self.cx, self.cy)
 
+            point_aligner = PointAligner(kf.keypoints2d, keypoints2d,
+                                         kf.left, self.left)
 
-            kps2d_prev = np.array(kf.keypoints2d.transpose(), dtype=np.float32)
-            kps2d_next = np.array(keypoints2d.transpose(), dtype=np.float32)
-            ref_keypoints2d, status, err = cv2.calcOpticalFlowPyrLK(kf.left,
-                                                                self.left,
-                                                                kps2d_prev,
-                                                                kps2d_next,
-                                                                maxLevel=0,
-                                                                winSize=(21,21),
-                                                                flags=cv2.OPTFLOW_USE_INITIAL_FLOW)
+            warp, cost = point_aligner.align_points()
 
-            ref_keypoints2d = cv2.UMat.get(ref_keypoints2d).transpose()
-            status = cv2.UMat.get(status)
-            err = cv2.UMat.get(err)
+            keypoints2d_ext = np.ones((3, keypoints2d.shape[1]))
+            keypoints2d_ext[0:2,:] = keypoints2d
 
-            valid = (status*(err<1.0)).transpose()
-            keypoints2d = valid*ref_keypoints2d + (1-valid)*keypoints2d
+            warped_points = np.matmul(warp, keypoints2d_ext)
 
             # Needs more testing!
             self.pose = self.pose_refiner.refine_pose(self.pose,
                                                       kf.keypoints3d,
-                                                      keypoints2d)
+                                                      warped_points)
 
             # Needs more testing!
             keypoints3d_refined = self.cloud_refiner.refine_cloud(self.pose,
                                                              kf.keypoints3d,
-                                                             keypoints2d)
+                                                             warped_points)
             # Only take refined keypoints that are valid
-            kf.keypoints3d = valid*keypoints3d_refined + (1-valid)*kf.keypoints3d
+            kf.keypoints3d = keypoints3d_refined
 
             MARGIN = 10
             valid_indexes = (keypoints2d[0,:]>MARGIN) &\
@@ -105,6 +98,7 @@ class StereoSLAM:
                      kf.left,
                      kf.keypoints2d,
                      kf.keypoints3d,
+                     kf.colors,
                      self.fx, self.fy,
                      self.cx, self.cy)
             self.previous_keypoints2d = keypoints2d

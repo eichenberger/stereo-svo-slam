@@ -17,7 +17,7 @@ class EconInput():
         self.cap = cv2.VideoCapture(camera)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 752)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-        set_manual_exposure(hidraw, 15000)
+        set_manual_exposure(hidraw, 5000)
 
         self.settings = cv2.FileStorage(settings, cv2.FILE_STORAGE_READ)
 
@@ -131,7 +131,7 @@ def main():
                 print(f"processing took: {tm.getTimeMilli()} ms")
                 key = cv2.waitKey(1)
                 await asyncio.sleep(0.001)
-        except:
+        except cv2.error:
             print(f'camera read done, wait for exit')
 
         while key != ord('q'):
@@ -146,13 +146,19 @@ def main():
                     for keyframe in slam.mapping.keyframes:
                         x = keyframe.keypoints2d[0].astype(np.uint16)
                         y = keyframe.keypoints2d[1].astype(np.uint16)
-                        colors = keyframe.left[y, x]
+                        # colors = keyframe.left[y, x]
                         keyframes.append({
                             'keypoints': keyframe.keypoints3d.tolist(),
                             'pose': keyframe.pose.tolist(),
-                            'colors': colors.tolist()})
+                            'colors': keyframe.colors.tolist()})
                     encoder = json.JSONEncoder()
                     await websocket.send(encoder.encode(keyframes))
+            elif path == "/pose":
+                if message == "get":
+                    encoder = json.JSONEncoder()
+                    pose = {'pose': slam.pose.tolist()}
+                    await websocket.send(encoder.encode(pose))
+
 
     async def async_main():
         slam_task = asyncio.create_task(read_frame())
