@@ -148,7 +148,7 @@ def main():
                         y = keyframe.keypoints2d[1].astype(np.uint16)
                         # colors = keyframe.left[y, x]
                         keyframes.append({
-                            'keypoints': keyframe.keypoints3d.tolist(),
+                            'keypoints': keyframe.keypoints3d[0].tolist(),
                             'pose': keyframe.pose.tolist(),
                             'colors': keyframe.colors.tolist()})
                     encoder = json.JSONEncoder()

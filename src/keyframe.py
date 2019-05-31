@@ -6,3 +6,8 @@ class KeyFrame:
         self.keypoints3d = keypoints3d
         self.pose = pose
         self.colors = colors
+
+        self.blacklist = [None]*len(left)
+        for i in range(0, len(self.blacklist)):
+            self.blacklist[i] = [False]*self.keypoints2d[i].shape[1]
+

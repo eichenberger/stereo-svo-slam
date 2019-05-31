@@ -4,19 +4,25 @@
 using namespace std;
 
 static Matrix<double, 3, 3> _rot_mat_x(double angle){
-    double data[] = {1, 0, 0, 0, cos(angle), -sin(angle), 0, sin(angle), cos(angle)};
+    double data[] = {1, 0, 0,
+                     0, cos(angle), -sin(angle),
+                     0, sin(angle), cos(angle)};
     Matrix<double, 3, 3> m(data);
     return m;
 }
 
 static Matrix<double, 3, 3> _rot_mat_y(double angle) {
-    double data[] = {cos(angle), 0, sin(angle), 0, 1, 0, -sin(angle), 0, cos(angle)};
+    double data[] = {cos(angle), 0, sin(angle),
+                     0, 1, 0,
+                     -sin(angle), 0, cos(angle)};
     Matrix<double, 3, 3> m(data);
     return m;
 }
 
 static Matrix<double, 3, 3> _rot_mat_z(double angle) {
-    double data[] = {cos(angle), -sin(angle), 0, sin(angle), cos(angle), 0, 0, 0, 1};
+    double data[] = {cos(angle), -sin(angle), 0,
+                     sin(angle), cos(angle), 0,
+                     0, 0, 1};
     Matrix<double, 3, 3> m(data);
     return m;
 }

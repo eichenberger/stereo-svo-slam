@@ -6,13 +6,13 @@ from corner_detector import CornerDetector
 from keyframe import KeyFrame
 
 class DepthCalculator:
-    def __init__(self, baseline, fx, fy, cx, cy, split_count):
+    def __init__(self, baseline, fx, fy, cx, cy):
         self.baseline = baseline
         self.fx = fx
         self.fy = fy
         self.cx = cx
         self.cy = cy
-        self.detector = CornerDetector(split_count)
+        self.detector = CornerDetector()
 
     def match(self, roi, templ):
         x = 0
@@ -32,12 +32,12 @@ class DepthCalculator:
 
         return x_match, y_match, min_err
 
-    def calculate_depth(self, left, right):
+    def calculate_depth(self, left, right, split_count):
         half_window_size = 9
         search_x = 40
         search_y = 1
 
-        keypoints = self.detector.detect_keypoints(left)
+        keypoints = self.detector.detect_keypoints(left, split_count)
         keypoints2d = np.zeros((2, len(keypoints)))
         disparity = np.zeros((1, len(keypoints)))
         err = [0]*len(keypoints)

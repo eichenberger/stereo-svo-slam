@@ -61,6 +61,7 @@ Item {
         onSetTop: pointcloud.setTop()
         onSetSide: pointcloud.setSide()
         onSetFront: pointcloud.setFront()
+        onNKeyframesChanged: pointcloud.showNKeyframes = nKeyframes
     }
 
     PointCloudViewer

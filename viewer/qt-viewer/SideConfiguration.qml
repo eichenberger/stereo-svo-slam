@@ -7,10 +7,12 @@ Item {
 
     property var keyframes: keyframes.keyframes
     property var pose: pose.pose
+    property int nKeyframes: 0
     signal setTop()
     signal setSide()
     signal setFront()
     signal reset()
+
     Column {
         anchors.fill: parent
 
@@ -46,11 +48,14 @@ Item {
             onClicked: pose.getPose()
         }
 
+
         Button {
             width: parent.width
             text: qsTr("Top View")
             onClicked: setTop()
         }
+
+
 
         Button {
             width: parent.width
@@ -58,11 +63,36 @@ Item {
             onClicked: setSide()
         }
 
+
         Button {
             width: parent.width
             text: qsTr("Front View")
             onClicked: setFront()
         }
+
+        Row {
+            width: parent.width
+            Text {
+                id: element
+                text: qsTr("N Keyframes: ")
+                font.pixelSize: 12
+            }
+
+            TextInput {
+                id: keyframesInput
+                text: nKeyframes
+                onTextChanged: nKeyframes = text
+                font.pixelSize: 12
+                inputMethodHints: Qt.ImhDigitsOnly
+            }
+
+        }
     }
 
+
 }
+
+/*##^## Designer {
+    D{i:0;autoSize:true;height:480;width:640}
+}
+ ##^##*/

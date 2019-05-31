@@ -12,6 +12,7 @@ Scene3D {
     property var currentPose: new Float32Array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
     property var pointVertices: new Float32Array(0)
     property var pointColors: new Float32Array(0)
+    property int showNKeyframes: 0
 
     function reset() {
         camera.position = Qt.vector3d( 0.0, 0.0, -1.0 );
@@ -35,14 +36,17 @@ Scene3D {
         camera.viewCenter = Qt.vector3d( 0.0, 0.0, 0.0 );
     }
 
-    onKeyframesChanged: {
+    function showKeyframes() {
         if (keyframes === undefined)
             return;
         var floats_per_keyframe = keyframes[0]['keypoints'][0].length*3;
         var _points = new Float32Array(keyframes.length*floats_per_keyframe);
         var _keyframePoses = new Float32Array(keyframes.length*6);
-        var _pointColors = new Float32Array(keyframes.length*floats_per_keyframe);;
-        for (var i=0; i < keyframes.length; i++) {
+        var _pointColors = new Float32Array(keyframes.length*floats_per_keyframe);
+        var nKeyframes = keyframes.length
+        if (showNKeyframes > 0 && showNKeyframes < keyframes.length)
+            nKeyframes = showNKeyframes
+        for (var i=0; i < nKeyframes; i++) {
             for (var j=0; j < keyframes[i]['keypoints'][0].length; j++) {
                 _points[floats_per_keyframe*i+j*3+0] = keyframes[i]['keypoints'][0][j];
                 _points[floats_per_keyframe*i+j*3+1] = keyframes[i]['keypoints'][1][j];
@@ -67,6 +71,10 @@ Scene3D {
         pointColors = _pointColors;
         keyframeCollection.poses = _keyframePoses;
     }
+
+    onKeyframesChanged: showKeyframes()
+
+    onShowNKeyframesChanged: showKeyframes()
 
 
     Entity {

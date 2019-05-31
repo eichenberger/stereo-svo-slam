@@ -3,27 +3,26 @@ import matplotlib.pyplot as plt
 from mat_to_points import mat_to_points
 
 class CornerDetector:
-    def __init__(self, split_count):
+    def __init__(self):
         self.detector = cv2.FastFeatureDetector_create(threshold=3)
         self.keypoints = None
         self.descriptors = None
-        self.split_count = split_count
         self.kps_per_block = 1
         self.margin = 12
 
-    def detect_keypoints(self, image):
+    def detect_keypoints(self, image, split_count):
         self._keypoints = self.detector.detect(image)
         edge = cv2.Sobel(image, cv2.CV_8U, 1, 0)
 
-        return self._distribute_keypoints(image, edge)
+        return self._distribute_keypoints(image, edge, split_count)
 
-    def _distribute_keypoints(self, image, edge):
-        sub_width = (image.shape[1]-2*self.margin)/self.split_count
-        sub_height = (image.shape[0]-2*self.margin)/self.split_count
+    def _distribute_keypoints(self, image, edge, split_count):
+        sub_width = (image.shape[1]-2*self.margin)/split_count
+        sub_height = (image.shape[0]-2*self.margin)/split_count
 
         keypoints = []
-        for i in range(0, self.split_count):
-            for j in range(0, self.split_count):
+        for i in range(0, split_count):
+            for j in range(0, split_count):
                 left = self.margin + int(i * sub_width)
                 right = self.margin + int((i+1) * sub_width - 1)
                 top = self.margin + int(j * sub_height)

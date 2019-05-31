@@ -22,6 +22,7 @@ def main():
     parser = argparse.ArgumentParser(description='OpenCV test')
     parser.add_argument('camera', help='camera to use', type=str)
     parser.add_argument('hidraw', help='hdiraw control device', type=str)
+    parser.add_argument('exposure', help='exposure value', type=int)
     parser.add_argument('out', help='output name', type=str)
 
     np.set_printoptions(linewidth=200, suppress=True)
@@ -32,7 +33,7 @@ def main():
     cap1.set(cv2.CAP_PROP_FRAME_WIDTH, 752)
     cap1.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
-    set_auto_exposure(args.hidraw)
+    set_manual_exposure(args.hidraw, args.exposure)
 
     key = 0
     i = 0
