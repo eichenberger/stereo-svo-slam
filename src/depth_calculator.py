@@ -1,18 +1,19 @@
 import math
-import cv2
 import numpy as np
 
 from corner_detector import CornerDetector
-from keyframe import KeyFrame
 
 class DepthCalculator:
-    def __init__(self, baseline, fx, fy, cx, cy):
+    def __init__(self, baseline, fx, fy, cx, cy, window_size, search_x, search_y, margin):
         self.baseline = baseline
         self.fx = fx
         self.fy = fy
         self.cx = cx
         self.cy = cy
-        self.detector = CornerDetector()
+        self.window_size = window_size
+        self.search_x = search_x
+        self.search_y = search_y
+        self.detector = CornerDetector(margin)
 
     def match(self, roi, templ):
         x = 0
@@ -33,18 +34,16 @@ class DepthCalculator:
         return x_match, y_match, min_err
 
     def calculate_depth(self, left, right, split_count):
-        half_window_size = 9
-        search_x = 40
-        search_y = 1
+        half_window_size = int(self.window_size/2)
+        search_x = self.search_x
+        search_y = self.search_y
 
         keypoints = self.detector.detect_keypoints(left, split_count)
         keypoints2d = np.zeros((2, len(keypoints)))
         disparity = np.zeros((1, len(keypoints)))
         err = [0]*len(keypoints)
 
-        key = 0
         for i, keypoint in enumerate(keypoints):
-            diff_max = math.inf
             x = int(keypoint.pt[0])
             y = int(keypoint.pt[1])
             x1 = x-half_window_size

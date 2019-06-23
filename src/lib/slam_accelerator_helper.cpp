@@ -1,4 +1,5 @@
 #include <iostream>
+#include "opencv2/core/core.hpp"
 #include "slam_accelerator_helper.hpp"
 
 using namespace std;
@@ -291,7 +292,6 @@ void c_refine_cloud(double fx,
     // Order is x,y,z of 3d point and x,y in original 2d image.
     // We only want to modify z
     double init_steps[] = {0.1,0.1,0.1};
-    double cost[number_of_keypoints];
     for (int i = 0; i < number_of_keypoints; i++) {
         // For each point we need to solve the keypoint problem
         double x0[] = {
@@ -304,7 +304,6 @@ void c_refine_cloud(double fx,
         solver->setFunction(refiner);
         solver->setInitStep(cv::Mat(3, 1, CV_64F, init_steps));
 
-        cost[i] = solver->minimize(cv::Mat(3,1, CV_64F, x0));
         kps3d(0, i) = x0[0];
         kps3d(1, i) = x0[1];
         kps3d(2, i) = x0[2];

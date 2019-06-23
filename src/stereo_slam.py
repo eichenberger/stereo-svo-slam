@@ -3,7 +3,7 @@ import numpy as np
 import math
 
 from pose_estimator import PoseEstimator
-from depth_calculator import DepthCalculator
+#from depth_calculator import DepthCalculator
 from draw_kps import draw_kps
 from point_aligner import PointAligner
 

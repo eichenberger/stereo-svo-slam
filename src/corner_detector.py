@@ -3,12 +3,12 @@ import matplotlib.pyplot as plt
 from mat_to_points import mat_to_points
 
 class CornerDetector:
-    def __init__(self):
+    def __init__(self, margin):
         self.detector = cv2.FastFeatureDetector_create(threshold=3)
         self.keypoints = None
         self.descriptors = None
         self.kps_per_block = 1
-        self.margin = 12
+        self.margin = margin
 
     def detect_keypoints(self, image, split_count):
         self._keypoints = self.detector.detect(image)
@@ -36,11 +36,8 @@ class CornerDetector:
 
                     if selection == None:
                         selection = keypoint
-                        continue
-
                     elif selection.response < keypoint.response:
                         selection = keypoint
-                        break
 
                 if selection == None:
                     for k in range(left, right):

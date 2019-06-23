@@ -5,9 +5,13 @@ from Cython.Build import cythonize
 ext_modules = [
     Extension("slam_accelerator",
               sources=["lib/slam_accelerator.pyx",
-                       "lib/slam_accelerator_helper.cpp"],
-              libraries=["m", "opencv_core", 'omp5'],  # Unix-like specific
-              extra_compile_args=['-std=c++11','-fopenmp'],
+                       "lib/slam_accelerator_helper.cpp",
+                       "lib/depth_calculator.cpp",
+                       "lib/corner_detector.cpp"],
+              libraries=["m", "opencv_core", 'omp5', 'opencv_features2d', 'opencv_imgproc'],  # Unix-like specific
+              library_dirs=['/usr/local/lib'],
+              include_dirs=['/usr/local/include/opencv4'],
+              extra_compile_args=['-std=c++17','-fopenmp', '-O3'],
               language='c++'
               )
 ]

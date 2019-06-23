@@ -1,10 +1,10 @@
 from collections import deque
-import cv2
 import numpy as np
 
 from keyframe import KeyFrame
-from depth_calculator import DepthCalculator
+#from depth_calculator import DepthCalculator
 from slam_accelerator import rotation_matrix
+from slam_accelerator import DepthCalculator
 
 class Mapping:
     def __init__(self, baseline, fx, fy, cx, cy):
@@ -18,7 +18,8 @@ class Mapping:
         self.split_count = 16
         self.max_matches = self.split_count**2
 
-        self.depth_calculator = DepthCalculator(baseline, fx, fy, cx, cy)
+        self.depth_calculator = DepthCalculator(baseline, fx, fy, cx, cy,
+                                                18, 40, 1, 40)
 
     def new_image(self, left, right, pose, matches, cost):
         self.left.append(left)
