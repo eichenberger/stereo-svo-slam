@@ -190,6 +190,204 @@ Where:
 	x',y' &: \text{x,y reprojection of 3D point by using \ref{eq:cm}}
 \end{align*}
 
+\subsection{Finding gradient for optimization}
+To speed up the optimization a predefined gradient can be calculated. The method to find such a gradient is related to the Lucas-Kanade optical flow method. Instead of searching a Warp matrix we search a transformation matrix in this scenario. We have two images $I_{k-1}$ and $I_{k}$. We know the pose of image k-1 $T_{k-1}$ . We search the pose $T_k$.\\
+While the inverse compositional Lucas Kanade algorithm tries to find the optimal Warp matrix. We try to find the optimal pose.
+\subsubsection{Lucas Kanade Algorithm}
+Lets assume we have a warp matrix in the following form:
+\begin{equation}\label{eq:lk_warp}
+	p=\begin{pmatrix}
+		p_{11} & p_{12} & p_{13} \\
+		p_{21} & p_{22} & p_{23}
+	\end{pmatrix}
+\end{equation}
+\begin{align*}
+	p				&:	\text{warp matrix}\\
+	p_{ij}	&:	\text{parameter of warp matrix}
+\end{align*}
+
+
+Lucas Kanade tries to optimize the following problem \cite{inverse_compositional}:
+\begin{equation}\label{eq:lk_problem}
+	\sum_x\sum_y(I_{k}(x',x')-I_{k-1}(x,y))^2
+\end{equation}
+\begin{align*}
+	x,y				&:	\text{Pixel position in template}\\
+	x',y'			&:	\text{Pixel position in current image}\\
+	I_{k-1}		&:	\text{Template image}\\
+	I_{k}			&:	\text{Current image}
+\end{align*}
+
+\begin{equation}
+	W=
+	\begin{pmatrix}
+		x' \\
+		y'
+	\end{pmatrix}=
+	\begin{pmatrix}
+		p_{11} & p_{12} & p_{13} \\
+		p_{21} & p_{22} & p_{23}
+	\end{pmatrix}*
+	\begin{pmatrix}
+		x\\
+		y\\
+		1
+	\end{pmatrix}=
+	\begin{pmatrix}
+		p_{11}*x + p_{12}*y + p_{13} \\
+		p_{21}*x + p_{22}*y + p_{23}
+	\end{pmatrix}
+\end{equation}
+\begin{align*}
+	W					&:	\text{Warp}\\
+	x',y'			&:	\text{Pixel position in current image}\\
+	x,y				&:	\text{Pixel position in template}\\
+	p_{ij}		&:	\text{parameter of warp matrix}
+\end{align*}
+
+Because \ref{eq:lk_problem} is a nonlinear problem we have to solve it with a nonlinear solver (e.g. Gauss-Newton or Gradient Descent). The problem is solved by iteratively changing the Warpmatrix in the direction of a gradient until the difference of the intensities are minimal:
+\begin{equation}
+	\begin{pmatrix}
+		x' \\
+		y'
+	\end{pmatrix}=
+	\begin{pmatrix}
+		p_{11}+\Delta p_{11} & p_{12}+\Delta p_{12} & p_{13}+\Delta p_{13} \\
+		p_{21}+\Delta p_{21} & p_{22}+\Delta p_{22} & p_{23}+\Delta p_{23}
+	\end{pmatrix}*
+	\begin{pmatrix}
+		x\\
+		y\\
+		1
+	\end{pmatrix}
+\end{equation}
+\begin{align*}
+	x',y'					&:	\text{Pixel position in current image}\\
+	x,y						&:	\text{Pixel position in template}\\
+	p_{ij}				&:	\text{parameter of warp matrix}\\
+	\Delta p_{ij}	&:	\text{change of $p_{ij}$ per iteration}
+\end{align*}
+
+
+After each iteration we set $p=p_{i-1}+\Delta p$.\\
+We can solve this problem by approximating the gradient. However it would slow down the calculation. Therefore, Lucas Kanade calculates the gradient by doing a first order Taylor approximation of the problem:
+\begin{equation}\label{eq:lk_taylor}
+	\sum_x\sum_y(I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k}*\frac{\sigma W}{\sigma p}*\Delta p-I_{k-1}(x,y))^2
+\end{equation}
+\begin{align*}
+	x,y				&:	\text{Pixel position in template}\\
+	x',y'			&:	\text{Pixel position in current image}\\
+	I_{k-1}		&:	\text{Template image}\\
+	I_{k}			&:	\text{Current image}\\
+	\nabla I	&:	\text{Gradient in image I at position x',y'}
+\end{align*}
+We want to find $\Delta p$ which is our gradient. To make this work we have to derive equation \ref{eq:lk_taylor}. This gives us:
+\begin{equation}
+	2*\sum_x\sum_y\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k}*\frac{\sigma W}{\sigma p}*\Delta p-I_{k-1}(x,y)\end{bmatrix}
+\end{equation}
+We can now find $\Delta p$ by moving it to the left:
+\begin{equation}\label{eq:lk_dp}
+	\Delta p=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix})^{-1}
+	*\sum_x\sum_y\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}I_{k-1}(x,y) - I_{k}(x_{i-1}',y_{i-1}'\end{bmatrix}
+\end{equation}
+
+$\frac{\sigma W}{\sigma p}$ is the Jacobian matrix and looks as follows:
+\begin{equation}
+	\frac{\sigma W}{\sigma p}=
+	\begin{pmatrix}
+		x & y & 1 & 0 & 0 & 0 \\
+		0 & 0 & 0 & x & y & 1
+	\end{pmatrix}
+\end{equation}
+
+All parameters in equation \ref{eq:lk_dp} are known and can be calculated for a given x,y and p. However, the following part of equation \ref{eq:lk_dp} is time consuming to calculate and has to be inverted:
+\begin{equation}
+	\Delta H=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix})
+\end{equation}
+H is called the Hessian matrix. Unfortunately we need to calculate this matrix in each iteration. The inverse compositional Lucas Kanade algorithm tries to solve this problem by wrapping the template to the current image instead of the current image to the template.
+
+\subsection{Inverse compositional Lucas Kanade}
+
+The inverse compositional Lucase Kanade algorithm does more or less the same as the normal Lucas Kanade algorithm but it searches the inverse wrap update at each iteration. The problem basically stays the same but we switch the role of the template with the one of the image which first doesn't have any effect:
+\begin{equation}\label{eq:iclk_problem}
+	\sum_x\sum_y(I_{k-1}(x'',y'')-I_{k}(x',y'))^2
+\end{equation}
+\begin{align*}
+	x'',y''		&:	\text{Warped pixel position in the template}\\
+	x',y'			&:	\text{Pixel position in the current image}\\
+	I_{k-1}		&:	\text{Template image}\\
+	I_{k}			&:	\text{Current image}
+\end{align*}
+
+What is different this time is that we wrap the template with $\Delta p$:
+\begin{equation}
+	\begin{pmatrix}
+		x'' \\
+		y''
+	\end{pmatrix}=
+	\begin{pmatrix}
+		\Delta p_{11} & \Delta p_{12} & \Delta p_{13} \\
+		\Delta p_{21} & \Delta p_{22} & \Delta p_{23}
+	\end{pmatrix}*
+	\begin{pmatrix}
+		x\\
+		y\\
+		1
+	\end{pmatrix}
+\end{equation}
+\begin{align*}
+	x,y						&:	\text{Original pixel position in template}\\
+	x'',y''				&:	\text{Warped pixel position in template}\\
+	\Delta p_{ij}	&:	\text{change of $p_{ij}$ per iteration}
+\end{align*}
+
+\begin{equation}
+	\begin{pmatrix}
+		x' \\
+		y'
+	\end{pmatrix}=
+	\begin{pmatrix}
+		p_{11} & p_{12} & p_{13} \\
+		p_{21} & p_{22} & p_{23}
+	\end{pmatrix}*
+	\begin{pmatrix}
+		x\\
+		y\\
+		1
+	\end{pmatrix}
+\end{equation}
+\begin{align*}
+	x',y'					&:	\text{Pixel position in current image}\\
+	x,y						&:	\text{Original pixel position in template}\\
+	p_{ij}				&:	\text{parameter of warp matrix}\\
+\end{align*}
+
+With this we separate the update step from the wrapping of the image. The update step will then be $p=p_{i-1}+(\Delta p)^{-1}$. If we do the first order taylor approximation again we get:
+
+\begin{equation}\label{eq:iclk_taylor}
+	\sum_x\sum_y(I_{k-1}(x,y)+\nabla I_{k-1}*\frac{\sigma W}{\sigma p}*\Delta p-I_{k}(x',y'))^2
+\end{equation}
+\begin{align*}
+	x,y				&:	\text{Original pixel position in template}\\
+	x',y'			&:	\text{Pixel position in current image}\\
+	I_{k-1}		&:	\text{Template image}\\
+	I_{k}			&:	\text{Current image}\\
+	\nabla I	&:	\text{Gradient in image I at position x',y'}
+\end{align*}
+
+This gives us for $\Delta p$:
+\begin{equation}\label{eq:iclk_dp}
+	\Delta p=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}\nabla I_{k-1}*\frac{\sigma W}{\sigma p}\end{bmatrix})^{-1}
+	*\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}') - I_{k-1}(x,y)\end{bmatrix}
+\end{equation}
+
+Compared to the normal Lucas-Kanade algorithm the Hessian Matrix H is now constant for all iterations and we don't have to do the expensive calculation at every iteration:
+\begin{equation}
+	\Delta H=\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}\nabla I_{k-1}*\frac{\sigma W}{\sigma p}\end{bmatrix}
+\end{equation}
+
+Because we only have to calculate the Hessian matrix once, the inverse computational Lucas Kanade is more efficient then the Lucas Kanade algorithm.
+
 \subsubsection{3D cloud refinement}
 After refining the pose we still have a small reprojection error. We can try to minimize this error by adjusting the 3D position for each point. Here we do the same thing as in equation \ref{eq:pose_refinement} but we now change the 3D point position instead of the pose. Because we need to do that for all point this is more computational expensive than the previous step. Instead of Levenberg-Marquardt we use normal Gradient-Descent in this step, because the here described problem is an underdeterminated problem. However, we can still find a local minimum. This step follows section V.B in \cite{svo2}. However, pose and 3D cloud is only updated for the last camera frame. We do not bundle adjust the whole trajectory.
 
