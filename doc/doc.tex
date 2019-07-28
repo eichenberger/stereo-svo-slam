@@ -218,7 +218,7 @@ Lucas Kanade tries to optimize the following problem \cite{inverse_compositional
 	I_{k}			&:	\text{Current image}
 \end{align*}
 
-\begin{equation}
+\begin{equation}\label{eq:lk_warped}
 	W=
 	\begin{pmatrix}
 		x' \\
@@ -388,6 +388,96 @@ Compared to the normal Lucas-Kanade algorithm the Hessian Matrix H is now consta
 
 Because we only have to calculate the Hessian matrix once, the inverse computational Lucas Kanade is more efficient then the Lucas Kanade algorithm.
 
+\subsection{Pose estimation}
+For a first estimate of the pose we use some kind of Lucas Kanade algorithm. However, we don't have the point position in the new image directly but we know the 3d position of the point. We now optimize the projection matrix so that the intensity difference is minimized again. So instead of having equation \ref{eq:lk_warped} we have:
+
+\begin{equation}\label{eq:pe_warped}
+	\begin{pmatrix}
+		u \\
+		v \\
+		s
+	\end{pmatrix}=
+	\begin{pmatrix}
+		r_{11} & r_{12} & r_{13} & t_{1} \\
+		r_{21} & r_{22} & r_{23} & t_{2} \\
+		r_{31} & r_{32} & r_{33} & t_{3}
+	\end{pmatrix}*
+	\begin{pmatrix}
+		X\\
+		Y\\
+		Z
+	\end{pmatrix}=
+	\begin{pmatrix}
+		r_{11}*X + r_{12}*Y + r_{13}*Z + t_{1} \\
+		r_{21}*X + r_{22}*Y + r_{23}*Z + t_{2} \\
+		r_{31}*X + r_{32}*Y + r_{33}*Z + t_{3} \\
+	\end{pmatrix}
+\end{equation}
+\begin{equation}
+	\begin{pmatrix}
+		x \\
+		y 
+	\end{pmatrix}=
+	\begin{pmatrix}
+		\frac{u}{s} \\
+		\frac{v}{s} 
+	\end{pmatrix}=
+	\begin{pmatrix}
+		\frac{r_{11}*X + r_{12}*Y + r_{13}*Z + t_{1}}{r_{31}*X + r_{32}*Y + r_{33}*Z + t_{3}}  \\
+		\frac{r_{21}*X + r_{22}*Y + r_{23}*Z + t_{2}}{r_{31}*X + r_{32}*Y + r_{33}*Z + t_{3}}
+	\end{pmatrix}
+\end{equation}
+
+\begin{align*}
+	u,v,s			&:	\text{Pixel position scaled with s}\\
+	X,Y,Z			&:	\text{3D Pixel position}\\
+	r_{ij}		&:	\text{Rotation matrix}\\
+	t_{i}			&:	\text{translation vector}\\
+\end{align*}
+
+We would need to find 12 gradients if we use the formulation in equation \ref{eq:pe_optimization} for the inverse compositional Lucas Kanade. However, we could express the $r_{ij}$ components based on roll, pitch and yaw which are our 6 DoF. It is easy to see that this formulation gets rather complex and it's nearly impossible to find the Jacobian for such a matrix.
+\begin{equation}\label{eq:pe_optimization}
+	\begin{pmatrix}
+		x'' \\
+		y''
+	\end{pmatrix}=
+	\begin{pmatrix}
+		\frac{\Delta r_{11}*X + \Delta r_{12}*Y + \Delta r_{13}*Z + \Delta t_{1}}{ \Delta r_{31}*X + \Delta r_{32}*Y + \Delta r_{33}*Z + \Delta t_{3}}  \\
+		\frac{\Delta r_{21}*X + \Delta r_{22}*Y + \Delta r_{23}*Z + \Delta t_{2}}{ \Delta r_{31}*X + \Delta r_{32}*Y + \Delta r_{33}*Z + \Delta t_{3}}
+	\end{pmatrix}
+	\begin{pmatrix}
+		x\\
+		y\\
+		1
+	\end{pmatrix}
+\end{equation}
+\begin{align*}
+	x,y						&:	\text{Original pixel position in template}\\
+	x'',y''				&:	\text{Warped pixel position in template}\\
+	\Delta p_{ij}	&:	\text{change of $p_{ij}$ per iteration}
+\end{align*}
+
+To make things easier we use the SE(3) formulation which is part of the Lie Groups. The whole idea is basically to transform the angles and translations into another space where it's easier to find the Jacobian. The optimization is then done in this SE(3) space. The result needs only to be transformed back into the original space. The problem we need to solve stays the same as in equation \ref{eq:iclk_problem}. However we need to find $x''$ and $y''$ differently. We use the following formulation:
+\begin{equation}
+	W=e^{\xi}*P*p
+\end{equation}
+\begin{align*}
+	e			&:	\text{Exponential map}\\
+	\xi		&:	\text{Pose change between reference frame and current frame as SE(3) vector}\\
+	P			&:	\text{Pose of the reference frame}\\
+	p			&:	\text{point in 3D cloud}
+\end{align*}
+
+We want to find $\xi$ so that the intensity difference gets minimal. $P*p$ can be calculated and gives us the following Jacobian matrix for $\frac{W}{\delta \xi}$ (see \cite{se3_explain}).
+\begin{equation}
+	\frac{e^{\xi}*P*p}{\delta \xi}=\begin{pmatrix}
+		\frac{1}{z} & 0 & -\frac{x}{z^2} & -\frac{x*y}{z^2} & 1 + \frac{x^2}{z^2} & -\frac{y}{z} \\
+		0 & \frac{1}{z}  & -\frac{y}{z^2} & 1 + \frac{y^2}{z^2} & \frac{x*y}{z^2} &  \frac{x}{z}
+	\end{pmatrix}
+\end{equation}
+
+
+
 \subsubsection{3D cloud refinement}
 After refining the pose we still have a small reprojection error. We can try to minimize this error by adjusting the 3D position for each point. Here we do the same thing as in equation \ref{eq:pose_refinement} but we now change the 3D point position instead of the pose. Because we need to do that for all point this is more computational expensive than the previous step. Instead of Levenberg-Marquardt we use normal Gradient-Descent in this step, because the here described problem is an underdeterminated problem. However, we can still find a local minimum. This step follows section V.B in \cite{svo2}. However, pose and 3D cloud is only updated for the last camera frame. We do not bundle adjust the whole trajectory.
 
@@ -417,6 +507,13 @@ Mapping can be solved in a separate thread. The mapping thread decides if a new 
 	S. Baker and I. Matthews\\
 	\textit{Lucas-kanade 20 years on: A unifying framework}
 	Int. J. Comput. Vis., 56(3):221–255, 2004.
+
+
+	\bibitem{se3_explain}
+	José Luis Blanco Claraco\\
+	\textit{A tutorial on SE(3) transformation parameterizations and on-manifold optimization José Luis Blanco Claraco}
+	https://w3.ual.es/personal/jlblanco/, Last update 18/03/2019
+
 
 
 \end{thebibliography}
