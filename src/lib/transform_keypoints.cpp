@@ -2,40 +2,82 @@
 
 #include <opencv2/opencv.hpp>
 
+#include "transform_keypoints.hpp"
 #include "rotation_matrix.hpp"
 
 using namespace cv;
 using namespace std;
 
-void transform_keypoints(const vector<float> &pose,
-        const vector<array<float, 3>>& keypoints3d,
-        double fx, double fy, double cx, double cy,
-        vector<array<float, 2>> keypoints2d)
+void project_keypoints(const struct Pose &pose,
+        const vector<KeyPoint3d> &in, const CameraSettings &camera_settings,
+        vector<KeyPoint2d> &out)
 {
-    Matx33f rot_matrix;
-    rotation_matrix(pose, rot_matrix);
 
-    float _extrinsic[] = {rot_matrix(0,0), rot_matrix(0,1), rot_matrix(0,2), pose[3],
-                       rot_matrix(1,0), rot_matrix(1,1), rot_matrix(1,2), pose[4],
-                       rot_matrix(2,0), rot_matrix(2,1), rot_matrix(2,2), pose[5]};
-    Mat extrinsic(3, 4, CV_32F, _extrinsic);
+    cv::Mat angles(1, 3, CV_32F, (void*)&pose.roll);
+    cv::Mat rot_mat(3, 3, CV_32F);
+    cv::Rodrigues(angles, rot_mat);
 
-    keypoints2d.resize(keypoints3d.size());
-    Mat _keypoints3d = Mat::ones(4, keypoints3d.size(), CV_32F);
-    for (int i = 0; i < keypoints3d.size(); i++) {
-        _keypoints3d.at<float>(0, i) = keypoints3d[i][0];
-        _keypoints3d.at<float>(1, i) = keypoints3d[i][1];
-        _keypoints3d.at<float>(2, i) = keypoints3d[i][2];
+    cv::Mat intrinsic(3, 3, CV_32F);
+    intrinsic.at<float>(0,0) = camera_settings.fx;
+    intrinsic.at<float>(0,1) = 0;
+    intrinsic.at<float>(0,2) = camera_settings.cx;
+    intrinsic.at<float>(1,0) = 0;
+    intrinsic.at<float>(1,1) = camera_settings.fy;
+    intrinsic.at<float>(1,2) = camera_settings.cy;
+    intrinsic.at<float>(2,0) = 0;
+    intrinsic.at<float>(2,1) = 0;
+    intrinsic.at<float>(2,2) = 1;
+
+    out.clear();
+    out.resize(in.size());
+
+    // Use matrix instead of vector for easier calculation
+    const cv::Mat _in(in.size(), 3, CV_32F, (void*)&in[0].x);
+    cv::Mat _out(3, out.size(), CV_32F);
+
+
+    _out = intrinsic*rot_mat*_in.t();
+
+    cv::Mat translation(3,1, CV_32F, (void*)&pose.x);
+//#pragma omp parallel for
+    for (int i=0; i < _out.cols; i++) {
+        // - because it's the inverse transformation
+        _out.col(i) -= intrinsic*translation;
     }
 
-    Mat _keypoints2d(3, keypoints3d.size(), CV_32F);
+    float *_x = _out.ptr<float>(0);
+    float *_y = _out.ptr<float>(1);
+    float *_s = _out.ptr<float>(2);
 
-    _keypoints2d = extrinsic.mul(_keypoints3d);
-
-    keypoints2d.resize(keypoints3d.size());
-    for (int i = 0; i < keypoints2d.size(); i++) {
-        keypoints2d[i][0] = _keypoints2d.at<float>(i, 0)/_keypoints2d.at<float>(i, 2);
-        keypoints2d[i][1] = _keypoints2d.at<float>(i, 1)/_keypoints2d.at<float>(i, 2);
+//#pragma omp parallel for
+    for (int i=0; i < _out.cols; i++) {
+        out[i].x = (*_x)/(*_s);
+        out[i].y = (*_y)/(*_s);
+        _x++;_y++;_s++;
     }
 }
 
+void transform_keypoints_inverse(const struct Pose &pose,
+        const vector<KeyPoint3d> &in, vector<KeyPoint3d> &out)
+{
+    cv::Mat angles(1, 3, CV_32F, (void*)&pose.roll);
+    cv::Mat rot_mat(3, 3, CV_32F);
+    cv::Rodrigues(angles, rot_mat);
+
+    out.clear();
+    out.resize(in.size());
+
+    // Use matrix instead of vector for easier calculation
+    const cv::Mat _in(3, in.size(), CV_32F, (void*)&in[0].x);
+    cv::Mat _out(3, out.size(), CV_32F, (void*)&out[0].x);
+
+
+    _out = rot_mat.t()*_in;
+
+    cv::Vec3f translation(&pose.x);
+//#pragma omp parallel for
+    for (int i=0; i < _out.cols; i++) {
+        // - because it's the inverse transformation
+        _out.col(i) -= translation;
+    }
+}

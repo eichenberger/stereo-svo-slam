@@ -63,26 +63,6 @@ private:
 };
 
 void c_rotation_matrix(double *angle, double* rotation_matrix);
-void c_transform_keypoints(double* pose,
-        const double* keypoints3d, int number_of_keypoints,
-        double fx, double fy, double cx, double cy,
-        double *keypoints2d);
-double c_get_intensity_diff(const unsigned char *image1,
-        const unsigned char *image2,
-        unsigned int image_width,
-        unsigned int image_height,
-        const double *keypoint1,
-        const double *keypoint2,
-        double errorval);
-
-void c_get_total_intensity_diff(const unsigned char *image1,
-        const unsigned char *image2,
-        unsigned int image_width,
-        unsigned int image_height,
-        const double *keypoints1,
-        const double *keypoints2,
-        unsigned int n_keypoints,
-        double *diff);
 
 void c_refine_cloud(double fx,
         double fy,

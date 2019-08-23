@@ -9,13 +9,11 @@ using namespace std;
 class CornerDetector
 {
 public:
-    CornerDetector(uint32_t margin);
+    CornerDetector();
 
-    void detect_keypoints(Mat &image, uint32_t split_count,
+    void detect_keypoints(const Mat &image,
+            int grid_width, int grid_height,
             vector<Point> &keypoints);
-
-private:
-    uint32_t margin;
 
 };
 

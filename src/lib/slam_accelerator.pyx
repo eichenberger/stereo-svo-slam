@@ -1,36 +1,20 @@
 cimport numpy as np
 import numpy as np
+import cv2
+from libcpp.vector cimport vector
 
 from cython.parallel import parallel, prange
 from cython import boundscheck, wraparound
 from cpython.ref cimport PyObject
 from cython cimport view
 from libc.math cimport fabs
-from libcpp.vector cimport vector
 from libc.math cimport sin, cos
+from libc.string cimport memcpy
 
 ctypedef double (*opt_fun)(const double*)
 
 cdef extern from "slam_accelerator_helper.hpp":
     cdef void c_rotation_matrix(double* angle, double* rotation_matrix)
-    cdef void c_transform_keypoints(double *pose, double *keypoints3d,
-                               int number_of_keypoints, double fx, double fy,
-                               double cx, double cy, double *keypoints2d)
-    cdef double c_get_intensity_diff(unsigned char *image1,
-        unsigned char *image2,
-        unsigned int image_width,
-        unsigned int image_height,
-        double *keypoint1,
-        double *keypoint2,
-        double errorval) nogil
-    cdef double c_get_total_intensity_diff(unsigned char *image1,
-        unsigned char *image2,
-        unsigned int image_width,
-        unsigned int image_height,
-        double *keypoint1,
-        double *keypoint2,
-        unsigned int n_keypoints,
-        double *diff) nogil
 
     cdef void c_refine_cloud(double fx,
         double fy,
@@ -41,31 +25,22 @@ cdef extern from "slam_accelerator_helper.hpp":
         double *keypoints2d,
         int number_of_keypoints) nogil
 
-cdef extern from "<array>" namespace "std" nogil:
-  cdef cppclass array3 "std::array<float, 3>":
-    array3() except+
-    float& operator[](size_t)
-  cdef cppclass array2 "std::array<float, 2>":
-    array2() except+
-    float& operator[](size_t)
+cimport stereo_slam_types
+cimport depth_calculator
+cimport transform_keypoints
+cimport image_comparison
 
+cdef _c2np(stereo_slam_types.Mat image):
+    rows = image.rows
+    cols = image.cols
+    return np.asarray(<np.uint8_t[:rows,:cols]> image.data)
 
-cdef extern from "depth_calculator.hpp":
-    cdef cppclass CDepthCalculator "DepthCalculator":
-        CDepthCalculator(float baseline,
-                float fx, float fy, float cx, float cy,
-                int window_size, int search_x, int search_y, int margin)
-        void calculate_depth(Mat &left, Mat &right, int split_count,
-                             vector[array2] &keypoints2d,
-                             vector[array3] &keypoints3d,
-                             vector[unsigned int] &err) nogil
-
-# Declares OpenCV's cv::Mat class
-cdef extern from "opencv2/core/core.hpp":
-    cdef cppclass Mat:
-        Mat (int rows, int cols, int type, void *data)
-        pass
-
+cdef _np2c(pyimage, stereo_slam_types.Mat &cimage):
+    r = pyimage.shape[0]
+    c = pyimage.shape[1]
+    cimage.create(r, c, cv2.CV_8UC1)
+    cdef unsigned char[:,:] image_buffer = pyimage
+    memcpy(cimage.data, &image_buffer[0,0], r*c)
 
 
 def rotation_matrix(double[:] angle):
@@ -74,33 +49,23 @@ def rotation_matrix(double[:] angle):
     c_rotation_matrix(&angle[0], &rot_mat[0,0])
     return np.asarray(rot_mat)
 
-def transform_keypoints(double[:] pose, double[:,:] keypoints3d,
-                        double fx, double fy, double cx, double cy):
-    cdef double[:,:] keypoints2d = np.zeros((3, keypoints3d.shape[1]))
-    c_transform_keypoints(&pose[0], &keypoints3d[0,0], keypoints3d.shape[1],
-                          fx, fy, cx, cy, &keypoints2d[0,0])
-    return np.asarray(keypoints2d)[0:2,:]
+def project_keypoints(pose, input, CameraSettings camera_settings):
+    cdef vector[stereo_slam_types.KeyPoint2d] keypoints2d
 
-def get_intensity_diff(unsigned char[:, :] image1, unsigned char[:, :] image2, double[:] keypoint1, double[:] keypoint2, double errorval):
-    return c_get_intensity_diff(&image1[0,0],
-                                &image2[0,0],
-                                image1.shape[1],
-                                image1.shape[0],
-                                &keypoint1[0],
-                                &keypoint2[0],
-                                errorval)
+    transform_keypoints.project_keypoints(pose, input, camera_settings._camera_settings, keypoints2d)
 
-def get_total_intensity_diff(unsigned char[:,:] image1, unsigned char[:,:] image2, double[:,:] keypoints1, double[:,:] keypoints2):
-    cdef double[:] diff = np.empty((keypoints2.shape[1]), dtype=np.float64)
+    return keypoints2d
 
-    c_get_total_intensity_diff(&image1[0,0],
-                               &image2[0,0],
-                               image1.shape[1],
-                               image1.shape[0],
-                               &keypoints1[0,0],
-                               &keypoints2[0,0],
-                               keypoints1.shape[1],
-                               &diff[0])
+def get_total_intensity_diff(image1, image2, keypoints1, keypoints2, patchSize):
+    cdef vector[float] diff
+    cdef stereo_slam_types.Mat _image1
+    cdef stereo_slam_types.Mat _image2
+
+    _np2c(image1, _image1)
+    _np2c(image2, _image2)
+
+    image_comparison.get_total_intensity_diff(_image1, _image2, keypoints1,
+                                              keypoints2, patchSize, diff)
 
     return np.asarray(diff)
 
@@ -109,44 +74,188 @@ def refine_cloud(double fx, double fy, double cx, double cy, double[:] pose, dou
 
     return np.asarray(keypoints3d)
 
+def transform_keypoints_inverse(pose, input):
+    cdef vector[stereo_slam_types.KeyPoint3d] output
+
+    transform_keypoints.transform_keypoints_inverse(pose, input, output)
+
+    return output
+
 cdef class DepthCalculator:
-    cdef CDepthCalculator *depth_calculator
+    cdef depth_calculator.DepthCalculator _depth_calculator
 
-    def __cinit__(self, baseline, fx, fy, cx, cy, window_size, search_x, search_y, margin):
-        self.depth_calculator = new CDepthCalculator(baseline, fx, fy, cx, cy,
-                                                window_size, search_x, search_y,
-                                                margin)
+    def calculate_depth(self, StereoImage stereo_image, CameraSettings camera_settings):
+        keypoints = KeyPoints()
+        self._depth_calculator.calculate_depth(stereo_image._stereo_image,
+                                               camera_settings._camera_settings,
+                                               keypoints._keypoints)
 
-    def __dealloc__(self):
-        del self.depth_calculator
+        return keypoints
 
-    def calculate_depth(self, unsigned char[:,:] left, unsigned char[:,:] right,
-                        unsigned int split_count):
-        cdef vector[array2] keypoints2d
-        cdef vector[array3] keypoints3d
-        cdef vector[unsigned int] err
+cdef class StereoImage:
+    cdef stereo_slam_types.StereoImage _stereo_image
 
-        cdef Mat *_left = new Mat(left.shape[0], left.shape[1], 0, &left[0,0])
-        cdef Mat *_right = new Mat(right.shape[0], right.shape[1], 0, &right[0,0])
-        self.depth_calculator.calculate_depth(_left[0], _right[0], split_count,
-                                              keypoints2d, keypoints3d, err)
-        del _left
-        del _right
 
-        _keypoints2d = np.empty((2, keypoints2d.size()))
-        for i in range(0, keypoints2d.size()):
-            _keypoints2d[0,i] = keypoints2d[i][0]
-            _keypoints2d[1,i] = keypoints2d[i][1]
+    @property
+    def left(self):
+        return _c2np(self._stereo_image.left)
+    @left.setter
+    def left(self, left):
+        _np2c(left, self._stereo_image.left)
+    @property
+    def right(self):
+        return _c2np(self._stereo_image.right)
+    @right.setter
+    def right(self, right):
+        _np2c(right, self._stereo_image.right)
 
-        _keypoints3d = np.empty((3, keypoints3d.size()))
-        for i in range(0, keypoints3d.size()):
-            _keypoints3d[0,i] = keypoints3d[i][0]
-            _keypoints3d[1,i] = keypoints3d[i][1]
-            _keypoints3d[2,i] = keypoints3d[i][2]
-        
+cdef class CameraSettings:
+    cdef stereo_slam_types.CameraSettings _camera_settings
 
-        _err = np.empty((1, err.size()))
-        for i in range(0, err.size()):
-            _err[0,i] = err[i]
+    def __init__(self, CameraSettings camera_settings = None):
+        if camera_settings:
+            memcpy(&self._camera_settings,
+                   &camera_settings._camera_settings, sizeof(stereo_slam_types.CameraSettings))
 
-        return _keypoints2d, _keypoints3d, err
+    @property
+    def baseline(self):
+        return self._camera_settings.baseline
+    @baseline.setter
+    def baseline(self, baseline):
+        self._camera_settings.baseline = baseline
+    @property
+    def fx(self):
+        return self._camera_settings.fx
+    @fx.setter
+    def fx(self, fx):
+        self._camera_settings.fx = fx
+    @property
+    def fy(self):
+        return self._camera_settings.fy
+    @fy.setter
+    def fy(self, fy):
+        self._camera_settings.fy = fy
+    @property
+    def cx(self):
+        return self._camera_settings.cx
+    @cx.setter
+    def cx(self, cx):
+        self._camera_settings.cx = cx
+    @property
+    def cy(self):
+        return self._camera_settings.cy
+    @cy.setter
+    def cy(self, cy):
+        self._camera_settings.cy = cy
+    @property
+    def grid_height(self):
+        return self._camera_settings.grid_height
+    @grid_height.setter
+    def grid_height(self, grid_height):
+        self._camera_settings.grid_height = grid_height
+    @property
+    def grid_width(self):
+        return self._camera_settings.grid_width
+    @grid_width.setter
+    def grid_width(self, grid_width):
+        self._camera_settings.grid_width = grid_width
+    @property
+    def search_x(self):
+        return self._camera_settings.search_x
+    @search_x.setter
+    def search_x(self, search_x):
+        self._camera_settings.search_x = search_x
+    @property
+    def search_y(self):
+        return self._camera_settings.search_y
+    @search_y.setter
+    def search_y(self, search_y):
+        self._camera_settings.search_y = search_y
+    @property
+    def window_size(self):
+        return self._camera_settings.window_size
+    @window_size.setter
+    def window_size(self, window_size):
+        self._camera_settings.window_size = window_size
+
+
+cdef class KeyPoints:
+    cdef stereo_slam_types.KeyPoints _keypoints
+
+    @property
+    def kps2d(self):
+        return self._keypoints.kps2d
+    @kps2d.setter
+    def kps2d(self, kps2d):
+        self._keypoints.kps2d = kps2d
+    @property
+    def kps3d(self):
+        return self._keypoints.kps3d
+    @kps3d.setter
+    def kps3d(self, kps3d):
+        self._keypoints.kps3d = kps3d
+    @property
+    def err(self):
+        return np.asarray(self._keypoints.err)
+    @err.setter
+    def err(self, err):
+        self._keypoints.err= err
+
+cdef class KeyFrame:
+    cdef stereo_slam_types.KeyFrame _keyframe
+
+    @property
+    def pose(self):
+        return self._keyframe.pose
+    @pose.setter
+    def pose(self, pose):
+        self._keyframe.pose = pose
+
+    @property
+    def stereo_images(self):
+        # Create a list of stereo images from C vector
+        stereo_images = []
+        for i in range(0, self._keyframe.stereo_images.size()):
+            stereo_image = StereoImage()
+            rows = self._keyframe.stereo_images[i].left.rows
+            cols = self._keyframe.stereo_images[i].left.cols
+
+            # Because of a strange reason if the matrix is not created yet
+            # it will fail to assign another matrix to it. Therfore, we create one
+            stereo_image._stereo_image.left.create(rows, cols, cv2.CV_8UC1)
+            stereo_image._stereo_image.left = self._keyframe.stereo_images[i].left
+
+            stereo_image._stereo_image.right.create(rows, cols, cv2.CV_8UC1)
+            stereo_image._stereo_image.right = self._keyframe.stereo_images[i].right
+            stereo_images.append(stereo_image)
+        return stereo_images
+    @stereo_images.setter
+    def stereo_images(self, stereo_images):
+        # Assign list of StereoImages to C type
+        self._keyframe.stereo_images.resize(len(stereo_images))
+        for i, stereo_image in enumerate(stereo_images):
+            self._keyframe.stereo_images[i] = (<StereoImage>stereo_image)._stereo_image
+
+    @property
+    def kps(self):
+        kps = []
+        for i in range(0, self._keyframe.kps.size()):
+            _kps = KeyPoints()
+            _kps._keypoints = self._keyframe.kps[i]
+            kps.append(_kps)
+        return kps
+    @kps.setter
+    def kps(self, kps):
+        self._keyframe.kps.resize(len(kps))
+        for i, _kps in enumerate(kps):
+            self._keyframe.kps[i] = (<KeyPoints>_kps)._keypoints
+
+    @property
+    def colors(self):
+        # Let autoconvert do the magic (Color will be a dict)
+        return self._keyframe.colors
+    @colors.setter
+    def colors(self, colors):
+        # Let autoconvert do the magic
+        self._keyframe.colors = colors
+

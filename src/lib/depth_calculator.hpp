@@ -2,6 +2,8 @@
 
 #include <opencv2/opencv.hpp>
 
+#include "stereo_slam_types.hpp"
+
 using namespace cv;
 using namespace std;
 
@@ -16,26 +18,13 @@ public:
 class DepthCalculator
 {
 public:
-    DepthCalculator(float baseline,
-            float fx, float fy, float cx, float cy,
-            int window_size, int search_x, int search_y, int margin);
-    void calculate_depth(Mat &left, Mat &right, int split_count,
-            vector<array<float, 2>> &keypoints2d,
-            vector<array<float, 3>> &keypoints3d,
-            vector<uint32_t> &err);
+    DepthCalculator(){}
+    void calculate_depth(const struct StereoImage &stereo_image,
+            const struct CameraSettings &camera_settings,
+            struct KeyPoints &keypoints);
+
 
 private:
     Match match(Mat &roi, Mat &templ);
-
-    float baseline;
-    float fx;
-    float fy;
-    float cx;
-    float cy;
-
-    int half_window_size;
-    int search_x;
-    int search_y;
-    int margin;
 };
 

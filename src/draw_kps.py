@@ -1,35 +1,29 @@
 import cv2
+import numpy as np
 import matplotlib.pyplot as plt
 
-from slam_accelerator import transform_keypoints
+def draw_kps(stereo_images, kps, kf):
+    for j in range(len(stereo_images)):
+        _left_kf = kf.stereo_images[j].left.copy()
+        _left = stereo_images[j].left.copy()
 
-def draw_kps(pose, new_image, old_image, keypoints2d, keypoints3d, colors, fx, fy, cx, cy):
-    estimated_keypoints2d = transform_keypoints(pose,
-                                                    keypoints3d,
-                                                    fx, fy,
-                                                    cx, cy)
-    #keypoints_new_ocv = [None]*estimated_keypoints2d.shape[1]
-    #keypoints_old_ocv = [None]*estimated_keypoints2d.shape[1]
-    #matches = [None]*estimated_keypoints2d.shape[1]
+        _colors = kf.colors[j]
+        _kf_kps = kf.kps[j].kps2d
+        for i in range(len(_kf_kps)):
+            kp = cv2.KeyPoint(_kf_kps[i]['x'], _kf_kps[i]['y'], 2)
+            color = (_colors[i]['r'], _colors[i]['g'], _colors[i]['b'])
+            _left_kf = cv2.drawKeypoints(_left_kf, [kp], _left_kf, color=color)
 
-    result = old_image.copy()
-    for i in range(estimated_keypoints2d.shape[1]):
-        keypoints_new_ocv = [0]*1
-        keypoints_old_ocv = [0]*1
-        matches = [None]*1
-        keypoints_new_ocv[0] = cv2.KeyPoint(estimated_keypoints2d[0, i], estimated_keypoints2d[1, i], 1)
-        keypoints_old_ocv[0] = cv2.KeyPoint(keypoints2d[0, i], keypoints2d[1, i], 1)
-        matches[0] = cv2.DMatch(0 ,0, 1)
-        color = colors[i,:]
-        # This function accepts only one color, therefore draw each point
-        # separate
-        draw_flags = 0 if i == 0 else 1
-        result = cv2.drawMatches(old_image, keypoints_old_ocv,
-                                 new_image, keypoints_new_ocv,
-                                 matches, result,
-                                 (int(color[0]), int(color[1]), int(color[2])),
-                                 flags=draw_flags)
+        _kps = kps[j].kps2d
+        for i in range(len(_kps)):
+            kp = cv2.KeyPoint(_kps[i]['x'], _kps[i]['y'], 2)
+            color = (_colors[i]['r'], _colors[i]['g'], _colors[i]['b'])
+            _left = cv2.drawKeypoints(_left, [kp], _left, color=color)
 
+        result = np.zeros((_left.shape[0], _left.shape[1]*2, 3), dtype=np.uint8)
+        result[:, 0:_left.shape[1], :] = _left_kf
+        result[:, _left.shape[1]:2*_left.shape[1], :] = _left
 
-    cv2.imshow("result", result)
+        plt.imshow(result)
+        plt.show()
 

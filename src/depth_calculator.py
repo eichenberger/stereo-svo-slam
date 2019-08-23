@@ -33,7 +33,7 @@ class DepthCalculator:
 
         return x_match, y_match, min_err
 
-    def calculate_depth(self, left, right, split_count):
+    def calculate_depth(self, stereo_image, split_count):
         half_window_size = int(self.window_size/2)
         search_x = self.search_x
         search_y = self.search_y

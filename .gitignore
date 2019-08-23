@@ -2,3 +2,8 @@ src/__pycache__
 doc/out
 src/build
 **.so
+**.o
+**.gch
+**.taghl
+**.swp
+**.tmp

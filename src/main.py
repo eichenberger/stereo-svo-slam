@@ -17,7 +17,7 @@ class EconInput():
         self.cap = cv2.VideoCapture(camera)
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 752)
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-        set_manual_exposure(hidraw, 5000)
+        set_manual_exposure(hidraw, 20000)
 
         self.settings = cv2.FileStorage(settings, cv2.FILE_STORAGE_READ)
 
@@ -38,6 +38,12 @@ class EconInput():
         self.m1l, self.m2l = cv2.initUndistortRectifyMap(l_k, l_d, l_r, l_p, (l_width, l_height), cv2.CV_32F)
         self.m1r, self.m2r = cv2.initUndistortRectifyMap(r_k, r_d, r_r, r_p, (r_width, r_height), cv2.CV_32F)
 
+        self.baseline = self.settings.getNode('Camera.bf')
+        self.fx = self.settings.getNode('Camera.fx')
+        self.fy = self.settings.getNode('Camera.fy')
+        self.cx = self.settings.getNode('Camera.cx')
+        self.cy = self.settings.getNode('Camera.cy')
+
 
     def read(self):
         ret, image = self.cap.read()
@@ -46,6 +52,33 @@ class EconInput():
 
         gray_l = cv2.remap(gray_l, self.m1l, self.m2l, cv2.INTER_LINEAR)
         gray_r = cv2.remap(gray_r, self.m1r, self.m2r, cv2.INTER_LINEAR)
+
+        return gray_l, gray_r
+
+class BlenderInput():
+    def __init__(self, video):
+        self.cap = cv2.VideoCapture(video)
+        self.frame_nr = 1
+
+        width = 752
+        height = 480
+        sensor_size = 32
+        focal_length = 25
+        self.cx = width/2
+        self.cy = height/2
+        self.fx = focal_length/(sensor_size/width)
+        self.fy = focal_length/(sensor_size/height)
+
+        self.baseline = 0.06*self.fx
+
+    def read(self):
+        self.cap.set(1, self.frame_nr)
+        ret, image = self.cap.read()
+        self.frame_nr += 1
+        image = image[:,:,1]
+        width = int(image.shape[1]/2)
+        gray_r = image[:,0:width]
+        gray_l = image[:,width:2*width]
 
         return gray_l, gray_r
 
@@ -76,6 +109,11 @@ class VideoInput():
         self.m1l, self.m2l = cv2.initUndistortRectifyMap(l_k, l_d, l_r, l_p, (l_width, l_height), cv2.CV_32F)
         self.m1r, self.m2r = cv2.initUndistortRectifyMap(r_k, r_d, r_r, r_p, (r_width, r_height), cv2.CV_32F)
 
+        self.baseline = self.settings.getNode('Camera.bf').real()
+        self.fx = self.settings.getNode('Camera.fx').real()
+        self.fy = self.settings.getNode('Camera.fy').real()
+        self.cx = self.settings.getNode('Camera.cx').real()
+        self.cy = self.settings.getNode('Camera.cy').real()
 
     def read(self):
         ret, iml = self.capl.read()
@@ -85,13 +123,14 @@ class VideoInput():
         gray_l = cv2.cvtColor(iml, cv2.COLOR_RGB2GRAY)
         gray_r = cv2.cvtColor(imr, cv2.COLOR_RGB2GRAY)
 
-        tm = cv2.TickMeter()
-        tm.start()
-        gray_l = cv2.remap(gray_l, self.m1l, self.m2l, cv2.INTER_LINEAR)
-        gray_r = cv2.remap(gray_r, self.m1r, self.m2r, cv2.INTER_LINEAR)
-        tm.stop()
+        # Don't rectify at the moment
+        # tm = cv2.TickMeter()
+        # tm.start()
+        # gray_l = cv2.remap(gray_l, self.m1l, self.m2l, cv2.INTER_LINEAR)
+        # gray_r = cv2.remap(gray_r, self.m1r, self.m2r, cv2.INTER_LINEAR)
+        # tm.stop()
 
-        print(f'rectification took: {tm.getTimeMilli()} ms')
+        #print(f'rectification took: {tm.getTimeMilli()} ms')
 
         return gray_l, gray_r
 
@@ -112,10 +151,15 @@ def main():
     video_parser.add_argument('settings', help='settings file', type=str)
     video_parser.set_defaults(func=lambda args: VideoInput(args.left, args.right, args.settings))
 
+    video_parser = subparsers.add_parser(name='blender', description='use blender input')
+    video_parser.add_argument('video', help='video left and right side by side', type=str)
+    video_parser.set_defaults(func=lambda args: BlenderInput(args.video))
+
+
     args = parser.parse_args()
     camera = args.func(args)
 
-    slam = StereoSLAM(45.1932, 680.0, 680.0, 357.0, 225.0)
+    slam = StereoSLAM(camera.baseline, camera.fx, camera.fy, camera.cx, camera.cy)
 
     gray_l, gray_r = camera.read()
     async def read_frame():

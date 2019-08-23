@@ -4,9 +4,12 @@
 #include <vector>
 #include <opencv2/opencv.hpp>
 
-void transform_keypoints(const std::vector<float> &pose,
-        const std::vector<std::array<float, 3>>& keypoints3d,
-        double fx, double fy, double cx, double cy,
-        std::vector<std::array<float, 2>> keypoints2d);
+#include "stereo_slam_types.hpp"
 
+void project_keypoints(const struct Pose &pose,
+        const std::vector<KeyPoint3d> &in, const CameraSettings &camera_settings,
+        std::vector<KeyPoint2d> &out);
+
+void transform_keypoints_inverse(const struct Pose &pose,
+        const std::vector<KeyPoint3d> &in, std::vector<KeyPoint3d> &out);
 #endif

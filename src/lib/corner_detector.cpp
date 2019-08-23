@@ -6,11 +6,12 @@
 
 #include "corner_detector.hpp"
 
-CornerDetector::CornerDetector(uint32_t margin) : margin(margin)
+CornerDetector::CornerDetector()
 {
 }
 
-void CornerDetector::detect_keypoints(Mat &image, uint32_t split_count,
+void CornerDetector::detect_keypoints(const Mat &image,
+        int grid_width, int grid_height,
         vector<Point> &keypoints)
 {
     Ptr<FastFeatureDetector> detector = FastFeatureDetector::create();
@@ -18,24 +19,26 @@ void CornerDetector::detect_keypoints(Mat &image, uint32_t split_count,
 
     detector->detect(image, _keypoints);
 
-    auto sub_width = (image.cols - 2*margin)/split_count;
-    auto sub_height = (image.rows - 2*margin)/split_count;
-
     Mat edge;
     Sobel(image, edge, -1, 1, 0);
 
+    auto top = 0;
+    auto bottom = grid_height;
+    while (true) {
+        auto left = 0;
+        auto right = grid_width;
 
-    for (uint32_t i = 0; i < split_count; i++) {
-        for (uint32_t j = 0; j < split_count; j++) {
-            auto left = margin + i * sub_width;
-            auto right = margin + (i+1)*sub_width - 1;
-            auto top = margin + j * sub_height;
-            auto bottom = margin + (j+1) * sub_height - 1;
+        while (true) {
+            right += grid_width;
+            if (right > image.cols)
+                break;
+
+            left += grid_width;
 
             KeyPoint candidate(0,0,1,-1,-1);
             for (auto keypoint : _keypoints) {
-                if (keypoint.pt.x  < left || keypoint.pt.x > right ||
-                        keypoint.pt.y < top || keypoint.pt.y > bottom)
+                if (keypoint.pt.x  < left || keypoint.pt.x >= right ||
+                        keypoint.pt.y < top || keypoint.pt.y >= bottom)
                     continue;
                 if (candidate.response < keypoint.response) {
                     candidate.response = keypoint.response;
@@ -45,8 +48,8 @@ void CornerDetector::detect_keypoints(Mat &image, uint32_t split_count,
             }
 
             if (candidate.response == -1) {
-                for (uint32_t k = left; k < right; k++) {
-                    for (uint32_t l = top; l < bottom; l++) {
+                for (int k = left; k < right; k++) {
+                    for (int l = top; l < bottom; l++) {
                         uint8_t response = edge.at<uint8_t>(l,k);
                         if (candidate.response < response) {
                             candidate.response = response;
@@ -58,6 +61,11 @@ void CornerDetector::detect_keypoints(Mat &image, uint32_t split_count,
             }
             keypoints.push_back(candidate.pt);
         }
+
+        bottom += grid_height;
+        if (bottom > image.rows)
+            break;
+        top += grid_height;
     }
 }
 

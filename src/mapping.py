@@ -1,63 +1,75 @@
 from collections import deque
 import numpy as np
 
-from keyframe import KeyFrame
+# from keyframe import KeyFrame
 #from depth_calculator import DepthCalculator
-from slam_accelerator import rotation_matrix
-from slam_accelerator import DepthCalculator
+from slam_accelerator import transform_keypoints_inverse
+from slam_accelerator import DepthCalculator, KeyFrame, CameraSettings
 
 class Mapping:
-    def __init__(self, baseline, fx, fy, cx, cy):
-        self.left = deque()
-        self.right = deque()
+    def __init__(self, camera_settings):
+        self.stereo_image = deque()
         self.pose = deque()
         self.matches = deque()
         self.cost = deque()
         self.keyframes = deque()
         self.quit = False
-        self.split_count = 16
-        self.max_matches = self.split_count**2
+        self.camera_settings = camera_settings
 
-        self.depth_calculator = DepthCalculator(baseline, fx, fy, cx, cy,
-                                                18, 40, 1, 40)
+        self.depth_calculator = DepthCalculator()
 
-    def new_image(self, left, right, pose, matches, cost):
-        self.left.append(left)
-        self.right.append(right)
+    def new_image(self, stereo_image, pose, matches, cost):
+        self.stereo_image.append(stereo_image)
         self.pose.append(pose)
         self.matches.append(matches)
         self.cost.append(cost)
+        left = stereo_image[0].left
+        grid_height = self.camera_settings.grid_height
+        grid_width = self.camera_settings.grid_width
+        self.max_matches = int((left.shape[0])/grid_height) \
+                *int((left.shape[1])/grid_width)
 
-    def calculate_depth(self, left, right, pose):
-        keypoints3d = [None]*len(left)
-        keypoints2d = [None]*len(left)
-        for i in range(0, len(left)):
-            split_count = max(4, int(self.split_count*(left[i].shape[0]/left[0].shape[0])))
-            n_keypoints = split_count**2
-            keypoints3d[i] = np.ones((4, n_keypoints))
+    def calculate_depth(self, stereo_image, pose):
+        keypoints = [None]*len(stereo_image)
+        camera_settings = CameraSettings(self.camera_settings)
+        camera_settings.window_size = 4
+
+        for i in range(0, len(stereo_image)):
             # Bigger image -> more blocks
-            keypoints2d[i], keypoints3d[i][0:3,:], err = \
-                self.depth_calculator.calculate_depth(left[i], right[i],
-                                                      split_count)
+            _keypoints = self.depth_calculator.calculate_depth(stereo_image[i],
+                                                      camera_settings)
 
-            transformation = np.empty((3,4))
+            _keypoints.kps3d = transform_keypoints_inverse(pose, _keypoints.kps3d)
+            keypoints[i] = _keypoints
 
-            # The transpose is the inverse of the matrix
-            transformation[0:3,0:3] = np.transpose(rotation_matrix(pose[3:6]))
-            # This is the inverse transformation
-            transformation[0:3,3] = np.matmul(-transformation[0:3,0:3],pose[0:3])
+            # Is everything /2 right?
+            camera_settings.baseline = camera_settings.baseline/2
+            camera_settings.fx = camera_settings.fx/2
+            camera_settings.fy = camera_settings.fy/2
+            camera_settings.cx = camera_settings.cx/2
+            camera_settings.cy = camera_settings.cy/2
+            camera_settings.search_x = camera_settings.search_x/2
+            camera_settings.search_y = camera_settings.search_y/2
+            camera_settings.grid_width = camera_settings.grid_width/2
+            camera_settings.grid_height = camera_settings.grid_height/2
 
-            keypoints3d[i] = np.matmul(transformation, keypoints3d[i])
+        colors = []
+        for i in range(0, len(stereo_image)):
+            _colors = np.random.randint(0, 255, (len(keypoints[0].kps2d), 3),
+                                    dtype=np.uint8)
+            _colors = list(map(lambda x: {'r': x[0], 'g': x[1], 'b': x[2]}, _colors))
+            colors.append(_colors)
 
-        colors = np.random.randint(0, 255, (keypoints2d[0].shape[1], 3), dtype=np.uint8)
+        kf = KeyFrame()
 
-        self.keyframes.append(KeyFrame(left, right,
-                                       keypoints2d, keypoints3d,
-                                       pose, colors))
+        kf.stereo_images = stereo_image
+        kf.pose = pose
+        kf.kps = keypoints
+        kf.colors = colors
+        self.keyframes.append(kf)
 
     def process_image(self):
-        left = self.left.popleft()
-        right = self.right.popleft()
+        stereo_image = self.stereo_image.popleft()
         pose = self.pose.popleft()
         matches = self.matches.popleft()
         cost = self.cost.popleft()
@@ -67,7 +79,7 @@ class Mapping:
         if matches < (self.max_matches*0.8) or \
                 cost > 2000000:
             print("Insert new keyframe")
-            self.calculate_depth(left, right, pose)
+            self.calculate_depth(stereo_image, pose)
 
     def get_last_keyframe(self):
         return self.keyframes[-1]
