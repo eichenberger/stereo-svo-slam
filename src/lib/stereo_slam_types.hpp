@@ -22,6 +22,11 @@ struct StereoImage {
     cv::Mat right;
 };
 
+enum KeyPointType {
+    KP_FAST,
+    KP_EDGELET
+};
+
 struct KeyPoint2d {
     float x;
     float y;
@@ -33,11 +38,19 @@ struct KeyPoint3d {
     float z;
 };
 
+struct KeyPointInformation {
+    float score;
+    int level;
+    enum KeyPointType type;
+    float confidence;
+};
 
+// KeyPoints, each entry has the same index. We try to avaoid mixing
+// information to speed up calculation (e.g. kp2d<->kp3d mixing)
 struct KeyPoints {
     std::vector<KeyPoint2d> kps2d;
     std::vector<KeyPoint3d> kps3d;
-    std::vector<uint32_t> err;
+    std::vector<KeyPointInformation> info;
 };
 
 struct Pose {
@@ -58,8 +71,8 @@ struct Color {
 struct KeyFrame {
     struct Pose pose;
     std::vector<struct StereoImage> stereo_images;
-    std::vector<struct KeyPoints> kps;
-    std::vector<std::vector<struct Color>> colors;
+    struct KeyPoints kps;
+    std::vector<struct Color> colors;
 };
 
 #endif

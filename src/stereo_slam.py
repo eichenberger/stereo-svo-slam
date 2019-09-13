@@ -27,7 +27,7 @@ class StereoSLAM:
         self.camera_settings.grid_width = 40
         self.camera_settings.grid_height = 30
         self.camera_settings.search_x = 30
-        self.camera_settings.search_y = 2
+        self.camera_settings.search_y = 6
         self.pyramid_levels = 4
         # vx, vy, vz, gx, gy, gz
         self.motion_model = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
@@ -90,15 +90,9 @@ class StereoSLAM:
             #kps3d = self.get_kps3d(kf)
             new_pose, cost = self._estimate_pose()
             _cs = CameraSettings(self.camera_settings)
-            for i in range(0, len(self.previous_kps)):
-                self.previous_kps[i].kps2d = project_keypoints(new_pose,
-                                                               self.previous_kps[i].kps3d,
-                                                               _cs)
-                _cs.baseline /= 2
-                _cs.fx /= 2
-                _cs.fy /= 2
-                _cs.cx /= 2
-                _cs.cy /= 2
+            self.previous_kps.kps2d = project_keypoints(new_pose,
+                                                            self.previous_kps.kps3d,
+                                                            _cs)
 
             draw_kps(self.stereo_image, self.previous_kps, kf)
             self.pose = new_pose

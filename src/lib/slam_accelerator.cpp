@@ -677,7 +677,6 @@ static CYTHON_INLINE float __PYX_NAN() {
 #include <math.h>
 #include "slam_accelerator_helper.hpp"
 #include "opencv2/core/core.hpp"
-#include <array>
 #include "stereo_slam_types.hpp"
 #include "depth_calculator.hpp"
 #include "transform_keypoints.hpp"
@@ -1310,7 +1309,7 @@ struct __pyx_obj_16slam_accelerator_DepthCalculator {
 };
 
 
-/* "slam_accelerator.pyx":95
+/* "slam_accelerator.pyx":100
  *         return keypoints
  * 
  * cdef class StereoImage:             # <<<<<<<<<<<<<<
@@ -1323,7 +1322,7 @@ struct __pyx_obj_16slam_accelerator_StereoImage {
 };
 
 
-/* "slam_accelerator.pyx":112
+/* "slam_accelerator.pyx":116
  *         _np2c(right, self._stereo_image.right)
  * 
  * cdef class CameraSettings:             # <<<<<<<<<<<<<<
@@ -1336,7 +1335,7 @@ struct __pyx_obj_16slam_accelerator_CameraSettings {
 };
 
 
-/* "slam_accelerator.pyx":182
+/* "slam_accelerator.pyx":186
  * 
  * 
  * cdef class KeyPoints:             # <<<<<<<<<<<<<<
@@ -1349,8 +1348,8 @@ struct __pyx_obj_16slam_accelerator_KeyPoints {
 };
 
 
-/* "slam_accelerator.pyx":204
- *         self._keypoints.err= err
+/* "slam_accelerator.pyx":202
+ *         self._keypoints.kps3d = kps3d
  * 
  * cdef class KeyFrame:             # <<<<<<<<<<<<<<
  *     cdef stereo_slam_types.KeyFrame _keyframe
@@ -2121,13 +2120,6 @@ static CYTHON_INLINE int __pyx_memview_set_double(const char *itemp, PyObject *o
 
 static PyObject* __pyx_convert__to_py_struct__KeyPoint2d(struct KeyPoint2d s);
 static PyObject* __pyx_convert__to_py_struct__KeyPoint3d(struct KeyPoint3d s);
-/* CIntToPy.proto */
-static CYTHON_INLINE PyObject* __Pyx_PyInt_From_int(int value);
-
-/* CIntToPy.proto */
-static CYTHON_INLINE PyObject* __Pyx_PyInt_From_unsigned_int(unsigned int value);
-
-static PyObject* __pyx_convert__to_py_struct__Pose(struct Pose s);
 /* CppExceptionConversion.proto */
 #ifndef __Pyx_CppExn2PyErr
 #include <new>
@@ -2170,6 +2162,10 @@ static void __Pyx_CppExn2PyErr() {
 }
 #endif
 
+/* CIntToPy.proto */
+static CYTHON_INLINE PyObject* __Pyx_PyInt_From_int(int value);
+
+static PyObject* __pyx_convert__to_py_struct__Pose(struct Pose s);
 /* CIntToPy.proto */
 static CYTHON_INLINE PyObject* __Pyx_PyInt_From_unsigned_char(unsigned char value);
 
@@ -2392,8 +2388,8 @@ static PyObject *contiguous = 0;
 static PyObject *indirect_contiguous = 0;
 static int __pyx_memoryview_thread_locks_used;
 static PyThread_type_lock __pyx_memoryview_thread_locks[8];
-static PyObject *__pyx_f_16slam_accelerator__c2np(Mat); /*proto*/
-static PyObject *__pyx_f_16slam_accelerator__np2c(PyObject *, Mat &); /*proto*/
+static PyObject *__pyx_f_16slam_accelerator__c2np(cv::Mat); /*proto*/
+static PyObject *__pyx_f_16slam_accelerator__np2c(PyObject *, cv::Mat &); /*proto*/
 static struct Pose __pyx_convert__from_py_struct__Pose(PyObject *); /*proto*/
 static struct KeyPoint3d __pyx_convert__from_py_struct__KeyPoint3d(PyObject *); /*proto*/
 static std::vector<struct KeyPoint3d>  __pyx_convert_vector_from_py_struct__KeyPoint3d(PyObject *); /*proto*/
@@ -2402,13 +2398,9 @@ static struct KeyPoint2d __pyx_convert__from_py_struct__KeyPoint2d(PyObject *); 
 static std::vector<struct KeyPoint2d>  __pyx_convert_vector_from_py_struct__KeyPoint2d(PyObject *); /*proto*/
 static PyObject *__pyx_convert_vector_to_py_float(const std::vector<float>  &); /*proto*/
 static PyObject *__pyx_convert_vector_to_py_struct__KeyPoint3d(const std::vector<struct KeyPoint3d>  &); /*proto*/
-static PyObject *__pyx_convert_vector_to_py_unsigned_int(const std::vector<unsigned int>  &); /*proto*/
-static std::vector<unsigned int>  __pyx_convert_vector_from_py_unsigned_int(PyObject *); /*proto*/
 static PyObject *__pyx_convert_vector_to_py_struct__Color(const std::vector<struct Color>  &); /*proto*/
-static PyObject *__pyx_convert_vector_to_py_std_3a__3a_vector_3c_struct__Color_3e___(const std::vector<std::vector<struct Color> >  &); /*proto*/
 static struct Color __pyx_convert__from_py_struct__Color(PyObject *); /*proto*/
 static std::vector<struct Color>  __pyx_convert_vector_from_py_struct__Color(PyObject *); /*proto*/
-static std::vector<std::vector<struct Color> >  __pyx_convert_vector_from_py_std_3a__3a_vector_3c_struct__Color_3e___(PyObject *); /*proto*/
 static struct __pyx_array_obj *__pyx_array_new(PyObject *, Py_ssize_t, char *, char *, char *); /*proto*/
 static void *__pyx_align_pointer(void *, size_t); /*proto*/
 static PyObject *__pyx_memoryview_new(PyObject *, int, int, __Pyx_TypeInfo *); /*proto*/
@@ -2561,10 +2553,10 @@ static const char __pyx_k_keypoints3d[] = "keypoints3d";
 static const char __pyx_k_RuntimeError[] = "RuntimeError";
 static const char __pyx_k_pyx_checksum[] = "__pyx_checksum";
 static const char __pyx_k_refine_cloud[] = "refine_cloud";
-static const char __pyx_k_stereo_image[] = "stereo_image";
 static const char __pyx_k_stringsource[] = "stringsource";
 static const char __pyx_k_pyx_getbuffer[] = "__pyx_getbuffer";
 static const char __pyx_k_reduce_cython[] = "__reduce_cython__";
+static const char __pyx_k_stereo_images[] = "stereo_images";
 static const char __pyx_k_CameraSettings[] = "CameraSettings";
 static const char __pyx_k_DepthCalculator[] = "DepthCalculator";
 static const char __pyx_k_View_MemoryView[] = "View.MemoryView";
@@ -2775,7 +2767,7 @@ static PyObject *__pyx_n_s_size;
 static PyObject *__pyx_n_s_slam_accelerator;
 static PyObject *__pyx_n_s_start;
 static PyObject *__pyx_n_s_step;
-static PyObject *__pyx_n_s_stereo_image;
+static PyObject *__pyx_n_s_stereo_images;
 static PyObject *__pyx_n_s_stop;
 static PyObject *__pyx_kp_s_strided_and_direct;
 static PyObject *__pyx_kp_s_strided_and_direct_or_indirect;
@@ -2799,7 +2791,7 @@ static PyObject *__pyx_pf_16slam_accelerator_2project_keypoints(CYTHON_UNUSED Py
 static PyObject *__pyx_pf_16slam_accelerator_4get_total_intensity_diff(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_image1, PyObject *__pyx_v_image2, PyObject *__pyx_v_keypoints1, PyObject *__pyx_v_keypoints2, PyObject *__pyx_v_patchSize); /* proto */
 static PyObject *__pyx_pf_16slam_accelerator_6refine_cloud(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_fx, double __pyx_v_fy, double __pyx_v_cx, double __pyx_v_cy, __Pyx_memviewslice __pyx_v_pose, __Pyx_memviewslice __pyx_v_keypoints3d, __Pyx_memviewslice __pyx_v_keypoints2d); /* proto */
 static PyObject *__pyx_pf_16slam_accelerator_8transform_keypoints_inverse(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_pose, PyObject *__pyx_v_input); /* proto */
-static PyObject *__pyx_pf_16slam_accelerator_15DepthCalculator_calculate_depth(struct __pyx_obj_16slam_accelerator_DepthCalculator *__pyx_v_self, struct __pyx_obj_16slam_accelerator_StereoImage *__pyx_v_stereo_image, struct __pyx_obj_16slam_accelerator_CameraSettings *__pyx_v_camera_settings); /* proto */
+static PyObject *__pyx_pf_16slam_accelerator_15DepthCalculator_calculate_depth(struct __pyx_obj_16slam_accelerator_DepthCalculator *__pyx_v_self, PyObject *__pyx_v_stereo_images, struct __pyx_obj_16slam_accelerator_CameraSettings *__pyx_v_camera_settings); /* proto */
 static PyObject *__pyx_pf_16slam_accelerator_15DepthCalculator_2__reduce_cython__(CYTHON_UNUSED struct __pyx_obj_16slam_accelerator_DepthCalculator *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_16slam_accelerator_15DepthCalculator_4__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_16slam_accelerator_DepthCalculator *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state); /* proto */
 static PyObject *__pyx_pf_16slam_accelerator_11StereoImage_4left___get__(struct __pyx_obj_16slam_accelerator_StereoImage *__pyx_v_self); /* proto */
@@ -2835,8 +2827,6 @@ static PyObject *__pyx_pf_16slam_accelerator_9KeyPoints_5kps2d___get__(struct __
 static int __pyx_pf_16slam_accelerator_9KeyPoints_5kps2d_2__set__(struct __pyx_obj_16slam_accelerator_KeyPoints *__pyx_v_self, PyObject *__pyx_v_kps2d); /* proto */
 static PyObject *__pyx_pf_16slam_accelerator_9KeyPoints_5kps3d___get__(struct __pyx_obj_16slam_accelerator_KeyPoints *__pyx_v_self); /* proto */
 static int __pyx_pf_16slam_accelerator_9KeyPoints_5kps3d_2__set__(struct __pyx_obj_16slam_accelerator_KeyPoints *__pyx_v_self, PyObject *__pyx_v_kps3d); /* proto */
-static PyObject *__pyx_pf_16slam_accelerator_9KeyPoints_3err___get__(struct __pyx_obj_16slam_accelerator_KeyPoints *__pyx_v_self); /* proto */
-static int __pyx_pf_16slam_accelerator_9KeyPoints_3err_2__set__(struct __pyx_obj_16slam_accelerator_KeyPoints *__pyx_v_self, PyObject *__pyx_v_err); /* proto */
 static PyObject *__pyx_pf_16slam_accelerator_9KeyPoints___reduce_cython__(CYTHON_UNUSED struct __pyx_obj_16slam_accelerator_KeyPoints *__pyx_v_self); /* proto */
 static PyObject *__pyx_pf_16slam_accelerator_9KeyPoints_2__setstate_cython__(CYTHON_UNUSED struct __pyx_obj_16slam_accelerator_KeyPoints *__pyx_v_self, CYTHON_UNUSED PyObject *__pyx_v___pyx_state); /* proto */
 static PyObject *__pyx_pf_16slam_accelerator_8KeyFrame_4pose___get__(struct __pyx_obj_16slam_accelerator_KeyFrame *__pyx_v_self); /* proto */
@@ -2972,14 +2962,14 @@ static PyObject *__pyx_codeobj__67;
 /* Late includes */
 
 /* "slam_accelerator.pyx":33
- * cimport image_comparison
+ * cimport stereo_slam_types
  * 
  * cdef _c2np(stereo_slam_types.Mat image):             # <<<<<<<<<<<<<<
  *     rows = image.rows
  *     cols = image.cols
  */
 
-static PyObject *__pyx_f_16slam_accelerator__c2np(Mat __pyx_v_image) {
+static PyObject *__pyx_f_16slam_accelerator__c2np(cv::Mat __pyx_v_image) {
   CYTHON_UNUSED int __pyx_v_rows;
   CYTHON_UNUSED int __pyx_v_cols;
   PyObject *__pyx_r = NULL;
@@ -3062,7 +3052,7 @@ static PyObject *__pyx_f_16slam_accelerator__c2np(Mat __pyx_v_image) {
   goto __pyx_L0;
 
   /* "slam_accelerator.pyx":33
- * cimport image_comparison
+ * cimport stereo_slam_types
  * 
  * cdef _c2np(stereo_slam_types.Mat image):             # <<<<<<<<<<<<<<
  *     rows = image.rows
@@ -3092,7 +3082,7 @@ static PyObject *__pyx_f_16slam_accelerator__c2np(Mat __pyx_v_image) {
  *     c = pyimage.shape[1]
  */
 
-static PyObject *__pyx_f_16slam_accelerator__np2c(PyObject *__pyx_v_pyimage, Mat &__pyx_v_cimage) {
+static PyObject *__pyx_f_16slam_accelerator__np2c(PyObject *__pyx_v_pyimage, cv::Mat &__pyx_v_cimage) {
   PyObject *__pyx_v_r = NULL;
   PyObject *__pyx_v_c = NULL;
   __Pyx_memviewslice __pyx_v_image_buffer = { 0, 0, { 0 }, { 0 }, { 0 } };
@@ -3641,8 +3631,8 @@ static PyObject *__pyx_pw_16slam_accelerator_5get_total_intensity_diff(PyObject 
 
 static PyObject *__pyx_pf_16slam_accelerator_4get_total_intensity_diff(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v_image1, PyObject *__pyx_v_image2, PyObject *__pyx_v_keypoints1, PyObject *__pyx_v_keypoints2, PyObject *__pyx_v_patchSize) {
   std::vector<float>  __pyx_v_diff;
-  Mat __pyx_v__image1;
-  Mat __pyx_v__image2;
+  cv::Mat __pyx_v__image1;
+  cv::Mat __pyx_v__image2;
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
@@ -4136,21 +4126,21 @@ static PyObject *__pyx_pf_16slam_accelerator_8transform_keypoints_inverse(CYTHON
 /* "slam_accelerator.pyx":87
  *     cdef depth_calculator.DepthCalculator _depth_calculator
  * 
- *     def calculate_depth(self, StereoImage stereo_image, CameraSettings camera_settings):             # <<<<<<<<<<<<<<
+ *     def calculate_depth(self, stereo_images, CameraSettings camera_settings):             # <<<<<<<<<<<<<<
  *         keypoints = KeyPoints()
- *         self._depth_calculator.calculate_depth(stereo_image._stereo_image,
+ * 
  */
 
 /* Python wrapper */
 static PyObject *__pyx_pw_16slam_accelerator_15DepthCalculator_1calculate_depth(PyObject *__pyx_v_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
 static PyObject *__pyx_pw_16slam_accelerator_15DepthCalculator_1calculate_depth(PyObject *__pyx_v_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
-  struct __pyx_obj_16slam_accelerator_StereoImage *__pyx_v_stereo_image = 0;
+  PyObject *__pyx_v_stereo_images = 0;
   struct __pyx_obj_16slam_accelerator_CameraSettings *__pyx_v_camera_settings = 0;
   PyObject *__pyx_r = 0;
   __Pyx_RefNannyDeclarations
   __Pyx_RefNannySetupContext("calculate_depth (wrapper)", 0);
   {
-    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_stereo_image,&__pyx_n_s_camera_settings,0};
+    static PyObject **__pyx_pyargnames[] = {&__pyx_n_s_stereo_images,&__pyx_n_s_camera_settings,0};
     PyObject* values[2] = {0,0};
     if (unlikely(__pyx_kwds)) {
       Py_ssize_t kw_args;
@@ -4166,7 +4156,7 @@ static PyObject *__pyx_pw_16slam_accelerator_15DepthCalculator_1calculate_depth(
       kw_args = PyDict_Size(__pyx_kwds);
       switch (pos_args) {
         case  0:
-        if (likely((values[0] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_stereo_image)) != 0)) kw_args--;
+        if (likely((values[0] = __Pyx_PyDict_GetItemStr(__pyx_kwds, __pyx_n_s_stereo_images)) != 0)) kw_args--;
         else goto __pyx_L5_argtuple_error;
         CYTHON_FALLTHROUGH;
         case  1:
@@ -4184,7 +4174,7 @@ static PyObject *__pyx_pw_16slam_accelerator_15DepthCalculator_1calculate_depth(
       values[0] = PyTuple_GET_ITEM(__pyx_args, 0);
       values[1] = PyTuple_GET_ITEM(__pyx_args, 1);
     }
-    __pyx_v_stereo_image = ((struct __pyx_obj_16slam_accelerator_StereoImage *)values[0]);
+    __pyx_v_stereo_images = values[0];
     __pyx_v_camera_settings = ((struct __pyx_obj_16slam_accelerator_CameraSettings *)values[1]);
   }
   goto __pyx_L4_argument_unpacking_done;
@@ -4195,9 +4185,8 @@ static PyObject *__pyx_pw_16slam_accelerator_15DepthCalculator_1calculate_depth(
   __Pyx_RefNannyFinishContext();
   return NULL;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_stereo_image), __pyx_ptype_16slam_accelerator_StereoImage, 1, "stereo_image", 0))) __PYX_ERR(1, 87, __pyx_L1_error)
   if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_camera_settings), __pyx_ptype_16slam_accelerator_CameraSettings, 1, "camera_settings", 0))) __PYX_ERR(1, 87, __pyx_L1_error)
-  __pyx_r = __pyx_pf_16slam_accelerator_15DepthCalculator_calculate_depth(((struct __pyx_obj_16slam_accelerator_DepthCalculator *)__pyx_v_self), __pyx_v_stereo_image, __pyx_v_camera_settings);
+  __pyx_r = __pyx_pf_16slam_accelerator_15DepthCalculator_calculate_depth(((struct __pyx_obj_16slam_accelerator_DepthCalculator *)__pyx_v_self), __pyx_v_stereo_images, __pyx_v_camera_settings);
 
   /* function exit code */
   goto __pyx_L0;
@@ -4208,35 +4197,113 @@ static PyObject *__pyx_pw_16slam_accelerator_15DepthCalculator_1calculate_depth(
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_16slam_accelerator_15DepthCalculator_calculate_depth(struct __pyx_obj_16slam_accelerator_DepthCalculator *__pyx_v_self, struct __pyx_obj_16slam_accelerator_StereoImage *__pyx_v_stereo_image, struct __pyx_obj_16slam_accelerator_CameraSettings *__pyx_v_camera_settings) {
+static PyObject *__pyx_pf_16slam_accelerator_15DepthCalculator_calculate_depth(struct __pyx_obj_16slam_accelerator_DepthCalculator *__pyx_v_self, PyObject *__pyx_v_stereo_images, struct __pyx_obj_16slam_accelerator_CameraSettings *__pyx_v_camera_settings) {
   struct __pyx_obj_16slam_accelerator_KeyPoints *__pyx_v_keypoints = NULL;
+  std::vector<struct StereoImage>  __pyx_v__stereo_images;
+  PyObject *__pyx_v_stereo_image = NULL;
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
+  Py_ssize_t __pyx_t_2;
+  PyObject *(*__pyx_t_3)(PyObject *);
+  PyObject *__pyx_t_4 = NULL;
   __Pyx_RefNannySetupContext("calculate_depth", 0);
 
   /* "slam_accelerator.pyx":88
  * 
- *     def calculate_depth(self, StereoImage stereo_image, CameraSettings camera_settings):
+ *     def calculate_depth(self, stereo_images, CameraSettings camera_settings):
  *         keypoints = KeyPoints()             # <<<<<<<<<<<<<<
- *         self._depth_calculator.calculate_depth(stereo_image._stereo_image,
- *                                                camera_settings._camera_settings,
+ * 
+ *         cdef vector[stereo_slam_types.StereoImage] _stereo_images
  */
   __pyx_t_1 = __Pyx_PyObject_CallNoArg(((PyObject *)__pyx_ptype_16slam_accelerator_KeyPoints)); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 88, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_keypoints = ((struct __pyx_obj_16slam_accelerator_KeyPoints *)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "slam_accelerator.pyx":89
- *     def calculate_depth(self, StereoImage stereo_image, CameraSettings camera_settings):
- *         keypoints = KeyPoints()
- *         self._depth_calculator.calculate_depth(stereo_image._stereo_image,             # <<<<<<<<<<<<<<
+  /* "slam_accelerator.pyx":91
+ * 
+ *         cdef vector[stereo_slam_types.StereoImage] _stereo_images
+ *         for stereo_image in stereo_images:             # <<<<<<<<<<<<<<
+ *             _stereo_images.push_back((<StereoImage>stereo_image)._stereo_image)
+ * 
+ */
+  if (likely(PyList_CheckExact(__pyx_v_stereo_images)) || PyTuple_CheckExact(__pyx_v_stereo_images)) {
+    __pyx_t_1 = __pyx_v_stereo_images; __Pyx_INCREF(__pyx_t_1); __pyx_t_2 = 0;
+    __pyx_t_3 = NULL;
+  } else {
+    __pyx_t_2 = -1; __pyx_t_1 = PyObject_GetIter(__pyx_v_stereo_images); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 91, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_1);
+    __pyx_t_3 = Py_TYPE(__pyx_t_1)->tp_iternext; if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 91, __pyx_L1_error)
+  }
+  for (;;) {
+    if (likely(!__pyx_t_3)) {
+      if (likely(PyList_CheckExact(__pyx_t_1))) {
+        if (__pyx_t_2 >= PyList_GET_SIZE(__pyx_t_1)) break;
+        #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+        __pyx_t_4 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_4); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(1, 91, __pyx_L1_error)
+        #else
+        __pyx_t_4 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 91, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_4);
+        #endif
+      } else {
+        if (__pyx_t_2 >= PyTuple_GET_SIZE(__pyx_t_1)) break;
+        #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
+        __pyx_t_4 = PyTuple_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_4); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(1, 91, __pyx_L1_error)
+        #else
+        __pyx_t_4 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 91, __pyx_L1_error)
+        __Pyx_GOTREF(__pyx_t_4);
+        #endif
+      }
+    } else {
+      __pyx_t_4 = __pyx_t_3(__pyx_t_1);
+      if (unlikely(!__pyx_t_4)) {
+        PyObject* exc_type = PyErr_Occurred();
+        if (exc_type) {
+          if (likely(__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
+          else __PYX_ERR(1, 91, __pyx_L1_error)
+        }
+        break;
+      }
+      __Pyx_GOTREF(__pyx_t_4);
+    }
+    __Pyx_XDECREF_SET(__pyx_v_stereo_image, __pyx_t_4);
+    __pyx_t_4 = 0;
+
+    /* "slam_accelerator.pyx":92
+ *         cdef vector[stereo_slam_types.StereoImage] _stereo_images
+ *         for stereo_image in stereo_images:
+ *             _stereo_images.push_back((<StereoImage>stereo_image)._stereo_image)             # <<<<<<<<<<<<<<
+ * 
+ *         self._depth_calculator.calculate_depth(_stereo_images,
+ */
+    try {
+      __pyx_v__stereo_images.push_back(((struct __pyx_obj_16slam_accelerator_StereoImage *)__pyx_v_stereo_image)->_stereo_image);
+    } catch(...) {
+      __Pyx_CppExn2PyErr();
+      __PYX_ERR(1, 92, __pyx_L1_error)
+    }
+
+    /* "slam_accelerator.pyx":91
+ * 
+ *         cdef vector[stereo_slam_types.StereoImage] _stereo_images
+ *         for stereo_image in stereo_images:             # <<<<<<<<<<<<<<
+ *             _stereo_images.push_back((<StereoImage>stereo_image)._stereo_image)
+ * 
+ */
+  }
+  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
+
+  /* "slam_accelerator.pyx":94
+ *             _stereo_images.push_back((<StereoImage>stereo_image)._stereo_image)
+ * 
+ *         self._depth_calculator.calculate_depth(_stereo_images,             # <<<<<<<<<<<<<<
  *                                                camera_settings._camera_settings,
  *                                                keypoints._keypoints)
  */
-  __pyx_v_self->_depth_calculator.calculate_depth(__pyx_v_stereo_image->_stereo_image, __pyx_v_camera_settings->_camera_settings, __pyx_v_keypoints->_keypoints);
+  __pyx_v_self->_depth_calculator.calculate_depth(__pyx_v__stereo_images, __pyx_v_camera_settings->_camera_settings, __pyx_v_keypoints->_keypoints);
 
-  /* "slam_accelerator.pyx":93
+  /* "slam_accelerator.pyx":98
  *                                                keypoints._keypoints)
  * 
  *         return keypoints             # <<<<<<<<<<<<<<
@@ -4251,18 +4318,20 @@ static PyObject *__pyx_pf_16slam_accelerator_15DepthCalculator_calculate_depth(s
   /* "slam_accelerator.pyx":87
  *     cdef depth_calculator.DepthCalculator _depth_calculator
  * 
- *     def calculate_depth(self, StereoImage stereo_image, CameraSettings camera_settings):             # <<<<<<<<<<<<<<
+ *     def calculate_depth(self, stereo_images, CameraSettings camera_settings):             # <<<<<<<<<<<<<<
  *         keypoints = KeyPoints()
- *         self._depth_calculator.calculate_depth(stereo_image._stereo_image,
+ * 
  */
 
   /* function exit code */
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_1);
+  __Pyx_XDECREF(__pyx_t_4);
   __Pyx_AddTraceback("slam_accelerator.DepthCalculator.calculate_depth", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XDECREF((PyObject *)__pyx_v_keypoints);
+  __Pyx_XDECREF(__pyx_v_stereo_image);
   __Pyx_XGIVEREF(__pyx_r);
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
@@ -4375,7 +4444,7 @@ static PyObject *__pyx_pf_16slam_accelerator_15DepthCalculator_4__setstate_cytho
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":100
+/* "slam_accelerator.pyx":104
  * 
  *     @property
  *     def left(self):             # <<<<<<<<<<<<<<
@@ -4402,7 +4471,7 @@ static PyObject *__pyx_pf_16slam_accelerator_11StereoImage_4left___get__(struct 
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "slam_accelerator.pyx":101
+  /* "slam_accelerator.pyx":105
  *     @property
  *     def left(self):
  *         return _c2np(self._stereo_image.left)             # <<<<<<<<<<<<<<
@@ -4410,13 +4479,13 @@ static PyObject *__pyx_pf_16slam_accelerator_11StereoImage_4left___get__(struct 
  *     def left(self, left):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_f_16slam_accelerator__c2np(__pyx_v_self->_stereo_image.left); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 101, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_16slam_accelerator__c2np(__pyx_v_self->_stereo_image.left); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 105, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "slam_accelerator.pyx":100
+  /* "slam_accelerator.pyx":104
  * 
  *     @property
  *     def left(self):             # <<<<<<<<<<<<<<
@@ -4435,7 +4504,7 @@ static PyObject *__pyx_pf_16slam_accelerator_11StereoImage_4left___get__(struct 
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":103
+/* "slam_accelerator.pyx":107
  *         return _c2np(self._stereo_image.left)
  *     @left.setter
  *     def left(self, left):             # <<<<<<<<<<<<<<
@@ -4462,18 +4531,18 @@ static int __pyx_pf_16slam_accelerator_11StereoImage_4left_2__set__(struct __pyx
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__set__", 0);
 
-  /* "slam_accelerator.pyx":104
+  /* "slam_accelerator.pyx":108
  *     @left.setter
  *     def left(self, left):
  *         _np2c(left, self._stereo_image.left)             # <<<<<<<<<<<<<<
  *     @property
  *     def right(self):
  */
-  __pyx_t_1 = __pyx_f_16slam_accelerator__np2c(__pyx_v_left, __pyx_v_self->_stereo_image.left); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 104, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_16slam_accelerator__np2c(__pyx_v_left, __pyx_v_self->_stereo_image.left); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 108, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "slam_accelerator.pyx":103
+  /* "slam_accelerator.pyx":107
  *         return _c2np(self._stereo_image.left)
  *     @left.setter
  *     def left(self, left):             # <<<<<<<<<<<<<<
@@ -4493,7 +4562,7 @@ static int __pyx_pf_16slam_accelerator_11StereoImage_4left_2__set__(struct __pyx
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":106
+/* "slam_accelerator.pyx":110
  *         _np2c(left, self._stereo_image.left)
  *     @property
  *     def right(self):             # <<<<<<<<<<<<<<
@@ -4520,7 +4589,7 @@ static PyObject *__pyx_pf_16slam_accelerator_11StereoImage_5right___get__(struct
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "slam_accelerator.pyx":107
+  /* "slam_accelerator.pyx":111
  *     @property
  *     def right(self):
  *         return _c2np(self._stereo_image.right)             # <<<<<<<<<<<<<<
@@ -4528,13 +4597,13 @@ static PyObject *__pyx_pf_16slam_accelerator_11StereoImage_5right___get__(struct
  *     def right(self, right):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_f_16slam_accelerator__c2np(__pyx_v_self->_stereo_image.right); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 107, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_16slam_accelerator__c2np(__pyx_v_self->_stereo_image.right); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 111, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "slam_accelerator.pyx":106
+  /* "slam_accelerator.pyx":110
  *         _np2c(left, self._stereo_image.left)
  *     @property
  *     def right(self):             # <<<<<<<<<<<<<<
@@ -4553,7 +4622,7 @@ static PyObject *__pyx_pf_16slam_accelerator_11StereoImage_5right___get__(struct
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":109
+/* "slam_accelerator.pyx":113
  *         return _c2np(self._stereo_image.right)
  *     @right.setter
  *     def right(self, right):             # <<<<<<<<<<<<<<
@@ -4580,18 +4649,18 @@ static int __pyx_pf_16slam_accelerator_11StereoImage_5right_2__set__(struct __py
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__set__", 0);
 
-  /* "slam_accelerator.pyx":110
+  /* "slam_accelerator.pyx":114
  *     @right.setter
  *     def right(self, right):
  *         _np2c(right, self._stereo_image.right)             # <<<<<<<<<<<<<<
  * 
  * cdef class CameraSettings:
  */
-  __pyx_t_1 = __pyx_f_16slam_accelerator__np2c(__pyx_v_right, __pyx_v_self->_stereo_image.right); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 110, __pyx_L1_error)
+  __pyx_t_1 = __pyx_f_16slam_accelerator__np2c(__pyx_v_right, __pyx_v_self->_stereo_image.right); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 114, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
-  /* "slam_accelerator.pyx":109
+  /* "slam_accelerator.pyx":113
  *         return _c2np(self._stereo_image.right)
  *     @right.setter
  *     def right(self, right):             # <<<<<<<<<<<<<<
@@ -4718,7 +4787,7 @@ static PyObject *__pyx_pf_16slam_accelerator_11StereoImage_2__setstate_cython__(
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":115
+/* "slam_accelerator.pyx":119
  *     cdef stereo_slam_types.CameraSettings _camera_settings
  * 
  *     def __init__(self, CameraSettings camera_settings = None):             # <<<<<<<<<<<<<<
@@ -4755,7 +4824,7 @@ static int __pyx_pw_16slam_accelerator_14CameraSettings_1__init__(PyObject *__py
         }
       }
       if (unlikely(kw_args > 0)) {
-        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__init__") < 0)) __PYX_ERR(1, 115, __pyx_L3_error)
+        if (unlikely(__Pyx_ParseOptionalKeywords(__pyx_kwds, __pyx_pyargnames, 0, values, pos_args, "__init__") < 0)) __PYX_ERR(1, 119, __pyx_L3_error)
       }
     } else {
       switch (PyTuple_GET_SIZE(__pyx_args)) {
@@ -4769,13 +4838,13 @@ static int __pyx_pw_16slam_accelerator_14CameraSettings_1__init__(PyObject *__py
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
-  __Pyx_RaiseArgtupleInvalid("__init__", 0, 0, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 115, __pyx_L3_error)
+  __Pyx_RaiseArgtupleInvalid("__init__", 0, 0, 1, PyTuple_GET_SIZE(__pyx_args)); __PYX_ERR(1, 119, __pyx_L3_error)
   __pyx_L3_error:;
   __Pyx_AddTraceback("slam_accelerator.CameraSettings.__init__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_RefNannyFinishContext();
   return -1;
   __pyx_L4_argument_unpacking_done:;
-  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_camera_settings), __pyx_ptype_16slam_accelerator_CameraSettings, 1, "camera_settings", 0))) __PYX_ERR(1, 115, __pyx_L1_error)
+  if (unlikely(!__Pyx_ArgTypeTest(((PyObject *)__pyx_v_camera_settings), __pyx_ptype_16slam_accelerator_CameraSettings, 1, "camera_settings", 0))) __PYX_ERR(1, 119, __pyx_L1_error)
   __pyx_r = __pyx_pf_16slam_accelerator_14CameraSettings___init__(((struct __pyx_obj_16slam_accelerator_CameraSettings *)__pyx_v_self), __pyx_v_camera_settings);
 
   /* function exit code */
@@ -4793,17 +4862,17 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings___init__(struct __pyx_ob
   int __pyx_t_1;
   __Pyx_RefNannySetupContext("__init__", 0);
 
-  /* "slam_accelerator.pyx":116
+  /* "slam_accelerator.pyx":120
  * 
  *     def __init__(self, CameraSettings camera_settings = None):
  *         if camera_settings:             # <<<<<<<<<<<<<<
  *             memcpy(&self._camera_settings,
  *                    &camera_settings._camera_settings, sizeof(stereo_slam_types.CameraSettings))
  */
-  __pyx_t_1 = __Pyx_PyObject_IsTrue(((PyObject *)__pyx_v_camera_settings)); if (unlikely(__pyx_t_1 < 0)) __PYX_ERR(1, 116, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyObject_IsTrue(((PyObject *)__pyx_v_camera_settings)); if (unlikely(__pyx_t_1 < 0)) __PYX_ERR(1, 120, __pyx_L1_error)
   if (__pyx_t_1) {
 
-    /* "slam_accelerator.pyx":117
+    /* "slam_accelerator.pyx":121
  *     def __init__(self, CameraSettings camera_settings = None):
  *         if camera_settings:
  *             memcpy(&self._camera_settings,             # <<<<<<<<<<<<<<
@@ -4812,7 +4881,7 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings___init__(struct __pyx_ob
  */
     (void)(memcpy((&__pyx_v_self->_camera_settings), (&__pyx_v_camera_settings->_camera_settings), (sizeof(struct CameraSettings))));
 
-    /* "slam_accelerator.pyx":116
+    /* "slam_accelerator.pyx":120
  * 
  *     def __init__(self, CameraSettings camera_settings = None):
  *         if camera_settings:             # <<<<<<<<<<<<<<
@@ -4821,7 +4890,7 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings___init__(struct __pyx_ob
  */
   }
 
-  /* "slam_accelerator.pyx":115
+  /* "slam_accelerator.pyx":119
  *     cdef stereo_slam_types.CameraSettings _camera_settings
  * 
  *     def __init__(self, CameraSettings camera_settings = None):             # <<<<<<<<<<<<<<
@@ -4840,7 +4909,7 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings___init__(struct __pyx_ob
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":121
+/* "slam_accelerator.pyx":125
  * 
  *     @property
  *     def baseline(self):             # <<<<<<<<<<<<<<
@@ -4867,7 +4936,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_8baseline___get__(
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "slam_accelerator.pyx":122
+  /* "slam_accelerator.pyx":126
  *     @property
  *     def baseline(self):
  *         return self._camera_settings.baseline             # <<<<<<<<<<<<<<
@@ -4875,13 +4944,13 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_8baseline___get__(
  *     def baseline(self, baseline):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->_camera_settings.baseline); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 122, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->_camera_settings.baseline); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 126, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "slam_accelerator.pyx":121
+  /* "slam_accelerator.pyx":125
  * 
  *     @property
  *     def baseline(self):             # <<<<<<<<<<<<<<
@@ -4900,7 +4969,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_8baseline___get__(
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":124
+/* "slam_accelerator.pyx":128
  *         return self._camera_settings.baseline
  *     @baseline.setter
  *     def baseline(self, baseline):             # <<<<<<<<<<<<<<
@@ -4927,17 +4996,17 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings_8baseline_2__set__(struc
   float __pyx_t_1;
   __Pyx_RefNannySetupContext("__set__", 0);
 
-  /* "slam_accelerator.pyx":125
+  /* "slam_accelerator.pyx":129
  *     @baseline.setter
  *     def baseline(self, baseline):
  *         self._camera_settings.baseline = baseline             # <<<<<<<<<<<<<<
  *     @property
  *     def fx(self):
  */
-  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_baseline); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 125, __pyx_L1_error)
+  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_baseline); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 129, __pyx_L1_error)
   __pyx_v_self->_camera_settings.baseline = __pyx_t_1;
 
-  /* "slam_accelerator.pyx":124
+  /* "slam_accelerator.pyx":128
  *         return self._camera_settings.baseline
  *     @baseline.setter
  *     def baseline(self, baseline):             # <<<<<<<<<<<<<<
@@ -4956,7 +5025,7 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings_8baseline_2__set__(struc
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":127
+/* "slam_accelerator.pyx":131
  *         self._camera_settings.baseline = baseline
  *     @property
  *     def fx(self):             # <<<<<<<<<<<<<<
@@ -4983,7 +5052,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_2fx___get__(struct
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "slam_accelerator.pyx":128
+  /* "slam_accelerator.pyx":132
  *     @property
  *     def fx(self):
  *         return self._camera_settings.fx             # <<<<<<<<<<<<<<
@@ -4991,13 +5060,13 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_2fx___get__(struct
  *     def fx(self, fx):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->_camera_settings.fx); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 128, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->_camera_settings.fx); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 132, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "slam_accelerator.pyx":127
+  /* "slam_accelerator.pyx":131
  *         self._camera_settings.baseline = baseline
  *     @property
  *     def fx(self):             # <<<<<<<<<<<<<<
@@ -5016,7 +5085,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_2fx___get__(struct
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":130
+/* "slam_accelerator.pyx":134
  *         return self._camera_settings.fx
  *     @fx.setter
  *     def fx(self, fx):             # <<<<<<<<<<<<<<
@@ -5043,17 +5112,17 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings_2fx_2__set__(struct __py
   float __pyx_t_1;
   __Pyx_RefNannySetupContext("__set__", 0);
 
-  /* "slam_accelerator.pyx":131
+  /* "slam_accelerator.pyx":135
  *     @fx.setter
  *     def fx(self, fx):
  *         self._camera_settings.fx = fx             # <<<<<<<<<<<<<<
  *     @property
  *     def fy(self):
  */
-  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_fx); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 131, __pyx_L1_error)
+  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_fx); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 135, __pyx_L1_error)
   __pyx_v_self->_camera_settings.fx = __pyx_t_1;
 
-  /* "slam_accelerator.pyx":130
+  /* "slam_accelerator.pyx":134
  *         return self._camera_settings.fx
  *     @fx.setter
  *     def fx(self, fx):             # <<<<<<<<<<<<<<
@@ -5072,7 +5141,7 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings_2fx_2__set__(struct __py
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":133
+/* "slam_accelerator.pyx":137
  *         self._camera_settings.fx = fx
  *     @property
  *     def fy(self):             # <<<<<<<<<<<<<<
@@ -5099,7 +5168,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_2fy___get__(struct
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "slam_accelerator.pyx":134
+  /* "slam_accelerator.pyx":138
  *     @property
  *     def fy(self):
  *         return self._camera_settings.fy             # <<<<<<<<<<<<<<
@@ -5107,13 +5176,13 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_2fy___get__(struct
  *     def fy(self, fy):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->_camera_settings.fy); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 134, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->_camera_settings.fy); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 138, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "slam_accelerator.pyx":133
+  /* "slam_accelerator.pyx":137
  *         self._camera_settings.fx = fx
  *     @property
  *     def fy(self):             # <<<<<<<<<<<<<<
@@ -5132,7 +5201,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_2fy___get__(struct
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":136
+/* "slam_accelerator.pyx":140
  *         return self._camera_settings.fy
  *     @fy.setter
  *     def fy(self, fy):             # <<<<<<<<<<<<<<
@@ -5159,17 +5228,17 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings_2fy_2__set__(struct __py
   float __pyx_t_1;
   __Pyx_RefNannySetupContext("__set__", 0);
 
-  /* "slam_accelerator.pyx":137
+  /* "slam_accelerator.pyx":141
  *     @fy.setter
  *     def fy(self, fy):
  *         self._camera_settings.fy = fy             # <<<<<<<<<<<<<<
  *     @property
  *     def cx(self):
  */
-  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_fy); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 137, __pyx_L1_error)
+  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_fy); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 141, __pyx_L1_error)
   __pyx_v_self->_camera_settings.fy = __pyx_t_1;
 
-  /* "slam_accelerator.pyx":136
+  /* "slam_accelerator.pyx":140
  *         return self._camera_settings.fy
  *     @fy.setter
  *     def fy(self, fy):             # <<<<<<<<<<<<<<
@@ -5188,7 +5257,7 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings_2fy_2__set__(struct __py
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":139
+/* "slam_accelerator.pyx":143
  *         self._camera_settings.fy = fy
  *     @property
  *     def cx(self):             # <<<<<<<<<<<<<<
@@ -5215,7 +5284,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_2cx___get__(struct
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "slam_accelerator.pyx":140
+  /* "slam_accelerator.pyx":144
  *     @property
  *     def cx(self):
  *         return self._camera_settings.cx             # <<<<<<<<<<<<<<
@@ -5223,13 +5292,13 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_2cx___get__(struct
  *     def cx(self, cx):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->_camera_settings.cx); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 140, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->_camera_settings.cx); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 144, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "slam_accelerator.pyx":139
+  /* "slam_accelerator.pyx":143
  *         self._camera_settings.fy = fy
  *     @property
  *     def cx(self):             # <<<<<<<<<<<<<<
@@ -5248,7 +5317,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_2cx___get__(struct
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":142
+/* "slam_accelerator.pyx":146
  *         return self._camera_settings.cx
  *     @cx.setter
  *     def cx(self, cx):             # <<<<<<<<<<<<<<
@@ -5275,17 +5344,17 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings_2cx_2__set__(struct __py
   float __pyx_t_1;
   __Pyx_RefNannySetupContext("__set__", 0);
 
-  /* "slam_accelerator.pyx":143
+  /* "slam_accelerator.pyx":147
  *     @cx.setter
  *     def cx(self, cx):
  *         self._camera_settings.cx = cx             # <<<<<<<<<<<<<<
  *     @property
  *     def cy(self):
  */
-  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_cx); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 143, __pyx_L1_error)
+  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_cx); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 147, __pyx_L1_error)
   __pyx_v_self->_camera_settings.cx = __pyx_t_1;
 
-  /* "slam_accelerator.pyx":142
+  /* "slam_accelerator.pyx":146
  *         return self._camera_settings.cx
  *     @cx.setter
  *     def cx(self, cx):             # <<<<<<<<<<<<<<
@@ -5304,7 +5373,7 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings_2cx_2__set__(struct __py
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":145
+/* "slam_accelerator.pyx":149
  *         self._camera_settings.cx = cx
  *     @property
  *     def cy(self):             # <<<<<<<<<<<<<<
@@ -5331,7 +5400,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_2cy___get__(struct
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "slam_accelerator.pyx":146
+  /* "slam_accelerator.pyx":150
  *     @property
  *     def cy(self):
  *         return self._camera_settings.cy             # <<<<<<<<<<<<<<
@@ -5339,13 +5408,13 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_2cy___get__(struct
  *     def cy(self, cy):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->_camera_settings.cy); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 146, __pyx_L1_error)
+  __pyx_t_1 = PyFloat_FromDouble(__pyx_v_self->_camera_settings.cy); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 150, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "slam_accelerator.pyx":145
+  /* "slam_accelerator.pyx":149
  *         self._camera_settings.cx = cx
  *     @property
  *     def cy(self):             # <<<<<<<<<<<<<<
@@ -5364,7 +5433,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_2cy___get__(struct
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":148
+/* "slam_accelerator.pyx":152
  *         return self._camera_settings.cy
  *     @cy.setter
  *     def cy(self, cy):             # <<<<<<<<<<<<<<
@@ -5391,17 +5460,17 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings_2cy_2__set__(struct __py
   float __pyx_t_1;
   __Pyx_RefNannySetupContext("__set__", 0);
 
-  /* "slam_accelerator.pyx":149
+  /* "slam_accelerator.pyx":153
  *     @cy.setter
  *     def cy(self, cy):
  *         self._camera_settings.cy = cy             # <<<<<<<<<<<<<<
  *     @property
  *     def grid_height(self):
  */
-  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_cy); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 149, __pyx_L1_error)
+  __pyx_t_1 = __pyx_PyFloat_AsFloat(__pyx_v_cy); if (unlikely((__pyx_t_1 == (float)-1) && PyErr_Occurred())) __PYX_ERR(1, 153, __pyx_L1_error)
   __pyx_v_self->_camera_settings.cy = __pyx_t_1;
 
-  /* "slam_accelerator.pyx":148
+  /* "slam_accelerator.pyx":152
  *         return self._camera_settings.cy
  *     @cy.setter
  *     def cy(self, cy):             # <<<<<<<<<<<<<<
@@ -5420,7 +5489,7 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings_2cy_2__set__(struct __py
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":151
+/* "slam_accelerator.pyx":155
  *         self._camera_settings.cy = cy
  *     @property
  *     def grid_height(self):             # <<<<<<<<<<<<<<
@@ -5447,7 +5516,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_11grid_height___ge
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "slam_accelerator.pyx":152
+  /* "slam_accelerator.pyx":156
  *     @property
  *     def grid_height(self):
  *         return self._camera_settings.grid_height             # <<<<<<<<<<<<<<
@@ -5455,13 +5524,13 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_11grid_height___ge
  *     def grid_height(self, grid_height):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->_camera_settings.grid_height); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 152, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->_camera_settings.grid_height); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 156, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "slam_accelerator.pyx":151
+  /* "slam_accelerator.pyx":155
  *         self._camera_settings.cy = cy
  *     @property
  *     def grid_height(self):             # <<<<<<<<<<<<<<
@@ -5480,7 +5549,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_11grid_height___ge
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":154
+/* "slam_accelerator.pyx":158
  *         return self._camera_settings.grid_height
  *     @grid_height.setter
  *     def grid_height(self, grid_height):             # <<<<<<<<<<<<<<
@@ -5507,17 +5576,17 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings_11grid_height_2__set__(s
   int __pyx_t_1;
   __Pyx_RefNannySetupContext("__set__", 0);
 
-  /* "slam_accelerator.pyx":155
+  /* "slam_accelerator.pyx":159
  *     @grid_height.setter
  *     def grid_height(self, grid_height):
  *         self._camera_settings.grid_height = grid_height             # <<<<<<<<<<<<<<
  *     @property
  *     def grid_width(self):
  */
-  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_grid_height); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 155, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_grid_height); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 159, __pyx_L1_error)
   __pyx_v_self->_camera_settings.grid_height = __pyx_t_1;
 
-  /* "slam_accelerator.pyx":154
+  /* "slam_accelerator.pyx":158
  *         return self._camera_settings.grid_height
  *     @grid_height.setter
  *     def grid_height(self, grid_height):             # <<<<<<<<<<<<<<
@@ -5536,7 +5605,7 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings_11grid_height_2__set__(s
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":157
+/* "slam_accelerator.pyx":161
  *         self._camera_settings.grid_height = grid_height
  *     @property
  *     def grid_width(self):             # <<<<<<<<<<<<<<
@@ -5563,7 +5632,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_10grid_width___get
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "slam_accelerator.pyx":158
+  /* "slam_accelerator.pyx":162
  *     @property
  *     def grid_width(self):
  *         return self._camera_settings.grid_width             # <<<<<<<<<<<<<<
@@ -5571,13 +5640,13 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_10grid_width___get
  *     def grid_width(self, grid_width):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->_camera_settings.grid_width); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 158, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->_camera_settings.grid_width); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 162, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "slam_accelerator.pyx":157
+  /* "slam_accelerator.pyx":161
  *         self._camera_settings.grid_height = grid_height
  *     @property
  *     def grid_width(self):             # <<<<<<<<<<<<<<
@@ -5596,7 +5665,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_10grid_width___get
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":160
+/* "slam_accelerator.pyx":164
  *         return self._camera_settings.grid_width
  *     @grid_width.setter
  *     def grid_width(self, grid_width):             # <<<<<<<<<<<<<<
@@ -5623,17 +5692,17 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings_10grid_width_2__set__(st
   int __pyx_t_1;
   __Pyx_RefNannySetupContext("__set__", 0);
 
-  /* "slam_accelerator.pyx":161
+  /* "slam_accelerator.pyx":165
  *     @grid_width.setter
  *     def grid_width(self, grid_width):
  *         self._camera_settings.grid_width = grid_width             # <<<<<<<<<<<<<<
  *     @property
  *     def search_x(self):
  */
-  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_grid_width); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 161, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_grid_width); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 165, __pyx_L1_error)
   __pyx_v_self->_camera_settings.grid_width = __pyx_t_1;
 
-  /* "slam_accelerator.pyx":160
+  /* "slam_accelerator.pyx":164
  *         return self._camera_settings.grid_width
  *     @grid_width.setter
  *     def grid_width(self, grid_width):             # <<<<<<<<<<<<<<
@@ -5652,7 +5721,7 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings_10grid_width_2__set__(st
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":163
+/* "slam_accelerator.pyx":167
  *         self._camera_settings.grid_width = grid_width
  *     @property
  *     def search_x(self):             # <<<<<<<<<<<<<<
@@ -5679,7 +5748,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_8search_x___get__(
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "slam_accelerator.pyx":164
+  /* "slam_accelerator.pyx":168
  *     @property
  *     def search_x(self):
  *         return self._camera_settings.search_x             # <<<<<<<<<<<<<<
@@ -5687,13 +5756,13 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_8search_x___get__(
  *     def search_x(self, search_x):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->_camera_settings.search_x); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 164, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->_camera_settings.search_x); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 168, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "slam_accelerator.pyx":163
+  /* "slam_accelerator.pyx":167
  *         self._camera_settings.grid_width = grid_width
  *     @property
  *     def search_x(self):             # <<<<<<<<<<<<<<
@@ -5712,7 +5781,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_8search_x___get__(
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":166
+/* "slam_accelerator.pyx":170
  *         return self._camera_settings.search_x
  *     @search_x.setter
  *     def search_x(self, search_x):             # <<<<<<<<<<<<<<
@@ -5739,17 +5808,17 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings_8search_x_2__set__(struc
   int __pyx_t_1;
   __Pyx_RefNannySetupContext("__set__", 0);
 
-  /* "slam_accelerator.pyx":167
+  /* "slam_accelerator.pyx":171
  *     @search_x.setter
  *     def search_x(self, search_x):
  *         self._camera_settings.search_x = search_x             # <<<<<<<<<<<<<<
  *     @property
  *     def search_y(self):
  */
-  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_search_x); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 167, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_search_x); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 171, __pyx_L1_error)
   __pyx_v_self->_camera_settings.search_x = __pyx_t_1;
 
-  /* "slam_accelerator.pyx":166
+  /* "slam_accelerator.pyx":170
  *         return self._camera_settings.search_x
  *     @search_x.setter
  *     def search_x(self, search_x):             # <<<<<<<<<<<<<<
@@ -5768,7 +5837,7 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings_8search_x_2__set__(struc
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":169
+/* "slam_accelerator.pyx":173
  *         self._camera_settings.search_x = search_x
  *     @property
  *     def search_y(self):             # <<<<<<<<<<<<<<
@@ -5795,7 +5864,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_8search_y___get__(
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "slam_accelerator.pyx":170
+  /* "slam_accelerator.pyx":174
  *     @property
  *     def search_y(self):
  *         return self._camera_settings.search_y             # <<<<<<<<<<<<<<
@@ -5803,13 +5872,13 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_8search_y___get__(
  *     def search_y(self, search_y):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->_camera_settings.search_y); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 170, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->_camera_settings.search_y); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 174, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "slam_accelerator.pyx":169
+  /* "slam_accelerator.pyx":173
  *         self._camera_settings.search_x = search_x
  *     @property
  *     def search_y(self):             # <<<<<<<<<<<<<<
@@ -5828,7 +5897,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_8search_y___get__(
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":172
+/* "slam_accelerator.pyx":176
  *         return self._camera_settings.search_y
  *     @search_y.setter
  *     def search_y(self, search_y):             # <<<<<<<<<<<<<<
@@ -5855,17 +5924,17 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings_8search_y_2__set__(struc
   int __pyx_t_1;
   __Pyx_RefNannySetupContext("__set__", 0);
 
-  /* "slam_accelerator.pyx":173
+  /* "slam_accelerator.pyx":177
  *     @search_y.setter
  *     def search_y(self, search_y):
  *         self._camera_settings.search_y = search_y             # <<<<<<<<<<<<<<
  *     @property
  *     def window_size(self):
  */
-  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_search_y); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 173, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_search_y); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 177, __pyx_L1_error)
   __pyx_v_self->_camera_settings.search_y = __pyx_t_1;
 
-  /* "slam_accelerator.pyx":172
+  /* "slam_accelerator.pyx":176
  *         return self._camera_settings.search_y
  *     @search_y.setter
  *     def search_y(self, search_y):             # <<<<<<<<<<<<<<
@@ -5884,7 +5953,7 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings_8search_y_2__set__(struc
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":175
+/* "slam_accelerator.pyx":179
  *         self._camera_settings.search_y = search_y
  *     @property
  *     def window_size(self):             # <<<<<<<<<<<<<<
@@ -5911,7 +5980,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_11window_size___ge
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "slam_accelerator.pyx":176
+  /* "slam_accelerator.pyx":180
  *     @property
  *     def window_size(self):
  *         return self._camera_settings.window_size             # <<<<<<<<<<<<<<
@@ -5919,13 +5988,13 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_11window_size___ge
  *     def window_size(self, window_size):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->_camera_settings.window_size); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 176, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_From_int(__pyx_v_self->_camera_settings.window_size); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 180, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "slam_accelerator.pyx":175
+  /* "slam_accelerator.pyx":179
  *         self._camera_settings.search_y = search_y
  *     @property
  *     def window_size(self):             # <<<<<<<<<<<<<<
@@ -5944,7 +6013,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_11window_size___ge
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":178
+/* "slam_accelerator.pyx":182
  *         return self._camera_settings.window_size
  *     @window_size.setter
  *     def window_size(self, window_size):             # <<<<<<<<<<<<<<
@@ -5971,17 +6040,17 @@ static int __pyx_pf_16slam_accelerator_14CameraSettings_11window_size_2__set__(s
   int __pyx_t_1;
   __Pyx_RefNannySetupContext("__set__", 0);
 
-  /* "slam_accelerator.pyx":179
+  /* "slam_accelerator.pyx":183
  *     @window_size.setter
  *     def window_size(self, window_size):
  *         self._camera_settings.window_size = window_size             # <<<<<<<<<<<<<<
  * 
  * 
  */
-  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_window_size); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 179, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyInt_As_int(__pyx_v_window_size); if (unlikely((__pyx_t_1 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 183, __pyx_L1_error)
   __pyx_v_self->_camera_settings.window_size = __pyx_t_1;
 
-  /* "slam_accelerator.pyx":178
+  /* "slam_accelerator.pyx":182
  *         return self._camera_settings.window_size
  *     @window_size.setter
  *     def window_size(self, window_size):             # <<<<<<<<<<<<<<
@@ -6107,7 +6176,7 @@ static PyObject *__pyx_pf_16slam_accelerator_14CameraSettings_4__setstate_cython
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":186
+/* "slam_accelerator.pyx":190
  * 
  *     @property
  *     def kps2d(self):             # <<<<<<<<<<<<<<
@@ -6134,7 +6203,7 @@ static PyObject *__pyx_pf_16slam_accelerator_9KeyPoints_5kps2d___get__(struct __
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "slam_accelerator.pyx":187
+  /* "slam_accelerator.pyx":191
  *     @property
  *     def kps2d(self):
  *         return self._keypoints.kps2d             # <<<<<<<<<<<<<<
@@ -6142,13 +6211,13 @@ static PyObject *__pyx_pf_16slam_accelerator_9KeyPoints_5kps2d___get__(struct __
  *     def kps2d(self, kps2d):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_convert_vector_to_py_struct__KeyPoint2d(__pyx_v_self->_keypoints.kps2d); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 187, __pyx_L1_error)
+  __pyx_t_1 = __pyx_convert_vector_to_py_struct__KeyPoint2d(__pyx_v_self->_keypoints.kps2d); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 191, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "slam_accelerator.pyx":186
+  /* "slam_accelerator.pyx":190
  * 
  *     @property
  *     def kps2d(self):             # <<<<<<<<<<<<<<
@@ -6167,7 +6236,7 @@ static PyObject *__pyx_pf_16slam_accelerator_9KeyPoints_5kps2d___get__(struct __
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":189
+/* "slam_accelerator.pyx":193
  *         return self._keypoints.kps2d
  *     @kps2d.setter
  *     def kps2d(self, kps2d):             # <<<<<<<<<<<<<<
@@ -6194,17 +6263,17 @@ static int __pyx_pf_16slam_accelerator_9KeyPoints_5kps2d_2__set__(struct __pyx_o
   std::vector<struct KeyPoint2d>  __pyx_t_1;
   __Pyx_RefNannySetupContext("__set__", 0);
 
-  /* "slam_accelerator.pyx":190
+  /* "slam_accelerator.pyx":194
  *     @kps2d.setter
  *     def kps2d(self, kps2d):
  *         self._keypoints.kps2d = kps2d             # <<<<<<<<<<<<<<
  *     @property
  *     def kps3d(self):
  */
-  __pyx_t_1 = __pyx_convert_vector_from_py_struct__KeyPoint2d(__pyx_v_kps2d); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 190, __pyx_L1_error)
+  __pyx_t_1 = __pyx_convert_vector_from_py_struct__KeyPoint2d(__pyx_v_kps2d); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 194, __pyx_L1_error)
   __pyx_v_self->_keypoints.kps2d = __pyx_t_1;
 
-  /* "slam_accelerator.pyx":189
+  /* "slam_accelerator.pyx":193
  *         return self._keypoints.kps2d
  *     @kps2d.setter
  *     def kps2d(self, kps2d):             # <<<<<<<<<<<<<<
@@ -6223,7 +6292,7 @@ static int __pyx_pf_16slam_accelerator_9KeyPoints_5kps2d_2__set__(struct __pyx_o
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":192
+/* "slam_accelerator.pyx":196
  *         self._keypoints.kps2d = kps2d
  *     @property
  *     def kps3d(self):             # <<<<<<<<<<<<<<
@@ -6250,7 +6319,7 @@ static PyObject *__pyx_pf_16slam_accelerator_9KeyPoints_5kps3d___get__(struct __
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "slam_accelerator.pyx":193
+  /* "slam_accelerator.pyx":197
  *     @property
  *     def kps3d(self):
  *         return self._keypoints.kps3d             # <<<<<<<<<<<<<<
@@ -6258,13 +6327,13 @@ static PyObject *__pyx_pf_16slam_accelerator_9KeyPoints_5kps3d___get__(struct __
  *     def kps3d(self, kps3d):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_convert_vector_to_py_struct__KeyPoint3d(__pyx_v_self->_keypoints.kps3d); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 193, __pyx_L1_error)
+  __pyx_t_1 = __pyx_convert_vector_to_py_struct__KeyPoint3d(__pyx_v_self->_keypoints.kps3d); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 197, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "slam_accelerator.pyx":192
+  /* "slam_accelerator.pyx":196
  *         self._keypoints.kps2d = kps2d
  *     @property
  *     def kps3d(self):             # <<<<<<<<<<<<<<
@@ -6283,12 +6352,12 @@ static PyObject *__pyx_pf_16slam_accelerator_9KeyPoints_5kps3d___get__(struct __
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":195
+/* "slam_accelerator.pyx":199
  *         return self._keypoints.kps3d
  *     @kps3d.setter
  *     def kps3d(self, kps3d):             # <<<<<<<<<<<<<<
  *         self._keypoints.kps3d = kps3d
- *     @property
+ * 
  */
 
 /* Python wrapper */
@@ -6310,22 +6379,22 @@ static int __pyx_pf_16slam_accelerator_9KeyPoints_5kps3d_2__set__(struct __pyx_o
   std::vector<struct KeyPoint3d>  __pyx_t_1;
   __Pyx_RefNannySetupContext("__set__", 0);
 
-  /* "slam_accelerator.pyx":196
+  /* "slam_accelerator.pyx":200
  *     @kps3d.setter
  *     def kps3d(self, kps3d):
  *         self._keypoints.kps3d = kps3d             # <<<<<<<<<<<<<<
- *     @property
- *     def err(self):
+ * 
+ * cdef class KeyFrame:
  */
-  __pyx_t_1 = __pyx_convert_vector_from_py_struct__KeyPoint3d(__pyx_v_kps3d); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 196, __pyx_L1_error)
+  __pyx_t_1 = __pyx_convert_vector_from_py_struct__KeyPoint3d(__pyx_v_kps3d); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 200, __pyx_L1_error)
   __pyx_v_self->_keypoints.kps3d = __pyx_t_1;
 
-  /* "slam_accelerator.pyx":195
+  /* "slam_accelerator.pyx":199
  *         return self._keypoints.kps3d
  *     @kps3d.setter
  *     def kps3d(self, kps3d):             # <<<<<<<<<<<<<<
  *         self._keypoints.kps3d = kps3d
- *     @property
+ * 
  */
 
   /* function exit code */
@@ -6333,149 +6402,6 @@ static int __pyx_pf_16slam_accelerator_9KeyPoints_5kps3d_2__set__(struct __pyx_o
   goto __pyx_L0;
   __pyx_L1_error:;
   __Pyx_AddTraceback("slam_accelerator.KeyPoints.kps3d.__set__", __pyx_clineno, __pyx_lineno, __pyx_filename);
-  __pyx_r = -1;
-  __pyx_L0:;
-  __Pyx_RefNannyFinishContext();
-  return __pyx_r;
-}
-
-/* "slam_accelerator.pyx":198
- *         self._keypoints.kps3d = kps3d
- *     @property
- *     def err(self):             # <<<<<<<<<<<<<<
- *         return np.asarray(self._keypoints.err)
- *     @err.setter
- */
-
-/* Python wrapper */
-static PyObject *__pyx_pw_16slam_accelerator_9KeyPoints_3err_1__get__(PyObject *__pyx_v_self); /*proto*/
-static PyObject *__pyx_pw_16slam_accelerator_9KeyPoints_3err_1__get__(PyObject *__pyx_v_self) {
-  PyObject *__pyx_r = 0;
-  __Pyx_RefNannyDeclarations
-  __Pyx_RefNannySetupContext("__get__ (wrapper)", 0);
-  __pyx_r = __pyx_pf_16slam_accelerator_9KeyPoints_3err___get__(((struct __pyx_obj_16slam_accelerator_KeyPoints *)__pyx_v_self));
-
-  /* function exit code */
-  __Pyx_RefNannyFinishContext();
-  return __pyx_r;
-}
-
-static PyObject *__pyx_pf_16slam_accelerator_9KeyPoints_3err___get__(struct __pyx_obj_16slam_accelerator_KeyPoints *__pyx_v_self) {
-  PyObject *__pyx_r = NULL;
-  __Pyx_RefNannyDeclarations
-  PyObject *__pyx_t_1 = NULL;
-  PyObject *__pyx_t_2 = NULL;
-  PyObject *__pyx_t_3 = NULL;
-  PyObject *__pyx_t_4 = NULL;
-  __Pyx_RefNannySetupContext("__get__", 0);
-
-  /* "slam_accelerator.pyx":199
- *     @property
- *     def err(self):
- *         return np.asarray(self._keypoints.err)             # <<<<<<<<<<<<<<
- *     @err.setter
- *     def err(self, err):
- */
-  __Pyx_XDECREF(__pyx_r);
-  __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_n_s_np); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 199, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_3 = __Pyx_PyObject_GetAttrStr(__pyx_t_2, __pyx_n_s_asarray); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 199, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_3);
-  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __pyx_t_2 = __pyx_convert_vector_to_py_unsigned_int(__pyx_v_self->_keypoints.err); if (unlikely(!__pyx_t_2)) __PYX_ERR(1, 199, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_2);
-  __pyx_t_4 = NULL;
-  if (CYTHON_UNPACK_METHODS && unlikely(PyMethod_Check(__pyx_t_3))) {
-    __pyx_t_4 = PyMethod_GET_SELF(__pyx_t_3);
-    if (likely(__pyx_t_4)) {
-      PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_3);
-      __Pyx_INCREF(__pyx_t_4);
-      __Pyx_INCREF(function);
-      __Pyx_DECREF_SET(__pyx_t_3, function);
-    }
-  }
-  __pyx_t_1 = (__pyx_t_4) ? __Pyx_PyObject_Call2Args(__pyx_t_3, __pyx_t_4, __pyx_t_2) : __Pyx_PyObject_CallOneArg(__pyx_t_3, __pyx_t_2);
-  __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
-  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 199, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __pyx_r = __pyx_t_1;
-  __pyx_t_1 = 0;
-  goto __pyx_L0;
-
-  /* "slam_accelerator.pyx":198
- *         self._keypoints.kps3d = kps3d
- *     @property
- *     def err(self):             # <<<<<<<<<<<<<<
- *         return np.asarray(self._keypoints.err)
- *     @err.setter
- */
-
-  /* function exit code */
-  __pyx_L1_error:;
-  __Pyx_XDECREF(__pyx_t_1);
-  __Pyx_XDECREF(__pyx_t_2);
-  __Pyx_XDECREF(__pyx_t_3);
-  __Pyx_XDECREF(__pyx_t_4);
-  __Pyx_AddTraceback("slam_accelerator.KeyPoints.err.__get__", __pyx_clineno, __pyx_lineno, __pyx_filename);
-  __pyx_r = NULL;
-  __pyx_L0:;
-  __Pyx_XGIVEREF(__pyx_r);
-  __Pyx_RefNannyFinishContext();
-  return __pyx_r;
-}
-
-/* "slam_accelerator.pyx":201
- *         return np.asarray(self._keypoints.err)
- *     @err.setter
- *     def err(self, err):             # <<<<<<<<<<<<<<
- *         self._keypoints.err= err
- * 
- */
-
-/* Python wrapper */
-static int __pyx_pw_16slam_accelerator_9KeyPoints_3err_3__set__(PyObject *__pyx_v_self, PyObject *__pyx_v_err); /*proto*/
-static int __pyx_pw_16slam_accelerator_9KeyPoints_3err_3__set__(PyObject *__pyx_v_self, PyObject *__pyx_v_err) {
-  int __pyx_r;
-  __Pyx_RefNannyDeclarations
-  __Pyx_RefNannySetupContext("__set__ (wrapper)", 0);
-  __pyx_r = __pyx_pf_16slam_accelerator_9KeyPoints_3err_2__set__(((struct __pyx_obj_16slam_accelerator_KeyPoints *)__pyx_v_self), ((PyObject *)__pyx_v_err));
-
-  /* function exit code */
-  __Pyx_RefNannyFinishContext();
-  return __pyx_r;
-}
-
-static int __pyx_pf_16slam_accelerator_9KeyPoints_3err_2__set__(struct __pyx_obj_16slam_accelerator_KeyPoints *__pyx_v_self, PyObject *__pyx_v_err) {
-  int __pyx_r;
-  __Pyx_RefNannyDeclarations
-  std::vector<unsigned int>  __pyx_t_1;
-  __Pyx_RefNannySetupContext("__set__", 0);
-
-  /* "slam_accelerator.pyx":202
- *     @err.setter
- *     def err(self, err):
- *         self._keypoints.err= err             # <<<<<<<<<<<<<<
- * 
- * cdef class KeyFrame:
- */
-  __pyx_t_1 = __pyx_convert_vector_from_py_unsigned_int(__pyx_v_err); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 202, __pyx_L1_error)
-  __pyx_v_self->_keypoints.err = __pyx_t_1;
-
-  /* "slam_accelerator.pyx":201
- *         return np.asarray(self._keypoints.err)
- *     @err.setter
- *     def err(self, err):             # <<<<<<<<<<<<<<
- *         self._keypoints.err= err
- * 
- */
-
-  /* function exit code */
-  __pyx_r = 0;
-  goto __pyx_L0;
-  __pyx_L1_error:;
-  __Pyx_AddTraceback("slam_accelerator.KeyPoints.err.__set__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = -1;
   __pyx_L0:;
   __Pyx_RefNannyFinishContext();
@@ -6589,7 +6515,7 @@ static PyObject *__pyx_pf_16slam_accelerator_9KeyPoints_2__setstate_cython__(CYT
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":208
+/* "slam_accelerator.pyx":206
  * 
  *     @property
  *     def pose(self):             # <<<<<<<<<<<<<<
@@ -6616,7 +6542,7 @@ static PyObject *__pyx_pf_16slam_accelerator_8KeyFrame_4pose___get__(struct __py
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "slam_accelerator.pyx":209
+  /* "slam_accelerator.pyx":207
  *     @property
  *     def pose(self):
  *         return self._keyframe.pose             # <<<<<<<<<<<<<<
@@ -6624,13 +6550,13 @@ static PyObject *__pyx_pf_16slam_accelerator_8KeyFrame_4pose___get__(struct __py
  *     def pose(self, pose):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_convert__to_py_struct__Pose(__pyx_v_self->_keyframe.pose); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 209, __pyx_L1_error)
+  __pyx_t_1 = __pyx_convert__to_py_struct__Pose(__pyx_v_self->_keyframe.pose); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 207, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "slam_accelerator.pyx":208
+  /* "slam_accelerator.pyx":206
  * 
  *     @property
  *     def pose(self):             # <<<<<<<<<<<<<<
@@ -6649,7 +6575,7 @@ static PyObject *__pyx_pf_16slam_accelerator_8KeyFrame_4pose___get__(struct __py
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":211
+/* "slam_accelerator.pyx":209
  *         return self._keyframe.pose
  *     @pose.setter
  *     def pose(self, pose):             # <<<<<<<<<<<<<<
@@ -6676,17 +6602,17 @@ static int __pyx_pf_16slam_accelerator_8KeyFrame_4pose_2__set__(struct __pyx_obj
   struct Pose __pyx_t_1;
   __Pyx_RefNannySetupContext("__set__", 0);
 
-  /* "slam_accelerator.pyx":212
+  /* "slam_accelerator.pyx":210
  *     @pose.setter
  *     def pose(self, pose):
  *         self._keyframe.pose = pose             # <<<<<<<<<<<<<<
  * 
  *     @property
  */
-  __pyx_t_1 = __pyx_convert__from_py_struct__Pose(__pyx_v_pose); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 212, __pyx_L1_error)
+  __pyx_t_1 = __pyx_convert__from_py_struct__Pose(__pyx_v_pose); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 210, __pyx_L1_error)
   __pyx_v_self->_keyframe.pose = __pyx_t_1;
 
-  /* "slam_accelerator.pyx":211
+  /* "slam_accelerator.pyx":209
  *         return self._keyframe.pose
  *     @pose.setter
  *     def pose(self, pose):             # <<<<<<<<<<<<<<
@@ -6705,7 +6631,7 @@ static int __pyx_pf_16slam_accelerator_8KeyFrame_4pose_2__set__(struct __pyx_obj
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":215
+/* "slam_accelerator.pyx":213
  * 
  *     @property
  *     def stereo_images(self):             # <<<<<<<<<<<<<<
@@ -6740,23 +6666,23 @@ static PyObject *__pyx_pf_16slam_accelerator_8KeyFrame_13stereo_images___get__(s
   std::vector<struct StereoImage> ::size_type __pyx_t_4;
   int __pyx_t_5;
   PyObject *__pyx_t_6 = NULL;
-  Mat __pyx_t_7;
+  cv::Mat __pyx_t_7;
   int __pyx_t_8;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "slam_accelerator.pyx":217
+  /* "slam_accelerator.pyx":215
  *     def stereo_images(self):
  *         # Create a list of stereo images from C vector
  *         stereo_images = []             # <<<<<<<<<<<<<<
  *         for i in range(0, self._keyframe.stereo_images.size()):
  *             stereo_image = StereoImage()
  */
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 217, __pyx_L1_error)
+  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 215, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_v_stereo_images = ((PyObject*)__pyx_t_1);
   __pyx_t_1 = 0;
 
-  /* "slam_accelerator.pyx":218
+  /* "slam_accelerator.pyx":216
  *         # Create a list of stereo images from C vector
  *         stereo_images = []
  *         for i in range(0, self._keyframe.stereo_images.size()):             # <<<<<<<<<<<<<<
@@ -6768,19 +6694,19 @@ static PyObject *__pyx_pf_16slam_accelerator_8KeyFrame_13stereo_images___get__(s
   for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
     __pyx_v_i = __pyx_t_4;
 
-    /* "slam_accelerator.pyx":219
+    /* "slam_accelerator.pyx":217
  *         stereo_images = []
  *         for i in range(0, self._keyframe.stereo_images.size()):
  *             stereo_image = StereoImage()             # <<<<<<<<<<<<<<
  *             rows = self._keyframe.stereo_images[i].left.rows
  *             cols = self._keyframe.stereo_images[i].left.cols
  */
-    __pyx_t_1 = __Pyx_PyObject_CallNoArg(((PyObject *)__pyx_ptype_16slam_accelerator_StereoImage)); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 219, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_CallNoArg(((PyObject *)__pyx_ptype_16slam_accelerator_StereoImage)); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 217, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_XDECREF_SET(__pyx_v_stereo_image, ((struct __pyx_obj_16slam_accelerator_StereoImage *)__pyx_t_1));
     __pyx_t_1 = 0;
 
-    /* "slam_accelerator.pyx":220
+    /* "slam_accelerator.pyx":218
  *         for i in range(0, self._keyframe.stereo_images.size()):
  *             stereo_image = StereoImage()
  *             rows = self._keyframe.stereo_images[i].left.rows             # <<<<<<<<<<<<<<
@@ -6790,7 +6716,7 @@ static PyObject *__pyx_pf_16slam_accelerator_8KeyFrame_13stereo_images___get__(s
     __pyx_t_5 = (__pyx_v_self->_keyframe.stereo_images[__pyx_v_i]).left.rows;
     __pyx_v_rows = __pyx_t_5;
 
-    /* "slam_accelerator.pyx":221
+    /* "slam_accelerator.pyx":219
  *             stereo_image = StereoImage()
  *             rows = self._keyframe.stereo_images[i].left.rows
  *             cols = self._keyframe.stereo_images[i].left.cols             # <<<<<<<<<<<<<<
@@ -6800,23 +6726,23 @@ static PyObject *__pyx_pf_16slam_accelerator_8KeyFrame_13stereo_images___get__(s
     __pyx_t_5 = (__pyx_v_self->_keyframe.stereo_images[__pyx_v_i]).left.cols;
     __pyx_v_cols = __pyx_t_5;
 
-    /* "slam_accelerator.pyx":225
+    /* "slam_accelerator.pyx":223
  *             # Because of a strange reason if the matrix is not created yet
  *             # it will fail to assign another matrix to it. Therfore, we create one
  *             stereo_image._stereo_image.left.create(rows, cols, cv2.CV_8UC1)             # <<<<<<<<<<<<<<
  *             stereo_image._stereo_image.left = self._keyframe.stereo_images[i].left
  * 
  */
-    __Pyx_GetModuleGlobalName(__pyx_t_1, __pyx_n_s_cv2); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 225, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_1, __pyx_n_s_cv2); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 223, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_CV_8UC1); if (unlikely(!__pyx_t_6)) __PYX_ERR(1, 225, __pyx_L1_error)
+    __pyx_t_6 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_CV_8UC1); if (unlikely(!__pyx_t_6)) __PYX_ERR(1, 223, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-    __pyx_t_5 = __Pyx_PyInt_As_int(__pyx_t_6); if (unlikely((__pyx_t_5 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 225, __pyx_L1_error)
+    __pyx_t_5 = __Pyx_PyInt_As_int(__pyx_t_6); if (unlikely((__pyx_t_5 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 223, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
     __pyx_v_stereo_image->_stereo_image.left.create(__pyx_v_rows, __pyx_v_cols, __pyx_t_5);
 
-    /* "slam_accelerator.pyx":226
+    /* "slam_accelerator.pyx":224
  *             # it will fail to assign another matrix to it. Therfore, we create one
  *             stereo_image._stereo_image.left.create(rows, cols, cv2.CV_8UC1)
  *             stereo_image._stereo_image.left = self._keyframe.stereo_images[i].left             # <<<<<<<<<<<<<<
@@ -6826,23 +6752,23 @@ static PyObject *__pyx_pf_16slam_accelerator_8KeyFrame_13stereo_images___get__(s
     __pyx_t_7 = (__pyx_v_self->_keyframe.stereo_images[__pyx_v_i]).left;
     __pyx_v_stereo_image->_stereo_image.left = __pyx_t_7;
 
-    /* "slam_accelerator.pyx":228
+    /* "slam_accelerator.pyx":226
  *             stereo_image._stereo_image.left = self._keyframe.stereo_images[i].left
  * 
  *             stereo_image._stereo_image.right.create(rows, cols, cv2.CV_8UC1)             # <<<<<<<<<<<<<<
  *             stereo_image._stereo_image.right = self._keyframe.stereo_images[i].right
  *             stereo_images.append(stereo_image)
  */
-    __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_n_s_cv2); if (unlikely(!__pyx_t_6)) __PYX_ERR(1, 228, __pyx_L1_error)
+    __Pyx_GetModuleGlobalName(__pyx_t_6, __pyx_n_s_cv2); if (unlikely(!__pyx_t_6)) __PYX_ERR(1, 226, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_6);
-    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_6, __pyx_n_s_CV_8UC1); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 228, __pyx_L1_error)
+    __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_t_6, __pyx_n_s_CV_8UC1); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 226, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_1);
     __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
-    __pyx_t_5 = __Pyx_PyInt_As_int(__pyx_t_1); if (unlikely((__pyx_t_5 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 228, __pyx_L1_error)
+    __pyx_t_5 = __Pyx_PyInt_As_int(__pyx_t_1); if (unlikely((__pyx_t_5 == (int)-1) && PyErr_Occurred())) __PYX_ERR(1, 226, __pyx_L1_error)
     __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
     __pyx_v_stereo_image->_stereo_image.right.create(__pyx_v_rows, __pyx_v_cols, __pyx_t_5);
 
-    /* "slam_accelerator.pyx":229
+    /* "slam_accelerator.pyx":227
  * 
  *             stereo_image._stereo_image.right.create(rows, cols, cv2.CV_8UC1)
  *             stereo_image._stereo_image.right = self._keyframe.stereo_images[i].right             # <<<<<<<<<<<<<<
@@ -6852,17 +6778,17 @@ static PyObject *__pyx_pf_16slam_accelerator_8KeyFrame_13stereo_images___get__(s
     __pyx_t_7 = (__pyx_v_self->_keyframe.stereo_images[__pyx_v_i]).right;
     __pyx_v_stereo_image->_stereo_image.right = __pyx_t_7;
 
-    /* "slam_accelerator.pyx":230
+    /* "slam_accelerator.pyx":228
  *             stereo_image._stereo_image.right.create(rows, cols, cv2.CV_8UC1)
  *             stereo_image._stereo_image.right = self._keyframe.stereo_images[i].right
  *             stereo_images.append(stereo_image)             # <<<<<<<<<<<<<<
  *         return stereo_images
  *     @stereo_images.setter
  */
-    __pyx_t_8 = __Pyx_PyList_Append(__pyx_v_stereo_images, ((PyObject *)__pyx_v_stereo_image)); if (unlikely(__pyx_t_8 == ((int)-1))) __PYX_ERR(1, 230, __pyx_L1_error)
+    __pyx_t_8 = __Pyx_PyList_Append(__pyx_v_stereo_images, ((PyObject *)__pyx_v_stereo_image)); if (unlikely(__pyx_t_8 == ((int)-1))) __PYX_ERR(1, 228, __pyx_L1_error)
   }
 
-  /* "slam_accelerator.pyx":231
+  /* "slam_accelerator.pyx":229
  *             stereo_image._stereo_image.right = self._keyframe.stereo_images[i].right
  *             stereo_images.append(stereo_image)
  *         return stereo_images             # <<<<<<<<<<<<<<
@@ -6874,7 +6800,7 @@ static PyObject *__pyx_pf_16slam_accelerator_8KeyFrame_13stereo_images___get__(s
   __pyx_r = __pyx_v_stereo_images;
   goto __pyx_L0;
 
-  /* "slam_accelerator.pyx":215
+  /* "slam_accelerator.pyx":213
  * 
  *     @property
  *     def stereo_images(self):             # <<<<<<<<<<<<<<
@@ -6896,7 +6822,7 @@ static PyObject *__pyx_pf_16slam_accelerator_8KeyFrame_13stereo_images___get__(s
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":233
+/* "slam_accelerator.pyx":231
  *         return stereo_images
  *     @stereo_images.setter
  *     def stereo_images(self, stereo_images):             # <<<<<<<<<<<<<<
@@ -6931,22 +6857,22 @@ static int __pyx_pf_16slam_accelerator_8KeyFrame_13stereo_images_2__set__(struct
   std::vector<struct StereoImage> ::size_type __pyx_t_7;
   __Pyx_RefNannySetupContext("__set__", 0);
 
-  /* "slam_accelerator.pyx":235
+  /* "slam_accelerator.pyx":233
  *     def stereo_images(self, stereo_images):
  *         # Assign list of StereoImages to C type
  *         self._keyframe.stereo_images.resize(len(stereo_images))             # <<<<<<<<<<<<<<
  *         for i, stereo_image in enumerate(stereo_images):
  *             self._keyframe.stereo_images[i] = (<StereoImage>stereo_image)._stereo_image
  */
-  __pyx_t_1 = PyObject_Length(__pyx_v_stereo_images); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(1, 235, __pyx_L1_error)
+  __pyx_t_1 = PyObject_Length(__pyx_v_stereo_images); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(1, 233, __pyx_L1_error)
   try {
     __pyx_v_self->_keyframe.stereo_images.resize(__pyx_t_1);
   } catch(...) {
     __Pyx_CppExn2PyErr();
-    __PYX_ERR(1, 235, __pyx_L1_error)
+    __PYX_ERR(1, 233, __pyx_L1_error)
   }
 
-  /* "slam_accelerator.pyx":236
+  /* "slam_accelerator.pyx":234
  *         # Assign list of StereoImages to C type
  *         self._keyframe.stereo_images.resize(len(stereo_images))
  *         for i, stereo_image in enumerate(stereo_images):             # <<<<<<<<<<<<<<
@@ -6959,26 +6885,26 @@ static int __pyx_pf_16slam_accelerator_8KeyFrame_13stereo_images_2__set__(struct
     __pyx_t_3 = __pyx_v_stereo_images; __Pyx_INCREF(__pyx_t_3); __pyx_t_1 = 0;
     __pyx_t_4 = NULL;
   } else {
-    __pyx_t_1 = -1; __pyx_t_3 = PyObject_GetIter(__pyx_v_stereo_images); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 236, __pyx_L1_error)
+    __pyx_t_1 = -1; __pyx_t_3 = PyObject_GetIter(__pyx_v_stereo_images); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 234, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_4 = Py_TYPE(__pyx_t_3)->tp_iternext; if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 236, __pyx_L1_error)
+    __pyx_t_4 = Py_TYPE(__pyx_t_3)->tp_iternext; if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 234, __pyx_L1_error)
   }
   for (;;) {
     if (likely(!__pyx_t_4)) {
       if (likely(PyList_CheckExact(__pyx_t_3))) {
         if (__pyx_t_1 >= PyList_GET_SIZE(__pyx_t_3)) break;
         #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-        __pyx_t_5 = PyList_GET_ITEM(__pyx_t_3, __pyx_t_1); __Pyx_INCREF(__pyx_t_5); __pyx_t_1++; if (unlikely(0 < 0)) __PYX_ERR(1, 236, __pyx_L1_error)
+        __pyx_t_5 = PyList_GET_ITEM(__pyx_t_3, __pyx_t_1); __Pyx_INCREF(__pyx_t_5); __pyx_t_1++; if (unlikely(0 < 0)) __PYX_ERR(1, 234, __pyx_L1_error)
         #else
-        __pyx_t_5 = PySequence_ITEM(__pyx_t_3, __pyx_t_1); __pyx_t_1++; if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 236, __pyx_L1_error)
+        __pyx_t_5 = PySequence_ITEM(__pyx_t_3, __pyx_t_1); __pyx_t_1++; if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 234, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_5);
         #endif
       } else {
         if (__pyx_t_1 >= PyTuple_GET_SIZE(__pyx_t_3)) break;
         #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-        __pyx_t_5 = PyTuple_GET_ITEM(__pyx_t_3, __pyx_t_1); __Pyx_INCREF(__pyx_t_5); __pyx_t_1++; if (unlikely(0 < 0)) __PYX_ERR(1, 236, __pyx_L1_error)
+        __pyx_t_5 = PyTuple_GET_ITEM(__pyx_t_3, __pyx_t_1); __Pyx_INCREF(__pyx_t_5); __pyx_t_1++; if (unlikely(0 < 0)) __PYX_ERR(1, 234, __pyx_L1_error)
         #else
-        __pyx_t_5 = PySequence_ITEM(__pyx_t_3, __pyx_t_1); __pyx_t_1++; if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 236, __pyx_L1_error)
+        __pyx_t_5 = PySequence_ITEM(__pyx_t_3, __pyx_t_1); __pyx_t_1++; if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 234, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_5);
         #endif
       }
@@ -6988,7 +6914,7 @@ static int __pyx_pf_16slam_accelerator_8KeyFrame_13stereo_images_2__set__(struct
         PyObject* exc_type = PyErr_Occurred();
         if (exc_type) {
           if (likely(__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-          else __PYX_ERR(1, 236, __pyx_L1_error)
+          else __PYX_ERR(1, 234, __pyx_L1_error)
         }
         break;
       }
@@ -6998,13 +6924,13 @@ static int __pyx_pf_16slam_accelerator_8KeyFrame_13stereo_images_2__set__(struct
     __pyx_t_5 = 0;
     __Pyx_INCREF(__pyx_t_2);
     __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_2);
-    __pyx_t_5 = __Pyx_PyInt_AddObjC(__pyx_t_2, __pyx_int_1, 1, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 236, __pyx_L1_error)
+    __pyx_t_5 = __Pyx_PyInt_AddObjC(__pyx_t_2, __pyx_int_1, 1, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 234, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_5);
     __Pyx_DECREF(__pyx_t_2);
     __pyx_t_2 = __pyx_t_5;
     __pyx_t_5 = 0;
 
-    /* "slam_accelerator.pyx":237
+    /* "slam_accelerator.pyx":235
  *         self._keyframe.stereo_images.resize(len(stereo_images))
  *         for i, stereo_image in enumerate(stereo_images):
  *             self._keyframe.stereo_images[i] = (<StereoImage>stereo_image)._stereo_image             # <<<<<<<<<<<<<<
@@ -7012,10 +6938,10 @@ static int __pyx_pf_16slam_accelerator_8KeyFrame_13stereo_images_2__set__(struct
  *     @property
  */
     __pyx_t_6 = ((struct __pyx_obj_16slam_accelerator_StereoImage *)__pyx_v_stereo_image)->_stereo_image;
-    __pyx_t_7 = __Pyx_PyInt_As_size_t(__pyx_v_i); if (unlikely((__pyx_t_7 == (size_t)-1) && PyErr_Occurred())) __PYX_ERR(1, 237, __pyx_L1_error)
+    __pyx_t_7 = __Pyx_PyInt_As_size_t(__pyx_v_i); if (unlikely((__pyx_t_7 == (size_t)-1) && PyErr_Occurred())) __PYX_ERR(1, 235, __pyx_L1_error)
     (__pyx_v_self->_keyframe.stereo_images[__pyx_t_7]) = __pyx_t_6;
 
-    /* "slam_accelerator.pyx":236
+    /* "slam_accelerator.pyx":234
  *         # Assign list of StereoImages to C type
  *         self._keyframe.stereo_images.resize(len(stereo_images))
  *         for i, stereo_image in enumerate(stereo_images):             # <<<<<<<<<<<<<<
@@ -7026,7 +6952,7 @@ static int __pyx_pf_16slam_accelerator_8KeyFrame_13stereo_images_2__set__(struct
   __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
-  /* "slam_accelerator.pyx":233
+  /* "slam_accelerator.pyx":231
  *         return stereo_images
  *     @stereo_images.setter
  *     def stereo_images(self, stereo_images):             # <<<<<<<<<<<<<<
@@ -7050,12 +6976,12 @@ static int __pyx_pf_16slam_accelerator_8KeyFrame_13stereo_images_2__set__(struct
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":240
+/* "slam_accelerator.pyx":238
  * 
  *     @property
  *     def kps(self):             # <<<<<<<<<<<<<<
- *         kps = []
- *         for i in range(0, self._keyframe.kps.size()):
+ *         kps = KeyPoints()
+ *         kps._keypoints = self._keyframe.kps
  */
 
 /* Python wrapper */
@@ -7072,91 +6998,53 @@ static PyObject *__pyx_pw_16slam_accelerator_8KeyFrame_3kps_1__get__(PyObject *_
 }
 
 static PyObject *__pyx_pf_16slam_accelerator_8KeyFrame_3kps___get__(struct __pyx_obj_16slam_accelerator_KeyFrame *__pyx_v_self) {
-  PyObject *__pyx_v_kps = NULL;
-  std::vector<struct KeyPoints> ::size_type __pyx_v_i;
-  struct __pyx_obj_16slam_accelerator_KeyPoints *__pyx_v__kps = NULL;
+  struct __pyx_obj_16slam_accelerator_KeyPoints *__pyx_v_kps = NULL;
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
   PyObject *__pyx_t_1 = NULL;
-  std::vector<struct KeyPoints> ::size_type __pyx_t_2;
-  std::vector<struct KeyPoints> ::size_type __pyx_t_3;
-  std::vector<struct KeyPoints> ::size_type __pyx_t_4;
-  int __pyx_t_5;
+  struct KeyPoints __pyx_t_2;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "slam_accelerator.pyx":241
+  /* "slam_accelerator.pyx":239
  *     @property
  *     def kps(self):
- *         kps = []             # <<<<<<<<<<<<<<
- *         for i in range(0, self._keyframe.kps.size()):
- *             _kps = KeyPoints()
- */
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 241, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  __pyx_v_kps = ((PyObject*)__pyx_t_1);
-  __pyx_t_1 = 0;
-
-  /* "slam_accelerator.pyx":242
- *     def kps(self):
- *         kps = []
- *         for i in range(0, self._keyframe.kps.size()):             # <<<<<<<<<<<<<<
- *             _kps = KeyPoints()
- *             _kps._keypoints = self._keyframe.kps[i]
- */
-  __pyx_t_2 = __pyx_v_self->_keyframe.kps.size();
-  __pyx_t_3 = __pyx_t_2;
-  for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
-    __pyx_v_i = __pyx_t_4;
-
-    /* "slam_accelerator.pyx":243
- *         kps = []
- *         for i in range(0, self._keyframe.kps.size()):
- *             _kps = KeyPoints()             # <<<<<<<<<<<<<<
- *             _kps._keypoints = self._keyframe.kps[i]
- *             kps.append(_kps)
- */
-    __pyx_t_1 = __Pyx_PyObject_CallNoArg(((PyObject *)__pyx_ptype_16slam_accelerator_KeyPoints)); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 243, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_1);
-    __Pyx_XDECREF_SET(__pyx_v__kps, ((struct __pyx_obj_16slam_accelerator_KeyPoints *)__pyx_t_1));
-    __pyx_t_1 = 0;
-
-    /* "slam_accelerator.pyx":244
- *         for i in range(0, self._keyframe.kps.size()):
- *             _kps = KeyPoints()
- *             _kps._keypoints = self._keyframe.kps[i]             # <<<<<<<<<<<<<<
- *             kps.append(_kps)
+ *         kps = KeyPoints()             # <<<<<<<<<<<<<<
+ *         kps._keypoints = self._keyframe.kps
  *         return kps
  */
-    __pyx_v__kps->_keypoints = (__pyx_v_self->_keyframe.kps[__pyx_v_i]);
+  __pyx_t_1 = __Pyx_PyObject_CallNoArg(((PyObject *)__pyx_ptype_16slam_accelerator_KeyPoints)); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 239, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_1);
+  __pyx_v_kps = ((struct __pyx_obj_16slam_accelerator_KeyPoints *)__pyx_t_1);
+  __pyx_t_1 = 0;
 
-    /* "slam_accelerator.pyx":245
- *             _kps = KeyPoints()
- *             _kps._keypoints = self._keyframe.kps[i]
- *             kps.append(_kps)             # <<<<<<<<<<<<<<
+  /* "slam_accelerator.pyx":240
+ *     def kps(self):
+ *         kps = KeyPoints()
+ *         kps._keypoints = self._keyframe.kps             # <<<<<<<<<<<<<<
  *         return kps
  *     @kps.setter
  */
-    __pyx_t_5 = __Pyx_PyList_Append(__pyx_v_kps, ((PyObject *)__pyx_v__kps)); if (unlikely(__pyx_t_5 == ((int)-1))) __PYX_ERR(1, 245, __pyx_L1_error)
-  }
+  __pyx_t_2 = __pyx_v_self->_keyframe.kps;
+  __pyx_v_kps->_keypoints = __pyx_t_2;
 
-  /* "slam_accelerator.pyx":246
- *             _kps._keypoints = self._keyframe.kps[i]
- *             kps.append(_kps)
+  /* "slam_accelerator.pyx":241
+ *         kps = KeyPoints()
+ *         kps._keypoints = self._keyframe.kps
  *         return kps             # <<<<<<<<<<<<<<
  *     @kps.setter
  *     def kps(self, kps):
  */
   __Pyx_XDECREF(__pyx_r);
-  __Pyx_INCREF(__pyx_v_kps);
-  __pyx_r = __pyx_v_kps;
+  __Pyx_INCREF(((PyObject *)__pyx_v_kps));
+  __pyx_r = ((PyObject *)__pyx_v_kps);
   goto __pyx_L0;
 
-  /* "slam_accelerator.pyx":240
+  /* "slam_accelerator.pyx":238
  * 
  *     @property
  *     def kps(self):             # <<<<<<<<<<<<<<
- *         kps = []
- *         for i in range(0, self._keyframe.kps.size()):
+ *         kps = KeyPoints()
+ *         kps._keypoints = self._keyframe.kps
  */
 
   /* function exit code */
@@ -7165,19 +7053,18 @@ static PyObject *__pyx_pf_16slam_accelerator_8KeyFrame_3kps___get__(struct __pyx
   __Pyx_AddTraceback("slam_accelerator.KeyFrame.kps.__get__", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
-  __Pyx_XDECREF(__pyx_v_kps);
-  __Pyx_XDECREF((PyObject *)__pyx_v__kps);
+  __Pyx_XDECREF((PyObject *)__pyx_v_kps);
   __Pyx_XGIVEREF(__pyx_r);
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":248
+/* "slam_accelerator.pyx":243
  *         return kps
  *     @kps.setter
  *     def kps(self, kps):             # <<<<<<<<<<<<<<
- *         self._keyframe.kps.resize(len(kps))
- *         for i, _kps in enumerate(kps):
+ *         self._keyframe.kps = (<KeyPoints>kps)._keypoints
+ * 
  */
 
 /* Python wrapper */
@@ -7194,139 +7081,36 @@ static int __pyx_pw_16slam_accelerator_8KeyFrame_3kps_3__set__(PyObject *__pyx_v
 }
 
 static int __pyx_pf_16slam_accelerator_8KeyFrame_3kps_2__set__(struct __pyx_obj_16slam_accelerator_KeyFrame *__pyx_v_self, PyObject *__pyx_v_kps) {
-  PyObject *__pyx_v_i = NULL;
-  PyObject *__pyx_v__kps = NULL;
   int __pyx_r;
   __Pyx_RefNannyDeclarations
-  Py_ssize_t __pyx_t_1;
-  PyObject *__pyx_t_2 = NULL;
-  PyObject *__pyx_t_3 = NULL;
-  PyObject *(*__pyx_t_4)(PyObject *);
-  PyObject *__pyx_t_5 = NULL;
-  struct KeyPoints __pyx_t_6;
-  std::vector<struct KeyPoints> ::size_type __pyx_t_7;
+  struct KeyPoints __pyx_t_1;
   __Pyx_RefNannySetupContext("__set__", 0);
 
-  /* "slam_accelerator.pyx":249
+  /* "slam_accelerator.pyx":244
  *     @kps.setter
  *     def kps(self, kps):
- *         self._keyframe.kps.resize(len(kps))             # <<<<<<<<<<<<<<
- *         for i, _kps in enumerate(kps):
- *             self._keyframe.kps[i] = (<KeyPoints>_kps)._keypoints
- */
-  __pyx_t_1 = PyObject_Length(__pyx_v_kps); if (unlikely(__pyx_t_1 == ((Py_ssize_t)-1))) __PYX_ERR(1, 249, __pyx_L1_error)
-  try {
-    __pyx_v_self->_keyframe.kps.resize(__pyx_t_1);
-  } catch(...) {
-    __Pyx_CppExn2PyErr();
-    __PYX_ERR(1, 249, __pyx_L1_error)
-  }
-
-  /* "slam_accelerator.pyx":250
- *     def kps(self, kps):
- *         self._keyframe.kps.resize(len(kps))
- *         for i, _kps in enumerate(kps):             # <<<<<<<<<<<<<<
- *             self._keyframe.kps[i] = (<KeyPoints>_kps)._keypoints
- * 
- */
-  __Pyx_INCREF(__pyx_int_0);
-  __pyx_t_2 = __pyx_int_0;
-  if (likely(PyList_CheckExact(__pyx_v_kps)) || PyTuple_CheckExact(__pyx_v_kps)) {
-    __pyx_t_3 = __pyx_v_kps; __Pyx_INCREF(__pyx_t_3); __pyx_t_1 = 0;
-    __pyx_t_4 = NULL;
-  } else {
-    __pyx_t_1 = -1; __pyx_t_3 = PyObject_GetIter(__pyx_v_kps); if (unlikely(!__pyx_t_3)) __PYX_ERR(1, 250, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_3);
-    __pyx_t_4 = Py_TYPE(__pyx_t_3)->tp_iternext; if (unlikely(!__pyx_t_4)) __PYX_ERR(1, 250, __pyx_L1_error)
-  }
-  for (;;) {
-    if (likely(!__pyx_t_4)) {
-      if (likely(PyList_CheckExact(__pyx_t_3))) {
-        if (__pyx_t_1 >= PyList_GET_SIZE(__pyx_t_3)) break;
-        #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-        __pyx_t_5 = PyList_GET_ITEM(__pyx_t_3, __pyx_t_1); __Pyx_INCREF(__pyx_t_5); __pyx_t_1++; if (unlikely(0 < 0)) __PYX_ERR(1, 250, __pyx_L1_error)
-        #else
-        __pyx_t_5 = PySequence_ITEM(__pyx_t_3, __pyx_t_1); __pyx_t_1++; if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 250, __pyx_L1_error)
-        __Pyx_GOTREF(__pyx_t_5);
-        #endif
-      } else {
-        if (__pyx_t_1 >= PyTuple_GET_SIZE(__pyx_t_3)) break;
-        #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-        __pyx_t_5 = PyTuple_GET_ITEM(__pyx_t_3, __pyx_t_1); __Pyx_INCREF(__pyx_t_5); __pyx_t_1++; if (unlikely(0 < 0)) __PYX_ERR(1, 250, __pyx_L1_error)
-        #else
-        __pyx_t_5 = PySequence_ITEM(__pyx_t_3, __pyx_t_1); __pyx_t_1++; if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 250, __pyx_L1_error)
-        __Pyx_GOTREF(__pyx_t_5);
-        #endif
-      }
-    } else {
-      __pyx_t_5 = __pyx_t_4(__pyx_t_3);
-      if (unlikely(!__pyx_t_5)) {
-        PyObject* exc_type = PyErr_Occurred();
-        if (exc_type) {
-          if (likely(__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-          else __PYX_ERR(1, 250, __pyx_L1_error)
-        }
-        break;
-      }
-      __Pyx_GOTREF(__pyx_t_5);
-    }
-    __Pyx_XDECREF_SET(__pyx_v__kps, __pyx_t_5);
-    __pyx_t_5 = 0;
-    __Pyx_INCREF(__pyx_t_2);
-    __Pyx_XDECREF_SET(__pyx_v_i, __pyx_t_2);
-    __pyx_t_5 = __Pyx_PyInt_AddObjC(__pyx_t_2, __pyx_int_1, 1, 0); if (unlikely(!__pyx_t_5)) __PYX_ERR(1, 250, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_5);
-    __Pyx_DECREF(__pyx_t_2);
-    __pyx_t_2 = __pyx_t_5;
-    __pyx_t_5 = 0;
-
-    /* "slam_accelerator.pyx":251
- *         self._keyframe.kps.resize(len(kps))
- *         for i, _kps in enumerate(kps):
- *             self._keyframe.kps[i] = (<KeyPoints>_kps)._keypoints             # <<<<<<<<<<<<<<
+ *         self._keyframe.kps = (<KeyPoints>kps)._keypoints             # <<<<<<<<<<<<<<
  * 
  *     @property
  */
-    __pyx_t_6 = ((struct __pyx_obj_16slam_accelerator_KeyPoints *)__pyx_v__kps)->_keypoints;
-    __pyx_t_7 = __Pyx_PyInt_As_size_t(__pyx_v_i); if (unlikely((__pyx_t_7 == (size_t)-1) && PyErr_Occurred())) __PYX_ERR(1, 251, __pyx_L1_error)
-    (__pyx_v_self->_keyframe.kps[__pyx_t_7]) = __pyx_t_6;
+  __pyx_t_1 = ((struct __pyx_obj_16slam_accelerator_KeyPoints *)__pyx_v_kps)->_keypoints;
+  __pyx_v_self->_keyframe.kps = __pyx_t_1;
 
-    /* "slam_accelerator.pyx":250
- *     def kps(self, kps):
- *         self._keyframe.kps.resize(len(kps))
- *         for i, _kps in enumerate(kps):             # <<<<<<<<<<<<<<
- *             self._keyframe.kps[i] = (<KeyPoints>_kps)._keypoints
- * 
- */
-  }
-  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-
-  /* "slam_accelerator.pyx":248
+  /* "slam_accelerator.pyx":243
  *         return kps
  *     @kps.setter
  *     def kps(self, kps):             # <<<<<<<<<<<<<<
- *         self._keyframe.kps.resize(len(kps))
- *         for i, _kps in enumerate(kps):
+ *         self._keyframe.kps = (<KeyPoints>kps)._keypoints
+ * 
  */
 
   /* function exit code */
   __pyx_r = 0;
-  goto __pyx_L0;
-  __pyx_L1_error:;
-  __Pyx_XDECREF(__pyx_t_2);
-  __Pyx_XDECREF(__pyx_t_3);
-  __Pyx_XDECREF(__pyx_t_5);
-  __Pyx_AddTraceback("slam_accelerator.KeyFrame.kps.__set__", __pyx_clineno, __pyx_lineno, __pyx_filename);
-  __pyx_r = -1;
-  __pyx_L0:;
-  __Pyx_XDECREF(__pyx_v_i);
-  __Pyx_XDECREF(__pyx_v__kps);
   __Pyx_RefNannyFinishContext();
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":254
+/* "slam_accelerator.pyx":247
  * 
  *     @property
  *     def colors(self):             # <<<<<<<<<<<<<<
@@ -7353,7 +7137,7 @@ static PyObject *__pyx_pf_16slam_accelerator_8KeyFrame_6colors___get__(struct __
   PyObject *__pyx_t_1 = NULL;
   __Pyx_RefNannySetupContext("__get__", 0);
 
-  /* "slam_accelerator.pyx":256
+  /* "slam_accelerator.pyx":249
  *     def colors(self):
  *         # Let autoconvert do the magic (Color will be a dict)
  *         return self._keyframe.colors             # <<<<<<<<<<<<<<
@@ -7361,13 +7145,13 @@ static PyObject *__pyx_pf_16slam_accelerator_8KeyFrame_6colors___get__(struct __
  *     def colors(self, colors):
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = __pyx_convert_vector_to_py_std_3a__3a_vector_3c_struct__Color_3e___(__pyx_v_self->_keyframe.colors); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 256, __pyx_L1_error)
+  __pyx_t_1 = __pyx_convert_vector_to_py_struct__Color(__pyx_v_self->_keyframe.colors); if (unlikely(!__pyx_t_1)) __PYX_ERR(1, 249, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
   __pyx_r = __pyx_t_1;
   __pyx_t_1 = 0;
   goto __pyx_L0;
 
-  /* "slam_accelerator.pyx":254
+  /* "slam_accelerator.pyx":247
  * 
  *     @property
  *     def colors(self):             # <<<<<<<<<<<<<<
@@ -7386,7 +7170,7 @@ static PyObject *__pyx_pf_16slam_accelerator_8KeyFrame_6colors___get__(struct __
   return __pyx_r;
 }
 
-/* "slam_accelerator.pyx":258
+/* "slam_accelerator.pyx":251
  *         return self._keyframe.colors
  *     @colors.setter
  *     def colors(self, colors):             # <<<<<<<<<<<<<<
@@ -7410,19 +7194,19 @@ static int __pyx_pw_16slam_accelerator_8KeyFrame_6colors_3__set__(PyObject *__py
 static int __pyx_pf_16slam_accelerator_8KeyFrame_6colors_2__set__(struct __pyx_obj_16slam_accelerator_KeyFrame *__pyx_v_self, PyObject *__pyx_v_colors) {
   int __pyx_r;
   __Pyx_RefNannyDeclarations
-  std::vector<std::vector<struct Color> >  __pyx_t_1;
+  std::vector<struct Color>  __pyx_t_1;
   __Pyx_RefNannySetupContext("__set__", 0);
 
-  /* "slam_accelerator.pyx":260
+  /* "slam_accelerator.pyx":253
  *     def colors(self, colors):
  *         # Let autoconvert do the magic
  *         self._keyframe.colors = colors             # <<<<<<<<<<<<<<
  * 
  */
-  __pyx_t_1 = __pyx_convert_vector_from_py_std_3a__3a_vector_3c_struct__Color_3e___(__pyx_v_colors); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 260, __pyx_L1_error)
+  __pyx_t_1 = __pyx_convert_vector_from_py_struct__Color(__pyx_v_colors); if (unlikely(PyErr_Occurred())) __PYX_ERR(1, 253, __pyx_L1_error)
   __pyx_v_self->_keyframe.colors = __pyx_t_1;
 
-  /* "slam_accelerator.pyx":258
+  /* "slam_accelerator.pyx":251
  *         return self._keyframe.colors
  *     @colors.setter
  *     def colors(self, colors):             # <<<<<<<<<<<<<<
@@ -11748,187 +11532,6 @@ static PyObject *__pyx_convert_vector_to_py_struct__KeyPoint3d(const std::vector
   return __pyx_r;
 }
 
-static PyObject *__pyx_convert_vector_to_py_unsigned_int(const std::vector<unsigned int>  &__pyx_v_v) {
-  size_t __pyx_v_i;
-  PyObject *__pyx_r = NULL;
-  __Pyx_RefNannyDeclarations
-  PyObject *__pyx_t_1 = NULL;
-  size_t __pyx_t_2;
-  size_t __pyx_t_3;
-  size_t __pyx_t_4;
-  PyObject *__pyx_t_5 = NULL;
-  __Pyx_RefNannySetupContext("__pyx_convert_vector_to_py_unsigned_int", 0);
-
-  /* "vector.to_py":61
- * @cname("__pyx_convert_vector_to_py_unsigned_int")
- * cdef object __pyx_convert_vector_to_py_unsigned_int(vector[X]& v):
- *     return [v[i] for i in range(v.size())]             # <<<<<<<<<<<<<<
- * 
- * 
- */
-  __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 61, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __pyx_v_v.size();
-  __pyx_t_3 = __pyx_t_2;
-  for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
-    __pyx_v_i = __pyx_t_4;
-    __pyx_t_5 = __Pyx_PyInt_From_unsigned_int((__pyx_v_v[__pyx_v_i])); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 61, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_5);
-    if (unlikely(__Pyx_ListComp_Append(__pyx_t_1, (PyObject*)__pyx_t_5))) __PYX_ERR(0, 61, __pyx_L1_error)
-    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  }
-  __pyx_r = __pyx_t_1;
-  __pyx_t_1 = 0;
-  goto __pyx_L0;
-
-  /* "vector.to_py":60
- * 
- * @cname("__pyx_convert_vector_to_py_unsigned_int")
- * cdef object __pyx_convert_vector_to_py_unsigned_int(vector[X]& v):             # <<<<<<<<<<<<<<
- *     return [v[i] for i in range(v.size())]
- * 
- */
-
-  /* function exit code */
-  __pyx_L1_error:;
-  __Pyx_XDECREF(__pyx_t_1);
-  __Pyx_XDECREF(__pyx_t_5);
-  __Pyx_AddTraceback("vector.to_py.__pyx_convert_vector_to_py_unsigned_int", __pyx_clineno, __pyx_lineno, __pyx_filename);
-  __pyx_r = 0;
-  __pyx_L0:;
-  __Pyx_XGIVEREF(__pyx_r);
-  __Pyx_RefNannyFinishContext();
-  return __pyx_r;
-}
-
-/* "vector.from_py":45
- * 
- * @cname("__pyx_convert_vector_from_py_unsigned_int")
- * cdef vector[X] __pyx_convert_vector_from_py_unsigned_int(object o) except *:             # <<<<<<<<<<<<<<
- *     cdef vector[X] v
- *     for item in o:
- */
-
-static std::vector<unsigned int>  __pyx_convert_vector_from_py_unsigned_int(PyObject *__pyx_v_o) {
-  std::vector<unsigned int>  __pyx_v_v;
-  PyObject *__pyx_v_item = NULL;
-  std::vector<unsigned int>  __pyx_r;
-  __Pyx_RefNannyDeclarations
-  PyObject *__pyx_t_1 = NULL;
-  Py_ssize_t __pyx_t_2;
-  PyObject *(*__pyx_t_3)(PyObject *);
-  PyObject *__pyx_t_4 = NULL;
-  unsigned int __pyx_t_5;
-  __Pyx_RefNannySetupContext("__pyx_convert_vector_from_py_unsigned_int", 0);
-
-  /* "vector.from_py":47
- * cdef vector[X] __pyx_convert_vector_from_py_unsigned_int(object o) except *:
- *     cdef vector[X] v
- *     for item in o:             # <<<<<<<<<<<<<<
- *         v.push_back(<X>item)
- *     return v
- */
-  if (likely(PyList_CheckExact(__pyx_v_o)) || PyTuple_CheckExact(__pyx_v_o)) {
-    __pyx_t_1 = __pyx_v_o; __Pyx_INCREF(__pyx_t_1); __pyx_t_2 = 0;
-    __pyx_t_3 = NULL;
-  } else {
-    __pyx_t_2 = -1; __pyx_t_1 = PyObject_GetIter(__pyx_v_o); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 47, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_3 = Py_TYPE(__pyx_t_1)->tp_iternext; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 47, __pyx_L1_error)
-  }
-  for (;;) {
-    if (likely(!__pyx_t_3)) {
-      if (likely(PyList_CheckExact(__pyx_t_1))) {
-        if (__pyx_t_2 >= PyList_GET_SIZE(__pyx_t_1)) break;
-        #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-        __pyx_t_4 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_4); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 47, __pyx_L1_error)
-        #else
-        __pyx_t_4 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 47, __pyx_L1_error)
-        __Pyx_GOTREF(__pyx_t_4);
-        #endif
-      } else {
-        if (__pyx_t_2 >= PyTuple_GET_SIZE(__pyx_t_1)) break;
-        #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-        __pyx_t_4 = PyTuple_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_4); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 47, __pyx_L1_error)
-        #else
-        __pyx_t_4 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 47, __pyx_L1_error)
-        __Pyx_GOTREF(__pyx_t_4);
-        #endif
-      }
-    } else {
-      __pyx_t_4 = __pyx_t_3(__pyx_t_1);
-      if (unlikely(!__pyx_t_4)) {
-        PyObject* exc_type = PyErr_Occurred();
-        if (exc_type) {
-          if (likely(__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-          else __PYX_ERR(0, 47, __pyx_L1_error)
-        }
-        break;
-      }
-      __Pyx_GOTREF(__pyx_t_4);
-    }
-    __Pyx_XDECREF_SET(__pyx_v_item, __pyx_t_4);
-    __pyx_t_4 = 0;
-
-    /* "vector.from_py":48
- *     cdef vector[X] v
- *     for item in o:
- *         v.push_back(<X>item)             # <<<<<<<<<<<<<<
- *     return v
- * 
- */
-    __pyx_t_5 = __Pyx_PyInt_As_unsigned_int(__pyx_v_item); if (unlikely((__pyx_t_5 == (unsigned int)-1) && PyErr_Occurred())) __PYX_ERR(0, 48, __pyx_L1_error)
-    __pyx_v_v.push_back(((unsigned int)__pyx_t_5));
-
-    /* "vector.from_py":47
- * cdef vector[X] __pyx_convert_vector_from_py_unsigned_int(object o) except *:
- *     cdef vector[X] v
- *     for item in o:             # <<<<<<<<<<<<<<
- *         v.push_back(<X>item)
- *     return v
- */
-  }
-  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-
-  /* "vector.from_py":49
- *     for item in o:
- *         v.push_back(<X>item)
- *     return v             # <<<<<<<<<<<<<<
- * 
- * 
- */
-  __pyx_r = __pyx_v_v;
-  goto __pyx_L0;
-
-  /* "vector.from_py":45
- * 
- * @cname("__pyx_convert_vector_from_py_unsigned_int")
- * cdef vector[X] __pyx_convert_vector_from_py_unsigned_int(object o) except *:             # <<<<<<<<<<<<<<
- *     cdef vector[X] v
- *     for item in o:
- */
-
-  /* function exit code */
-  __pyx_L1_error:;
-  __Pyx_XDECREF(__pyx_t_1);
-  __Pyx_XDECREF(__pyx_t_4);
-  __Pyx_AddTraceback("vector.from_py.__pyx_convert_vector_from_py_unsigned_int", __pyx_clineno, __pyx_lineno, __pyx_filename);
-  __Pyx_pretend_to_initialize(&__pyx_r);
-  __pyx_L0:;
-  __Pyx_XDECREF(__pyx_v_item);
-  __Pyx_RefNannyFinishContext();
-  return __pyx_r;
-}
-
-/* "vector.to_py":60
- * 
- * @cname("__pyx_convert_vector_to_py_struct__Color")
- * cdef object __pyx_convert_vector_to_py_struct__Color(vector[X]& v):             # <<<<<<<<<<<<<<
- *     return [v[i] for i in range(v.size())]
- * 
- */
-
 static PyObject *__pyx_convert_vector_to_py_struct__Color(const std::vector<struct Color>  &__pyx_v_v) {
   size_t __pyx_v_i;
   PyObject *__pyx_r = NULL;
@@ -11976,60 +11579,6 @@ static PyObject *__pyx_convert_vector_to_py_struct__Color(const std::vector<stru
   __Pyx_XDECREF(__pyx_t_1);
   __Pyx_XDECREF(__pyx_t_5);
   __Pyx_AddTraceback("vector.to_py.__pyx_convert_vector_to_py_struct__Color", __pyx_clineno, __pyx_lineno, __pyx_filename);
-  __pyx_r = 0;
-  __pyx_L0:;
-  __Pyx_XGIVEREF(__pyx_r);
-  __Pyx_RefNannyFinishContext();
-  return __pyx_r;
-}
-
-static PyObject *__pyx_convert_vector_to_py_std_3a__3a_vector_3c_struct__Color_3e___(const std::vector<std::vector<struct Color> >  &__pyx_v_v) {
-  size_t __pyx_v_i;
-  PyObject *__pyx_r = NULL;
-  __Pyx_RefNannyDeclarations
-  PyObject *__pyx_t_1 = NULL;
-  size_t __pyx_t_2;
-  size_t __pyx_t_3;
-  size_t __pyx_t_4;
-  PyObject *__pyx_t_5 = NULL;
-  __Pyx_RefNannySetupContext("__pyx_convert_vector_to_py_std_3a__3a_vector_3c_struct__Color_3e___", 0);
-
-  /* "vector.to_py":61
- * @cname("__pyx_convert_vector_to_py_std_3a__3a_vector_3c_struct__Color_3e___")
- * cdef object __pyx_convert_vector_to_py_std_3a__3a_vector_3c_struct__Color_3e___(vector[X]& v):
- *     return [v[i] for i in range(v.size())]             # <<<<<<<<<<<<<<
- * 
- * 
- */
-  __Pyx_XDECREF(__pyx_r);
-  __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 61, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __pyx_v_v.size();
-  __pyx_t_3 = __pyx_t_2;
-  for (__pyx_t_4 = 0; __pyx_t_4 < __pyx_t_3; __pyx_t_4+=1) {
-    __pyx_v_i = __pyx_t_4;
-    __pyx_t_5 = __pyx_convert_vector_to_py_struct__Color((__pyx_v_v[__pyx_v_i])); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 61, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_5);
-    if (unlikely(__Pyx_ListComp_Append(__pyx_t_1, (PyObject*)__pyx_t_5))) __PYX_ERR(0, 61, __pyx_L1_error)
-    __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  }
-  __pyx_r = __pyx_t_1;
-  __pyx_t_1 = 0;
-  goto __pyx_L0;
-
-  /* "vector.to_py":60
- * 
- * @cname("__pyx_convert_vector_to_py_std_3a__3a_vector_3c_struct__Color_3e___")
- * cdef object __pyx_convert_vector_to_py_std_3a__3a_vector_3c_struct__Color_3e___(vector[X]& v):             # <<<<<<<<<<<<<<
- *     return [v[i] for i in range(v.size())]
- * 
- */
-
-  /* function exit code */
-  __pyx_L1_error:;
-  __Pyx_XDECREF(__pyx_t_1);
-  __Pyx_XDECREF(__pyx_t_5);
-  __Pyx_AddTraceback("vector.to_py.__pyx_convert_vector_to_py_std_3a__3a_vector_3c_struct__Color_3e___", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = 0;
   __pyx_L0:;
   __Pyx_XGIVEREF(__pyx_r);
@@ -12539,117 +12088,6 @@ static std::vector<struct Color>  __pyx_convert_vector_from_py_struct__Color(PyO
   __Pyx_XDECREF(__pyx_t_1);
   __Pyx_XDECREF(__pyx_t_4);
   __Pyx_AddTraceback("vector.from_py.__pyx_convert_vector_from_py_struct__Color", __pyx_clineno, __pyx_lineno, __pyx_filename);
-  __Pyx_pretend_to_initialize(&__pyx_r);
-  __pyx_L0:;
-  __Pyx_XDECREF(__pyx_v_item);
-  __Pyx_RefNannyFinishContext();
-  return __pyx_r;
-}
-
-static std::vector<std::vector<struct Color> >  __pyx_convert_vector_from_py_std_3a__3a_vector_3c_struct__Color_3e___(PyObject *__pyx_v_o) {
-  std::vector<std::vector<struct Color> >  __pyx_v_v;
-  PyObject *__pyx_v_item = NULL;
-  std::vector<std::vector<struct Color> >  __pyx_r;
-  __Pyx_RefNannyDeclarations
-  PyObject *__pyx_t_1 = NULL;
-  Py_ssize_t __pyx_t_2;
-  PyObject *(*__pyx_t_3)(PyObject *);
-  PyObject *__pyx_t_4 = NULL;
-  std::vector<struct Color>  __pyx_t_5;
-  __Pyx_RefNannySetupContext("__pyx_convert_vector_from_py_std_3a__3a_vector_3c_struct__Color_3e___", 0);
-
-  /* "vector.from_py":47
- * cdef vector[X] __pyx_convert_vector_from_py_std_3a__3a_vector_3c_struct__Color_3e___(object o) except *:
- *     cdef vector[X] v
- *     for item in o:             # <<<<<<<<<<<<<<
- *         v.push_back(<X>item)
- *     return v
- */
-  if (likely(PyList_CheckExact(__pyx_v_o)) || PyTuple_CheckExact(__pyx_v_o)) {
-    __pyx_t_1 = __pyx_v_o; __Pyx_INCREF(__pyx_t_1); __pyx_t_2 = 0;
-    __pyx_t_3 = NULL;
-  } else {
-    __pyx_t_2 = -1; __pyx_t_1 = PyObject_GetIter(__pyx_v_o); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 47, __pyx_L1_error)
-    __Pyx_GOTREF(__pyx_t_1);
-    __pyx_t_3 = Py_TYPE(__pyx_t_1)->tp_iternext; if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 47, __pyx_L1_error)
-  }
-  for (;;) {
-    if (likely(!__pyx_t_3)) {
-      if (likely(PyList_CheckExact(__pyx_t_1))) {
-        if (__pyx_t_2 >= PyList_GET_SIZE(__pyx_t_1)) break;
-        #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-        __pyx_t_4 = PyList_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_4); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 47, __pyx_L1_error)
-        #else
-        __pyx_t_4 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 47, __pyx_L1_error)
-        __Pyx_GOTREF(__pyx_t_4);
-        #endif
-      } else {
-        if (__pyx_t_2 >= PyTuple_GET_SIZE(__pyx_t_1)) break;
-        #if CYTHON_ASSUME_SAFE_MACROS && !CYTHON_AVOID_BORROWED_REFS
-        __pyx_t_4 = PyTuple_GET_ITEM(__pyx_t_1, __pyx_t_2); __Pyx_INCREF(__pyx_t_4); __pyx_t_2++; if (unlikely(0 < 0)) __PYX_ERR(0, 47, __pyx_L1_error)
-        #else
-        __pyx_t_4 = PySequence_ITEM(__pyx_t_1, __pyx_t_2); __pyx_t_2++; if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 47, __pyx_L1_error)
-        __Pyx_GOTREF(__pyx_t_4);
-        #endif
-      }
-    } else {
-      __pyx_t_4 = __pyx_t_3(__pyx_t_1);
-      if (unlikely(!__pyx_t_4)) {
-        PyObject* exc_type = PyErr_Occurred();
-        if (exc_type) {
-          if (likely(__Pyx_PyErr_GivenExceptionMatches(exc_type, PyExc_StopIteration))) PyErr_Clear();
-          else __PYX_ERR(0, 47, __pyx_L1_error)
-        }
-        break;
-      }
-      __Pyx_GOTREF(__pyx_t_4);
-    }
-    __Pyx_XDECREF_SET(__pyx_v_item, __pyx_t_4);
-    __pyx_t_4 = 0;
-
-    /* "vector.from_py":48
- *     cdef vector[X] v
- *     for item in o:
- *         v.push_back(<X>item)             # <<<<<<<<<<<<<<
- *     return v
- * 
- */
-    __pyx_t_5 = __pyx_convert_vector_from_py_struct__Color(__pyx_v_item); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 48, __pyx_L1_error)
-    __pyx_v_v.push_back(((std::vector<struct Color> )__pyx_t_5));
-
-    /* "vector.from_py":47
- * cdef vector[X] __pyx_convert_vector_from_py_std_3a__3a_vector_3c_struct__Color_3e___(object o) except *:
- *     cdef vector[X] v
- *     for item in o:             # <<<<<<<<<<<<<<
- *         v.push_back(<X>item)
- *     return v
- */
-  }
-  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-
-  /* "vector.from_py":49
- *     for item in o:
- *         v.push_back(<X>item)
- *     return v             # <<<<<<<<<<<<<<
- * 
- * 
- */
-  __pyx_r = __pyx_v_v;
-  goto __pyx_L0;
-
-  /* "vector.from_py":45
- * 
- * @cname("__pyx_convert_vector_from_py_std_3a__3a_vector_3c_struct__Color_3e___")
- * cdef vector[X] __pyx_convert_vector_from_py_std_3a__3a_vector_3c_struct__Color_3e___(object o) except *:             # <<<<<<<<<<<<<<
- *     cdef vector[X] v
- *     for item in o:
- */
-
-  /* function exit code */
-  __pyx_L1_error:;
-  __Pyx_XDECREF(__pyx_t_1);
-  __Pyx_XDECREF(__pyx_t_4);
-  __Pyx_AddTraceback("vector.from_py.__pyx_convert_vector_from_py_std_3a__3a_vector_3c_struct__Color_3e___", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __Pyx_pretend_to_initialize(&__pyx_r);
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_item);
@@ -26271,20 +25709,6 @@ static int __pyx_setprop_16slam_accelerator_9KeyPoints_kps3d(PyObject *o, PyObje
   }
 }
 
-static PyObject *__pyx_getprop_16slam_accelerator_9KeyPoints_err(PyObject *o, CYTHON_UNUSED void *x) {
-  return __pyx_pw_16slam_accelerator_9KeyPoints_3err_1__get__(o);
-}
-
-static int __pyx_setprop_16slam_accelerator_9KeyPoints_err(PyObject *o, PyObject *v, CYTHON_UNUSED void *x) {
-  if (v) {
-    return __pyx_pw_16slam_accelerator_9KeyPoints_3err_3__set__(o, v);
-  }
-  else {
-    PyErr_SetString(PyExc_NotImplementedError, "__del__");
-    return -1;
-  }
-}
-
 static PyMethodDef __pyx_methods_16slam_accelerator_KeyPoints[] = {
   {"__reduce_cython__", (PyCFunction)__pyx_pw_16slam_accelerator_9KeyPoints_1__reduce_cython__, METH_NOARGS, 0},
   {"__setstate_cython__", (PyCFunction)__pyx_pw_16slam_accelerator_9KeyPoints_3__setstate_cython__, METH_O, 0},
@@ -26294,7 +25718,6 @@ static PyMethodDef __pyx_methods_16slam_accelerator_KeyPoints[] = {
 static struct PyGetSetDef __pyx_getsets_16slam_accelerator_KeyPoints[] = {
   {(char *)"kps2d", __pyx_getprop_16slam_accelerator_9KeyPoints_kps2d, __pyx_setprop_16slam_accelerator_9KeyPoints_kps2d, (char *)0, 0},
   {(char *)"kps3d", __pyx_getprop_16slam_accelerator_9KeyPoints_kps3d, __pyx_setprop_16slam_accelerator_9KeyPoints_kps3d, (char *)0, 0},
-  {(char *)"err", __pyx_getprop_16slam_accelerator_9KeyPoints_err, __pyx_setprop_16slam_accelerator_9KeyPoints_err, (char *)0, 0},
   {0, 0, 0, 0, 0}
 };
 
@@ -27369,7 +26792,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_slam_accelerator, __pyx_k_slam_accelerator, sizeof(__pyx_k_slam_accelerator), 0, 0, 1, 1},
   {&__pyx_n_s_start, __pyx_k_start, sizeof(__pyx_k_start), 0, 0, 1, 1},
   {&__pyx_n_s_step, __pyx_k_step, sizeof(__pyx_k_step), 0, 0, 1, 1},
-  {&__pyx_n_s_stereo_image, __pyx_k_stereo_image, sizeof(__pyx_k_stereo_image), 0, 0, 1, 1},
+  {&__pyx_n_s_stereo_images, __pyx_k_stereo_images, sizeof(__pyx_k_stereo_images), 0, 0, 1, 1},
   {&__pyx_n_s_stop, __pyx_k_stop, sizeof(__pyx_k_stop), 0, 0, 1, 1},
   {&__pyx_kp_s_strided_and_direct, __pyx_k_strided_and_direct, sizeof(__pyx_k_strided_and_direct), 0, 0, 1, 0},
   {&__pyx_kp_s_strided_and_direct_or_indirect, __pyx_k_strided_and_direct_or_indirect, sizeof(__pyx_k_strided_and_direct_or_indirect), 0, 0, 1, 0},
@@ -27392,8 +26815,8 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
 };
 static CYTHON_SMALL_CODE int __Pyx_InitCachedBuiltins(void) {
   __pyx_builtin_TypeError = __Pyx_GetBuiltinName(__pyx_n_s_TypeError); if (!__pyx_builtin_TypeError) __PYX_ERR(0, 2, __pyx_L1_error)
-  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) __PYX_ERR(1, 218, __pyx_L1_error)
-  __pyx_builtin_enumerate = __Pyx_GetBuiltinName(__pyx_n_s_enumerate); if (!__pyx_builtin_enumerate) __PYX_ERR(1, 236, __pyx_L1_error)
+  __pyx_builtin_range = __Pyx_GetBuiltinName(__pyx_n_s_range); if (!__pyx_builtin_range) __PYX_ERR(1, 216, __pyx_L1_error)
+  __pyx_builtin_enumerate = __Pyx_GetBuiltinName(__pyx_n_s_enumerate); if (!__pyx_builtin_enumerate) __PYX_ERR(1, 234, __pyx_L1_error)
   __pyx_builtin_ValueError = __Pyx_GetBuiltinName(__pyx_n_s_ValueError); if (!__pyx_builtin_ValueError) __PYX_ERR(2, 272, __pyx_L1_error)
   __pyx_builtin_RuntimeError = __Pyx_GetBuiltinName(__pyx_n_s_RuntimeError); if (!__pyx_builtin_RuntimeError) __PYX_ERR(2, 856, __pyx_L1_error)
   __pyx_builtin_ImportError = __Pyx_GetBuiltinName(__pyx_n_s_ImportError); if (!__pyx_builtin_ImportError) __PYX_ERR(2, 1038, __pyx_L1_error)
@@ -28084,37 +27507,37 @@ static int __Pyx_modinit_type_init_code(void) {
   if (PyObject_SetAttr(__pyx_m, __pyx_n_s_DepthCalculator, (PyObject *)&__pyx_type_16slam_accelerator_DepthCalculator) < 0) __PYX_ERR(1, 84, __pyx_L1_error)
   if (__Pyx_setup_reduce((PyObject*)&__pyx_type_16slam_accelerator_DepthCalculator) < 0) __PYX_ERR(1, 84, __pyx_L1_error)
   __pyx_ptype_16slam_accelerator_DepthCalculator = &__pyx_type_16slam_accelerator_DepthCalculator;
-  if (PyType_Ready(&__pyx_type_16slam_accelerator_StereoImage) < 0) __PYX_ERR(1, 95, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_16slam_accelerator_StereoImage) < 0) __PYX_ERR(1, 100, __pyx_L1_error)
   __pyx_type_16slam_accelerator_StereoImage.tp_print = 0;
   if ((CYTHON_USE_TYPE_SLOTS && CYTHON_USE_PYTYPE_LOOKUP) && likely(!__pyx_type_16slam_accelerator_StereoImage.tp_dictoffset && __pyx_type_16slam_accelerator_StereoImage.tp_getattro == PyObject_GenericGetAttr)) {
     __pyx_type_16slam_accelerator_StereoImage.tp_getattro = __Pyx_PyObject_GenericGetAttr;
   }
-  if (PyObject_SetAttr(__pyx_m, __pyx_n_s_StereoImage, (PyObject *)&__pyx_type_16slam_accelerator_StereoImage) < 0) __PYX_ERR(1, 95, __pyx_L1_error)
-  if (__Pyx_setup_reduce((PyObject*)&__pyx_type_16slam_accelerator_StereoImage) < 0) __PYX_ERR(1, 95, __pyx_L1_error)
+  if (PyObject_SetAttr(__pyx_m, __pyx_n_s_StereoImage, (PyObject *)&__pyx_type_16slam_accelerator_StereoImage) < 0) __PYX_ERR(1, 100, __pyx_L1_error)
+  if (__Pyx_setup_reduce((PyObject*)&__pyx_type_16slam_accelerator_StereoImage) < 0) __PYX_ERR(1, 100, __pyx_L1_error)
   __pyx_ptype_16slam_accelerator_StereoImage = &__pyx_type_16slam_accelerator_StereoImage;
-  if (PyType_Ready(&__pyx_type_16slam_accelerator_CameraSettings) < 0) __PYX_ERR(1, 112, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_16slam_accelerator_CameraSettings) < 0) __PYX_ERR(1, 116, __pyx_L1_error)
   __pyx_type_16slam_accelerator_CameraSettings.tp_print = 0;
   if ((CYTHON_USE_TYPE_SLOTS && CYTHON_USE_PYTYPE_LOOKUP) && likely(!__pyx_type_16slam_accelerator_CameraSettings.tp_dictoffset && __pyx_type_16slam_accelerator_CameraSettings.tp_getattro == PyObject_GenericGetAttr)) {
     __pyx_type_16slam_accelerator_CameraSettings.tp_getattro = __Pyx_PyObject_GenericGetAttr;
   }
-  if (PyObject_SetAttr(__pyx_m, __pyx_n_s_CameraSettings, (PyObject *)&__pyx_type_16slam_accelerator_CameraSettings) < 0) __PYX_ERR(1, 112, __pyx_L1_error)
-  if (__Pyx_setup_reduce((PyObject*)&__pyx_type_16slam_accelerator_CameraSettings) < 0) __PYX_ERR(1, 112, __pyx_L1_error)
+  if (PyObject_SetAttr(__pyx_m, __pyx_n_s_CameraSettings, (PyObject *)&__pyx_type_16slam_accelerator_CameraSettings) < 0) __PYX_ERR(1, 116, __pyx_L1_error)
+  if (__Pyx_setup_reduce((PyObject*)&__pyx_type_16slam_accelerator_CameraSettings) < 0) __PYX_ERR(1, 116, __pyx_L1_error)
   __pyx_ptype_16slam_accelerator_CameraSettings = &__pyx_type_16slam_accelerator_CameraSettings;
-  if (PyType_Ready(&__pyx_type_16slam_accelerator_KeyPoints) < 0) __PYX_ERR(1, 182, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_16slam_accelerator_KeyPoints) < 0) __PYX_ERR(1, 186, __pyx_L1_error)
   __pyx_type_16slam_accelerator_KeyPoints.tp_print = 0;
   if ((CYTHON_USE_TYPE_SLOTS && CYTHON_USE_PYTYPE_LOOKUP) && likely(!__pyx_type_16slam_accelerator_KeyPoints.tp_dictoffset && __pyx_type_16slam_accelerator_KeyPoints.tp_getattro == PyObject_GenericGetAttr)) {
     __pyx_type_16slam_accelerator_KeyPoints.tp_getattro = __Pyx_PyObject_GenericGetAttr;
   }
-  if (PyObject_SetAttr(__pyx_m, __pyx_n_s_KeyPoints, (PyObject *)&__pyx_type_16slam_accelerator_KeyPoints) < 0) __PYX_ERR(1, 182, __pyx_L1_error)
-  if (__Pyx_setup_reduce((PyObject*)&__pyx_type_16slam_accelerator_KeyPoints) < 0) __PYX_ERR(1, 182, __pyx_L1_error)
+  if (PyObject_SetAttr(__pyx_m, __pyx_n_s_KeyPoints, (PyObject *)&__pyx_type_16slam_accelerator_KeyPoints) < 0) __PYX_ERR(1, 186, __pyx_L1_error)
+  if (__Pyx_setup_reduce((PyObject*)&__pyx_type_16slam_accelerator_KeyPoints) < 0) __PYX_ERR(1, 186, __pyx_L1_error)
   __pyx_ptype_16slam_accelerator_KeyPoints = &__pyx_type_16slam_accelerator_KeyPoints;
-  if (PyType_Ready(&__pyx_type_16slam_accelerator_KeyFrame) < 0) __PYX_ERR(1, 204, __pyx_L1_error)
+  if (PyType_Ready(&__pyx_type_16slam_accelerator_KeyFrame) < 0) __PYX_ERR(1, 202, __pyx_L1_error)
   __pyx_type_16slam_accelerator_KeyFrame.tp_print = 0;
   if ((CYTHON_USE_TYPE_SLOTS && CYTHON_USE_PYTYPE_LOOKUP) && likely(!__pyx_type_16slam_accelerator_KeyFrame.tp_dictoffset && __pyx_type_16slam_accelerator_KeyFrame.tp_getattro == PyObject_GenericGetAttr)) {
     __pyx_type_16slam_accelerator_KeyFrame.tp_getattro = __Pyx_PyObject_GenericGetAttr;
   }
-  if (PyObject_SetAttr(__pyx_m, __pyx_n_s_KeyFrame, (PyObject *)&__pyx_type_16slam_accelerator_KeyFrame) < 0) __PYX_ERR(1, 204, __pyx_L1_error)
-  if (__Pyx_setup_reduce((PyObject*)&__pyx_type_16slam_accelerator_KeyFrame) < 0) __PYX_ERR(1, 204, __pyx_L1_error)
+  if (PyObject_SetAttr(__pyx_m, __pyx_n_s_KeyFrame, (PyObject *)&__pyx_type_16slam_accelerator_KeyFrame) < 0) __PYX_ERR(1, 202, __pyx_L1_error)
+  if (__Pyx_setup_reduce((PyObject*)&__pyx_type_16slam_accelerator_KeyFrame) < 0) __PYX_ERR(1, 202, __pyx_L1_error)
   __pyx_ptype_16slam_accelerator_KeyFrame = &__pyx_type_16slam_accelerator_KeyFrame;
   __pyx_vtabptr_array = &__pyx_vtable_array;
   __pyx_vtable_array.get_memview = (PyObject *(*)(struct __pyx_array_obj *))__pyx_array_get_memview;
@@ -31951,37 +31374,6 @@ static PyObject* __pyx_convert__to_py_struct__KeyPoint2d(struct KeyPoint2d s) {
         int one = 1; int little = (int)*(unsigned char *)&one;
         unsigned char *bytes = (unsigned char *)&value;
         return _PyLong_FromByteArray(bytes, sizeof(int),
-                                     little, !is_unsigned);
-    }
-}
-
-/* CIntToPy */
-  static CYTHON_INLINE PyObject* __Pyx_PyInt_From_unsigned_int(unsigned int value) {
-    const unsigned int neg_one = (unsigned int) ((unsigned int) 0 - (unsigned int) 1), const_zero = (unsigned int) 0;
-    const int is_unsigned = neg_one > const_zero;
-    if (is_unsigned) {
-        if (sizeof(unsigned int) < sizeof(long)) {
-            return PyInt_FromLong((long) value);
-        } else if (sizeof(unsigned int) <= sizeof(unsigned long)) {
-            return PyLong_FromUnsignedLong((unsigned long) value);
-#ifdef HAVE_LONG_LONG
-        } else if (sizeof(unsigned int) <= sizeof(unsigned PY_LONG_LONG)) {
-            return PyLong_FromUnsignedLongLong((unsigned PY_LONG_LONG) value);
-#endif
-        }
-    } else {
-        if (sizeof(unsigned int) <= sizeof(long)) {
-            return PyInt_FromLong((long) value);
-#ifdef HAVE_LONG_LONG
-        } else if (sizeof(unsigned int) <= sizeof(PY_LONG_LONG)) {
-            return PyLong_FromLongLong((PY_LONG_LONG) value);
-#endif
-        }
-    }
-    {
-        int one = 1; int little = (int)*(unsigned char *)&one;
-        unsigned char *bytes = (unsigned char *)&value;
-        return _PyLong_FromByteArray(bytes, sizeof(unsigned int),
                                      little, !is_unsigned);
     }
 }

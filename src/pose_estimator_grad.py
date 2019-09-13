@@ -17,8 +17,13 @@ class PoseEstimator:
 
 
     def _optimize_pose(self, pose):
-        _kps3d = self.previous_kps[self.round].kps3d
-        _kps2d = self.previous_kps[self.round].kps2d
+        divider = 2**self.round
+        _kps3d = self.previous_kps.kps3d
+        _kps2d = self.previous_kps.kps2d
+        for i in range(0, len(_kps2d)):
+            _kps2d[i]['x'] = _kps2d[i]['x']/divider
+            _kps2d[i]['y'] = _kps2d[i]['y']/divider
+
         kps2d = project_keypoints(pose, _kps3d,
                                   self._camera_settings[self.round])
 
@@ -35,7 +40,7 @@ class PoseEstimator:
         return np.sum(diff), diff
 
     def _get_derivate2(self, pose):
-        DIFF = 0.000001
+        DIFF = 0.0001
         _pose = pose.copy()
         _pose['x'] -= DIFF
         t41, _none_ = self._optimize_pose_newton(_pose)
@@ -79,14 +84,12 @@ class PoseEstimator:
         # This is slightly shaky because the gradient is only taken at the
         # exact point position instead an averiged one
 
-        kps3d = self.previous_kps[self.round].kps3d
-        kps2d = self.previous_kps[self.round].kps2d
+        kps3d = self.previous_kps.kps3d
+        kps2d = self.previous_kps.kps2d
 
-        _kps2d = project_keypoints(pose, kps3d,
-                                  self._camera_settings[self.round])
 
+        divider = 2**self.round
         _image = self.previous_image[self.round].left
-        __image = self.current_image[self.round].left
         if self.hessian is None:
             hessian = np.zeros((6,6))
             for i in range(0, len(kps3d)):
@@ -99,11 +102,14 @@ class PoseEstimator:
                 jacobian = -np.mat([[1/z, 0, -x/z**2, -x*y/z**2,1+x**2/z**2, -y/z],
                                    [0, 1/z, -y/z**2, -(1+y**2/z**2), x*y/z**2, x/z]])
 
-                int1 = cv2.getRectSubPix(_image, (1,1), (kp2d['x'], kp2d['y']), patchType=cv2.CV_32F)
-                int2 = cv2.getRectSubPix(_image, (1,1), (kp2d['x']+0.0001, kp2d['y']), patchType=cv2.CV_32F)
-                int3 = cv2.getRectSubPix(_image, (1,1), (kp2d['x'], kp2d['y']+0.0001), patchType=cv2.CV_32F)
+                x2d = kp2d['x']/divider
+                y2d = kp2d['y']/divider
+
+                int1 = cv2.getRectSubPix(_image, (1,1), (x2d, y2d), patchType=cv2.CV_32F)
+                int2 = cv2.getRectSubPix(_image, (1,1), (x2d+0.0001, y2d), patchType=cv2.CV_32F)
+                int3 = cv2.getRectSubPix(_image, (1,1), (x2d, y2d+0.0001), patchType=cv2.CV_32F)
                 # We have to norm the gradient
-                grad = np.mat([int1[0]-int2[0], int1[0]-int3[0]])
+                grad = -np.mat([int1[0]-int2[0], int1[0]-int3[0]])
                 #grad = grad/np.sum(grad)
 
                 jac = grad.transpose()*jacobian
@@ -112,11 +118,18 @@ class PoseEstimator:
 
             self.hessian = np.linalg.pinv(hessian)
 
+        _kps2d = project_keypoints(pose, kps3d,
+                                  self._camera_settings[self.round])
+        __image = self.current_image[self.round].left
         dp = np.zeros((6,1))
         for i in range(0, len(kps3d)):
             kp2d = kps2d[i]
             _kp2d = _kps2d[i]
-            int1 = cv2.getRectSubPix(_image, (1,1), (kp2d['x'], kp2d['y']), patchType=cv2.CV_32F)
+
+            x2d = kp2d['x']/divider
+            y2d = kp2d['y']/divider
+
+            int1 = cv2.getRectSubPix(_image, (1,1), (x2d, y2d), patchType=cv2.CV_32F)
             int2 = cv2.getRectSubPix(__image, (1,1), (_kp2d['x'], _kp2d['y']), patchType=cv2.CV_32F)
 
             jacobian = self.jacobian[i]
@@ -142,8 +155,8 @@ class PoseEstimator:
         for i in range(0, MAX_ITER):
             # Check 3d cloud. Is it really okay?
             dp = self._get_derivate(x, diff)
-            dp2 = np.array([0.0,0.0,0.0,-1.0,0.0,0.0])
-            dp3 = self._get_derivate2(x)
+            #dp2 = np.array([0.0,0.0,0.0,-1.0,0.0,0.0])
+            #dp3 = self._get_derivate2(x)
             while i < MAX_ITER:
                 new_x['roll'] =  new_x['roll'] + k*dp[0]
                 new_x['pitch'] =  new_x['pitch'] + k*dp[1]
@@ -193,6 +206,12 @@ class PoseEstimator:
             current_guess, cost = self._optimize(current_guess)
             total_cost = total_cost+cost
             print(current_guess)
+
+        #self.hessian = None
+        #self.jacobian = []
+        #self.round = 0
+        #current_guess, cost = self._optimize(current_guess)
+        #total_cost = total_cost+cost
 
         print(f"Guess: {pose_guess}")
         print(f"New pose: {current_guess}")

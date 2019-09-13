@@ -30,35 +30,22 @@ class Mapping:
                 *int((left.shape[1])/grid_width)
 
     def calculate_depth(self, stereo_image, pose):
-        keypoints = [None]*len(stereo_image)
         camera_settings = CameraSettings(self.camera_settings)
-        camera_settings.window_size = 4
+        camera_settings.window_size = 9
 
-        for i in range(0, len(stereo_image)):
-            # Bigger image -> more blocks
-            _keypoints = self.depth_calculator.calculate_depth(stereo_image[i],
-                                                      camera_settings)
+        keypoints = self.depth_calculator.calculate_depth(stereo_image,
+                                                    camera_settings)
 
-            _keypoints.kps3d = transform_keypoints_inverse(pose, _keypoints.kps3d)
-            keypoints[i] = _keypoints
+        keypoints.kps3d = transform_keypoints_inverse(pose, keypoints.kps3d)
 
-            # Is everything /2 right?
-            camera_settings.baseline = camera_settings.baseline/2
-            camera_settings.fx = camera_settings.fx/2
-            camera_settings.fy = camera_settings.fy/2
-            camera_settings.cx = camera_settings.cx/2
-            camera_settings.cy = camera_settings.cy/2
-            camera_settings.search_x = camera_settings.search_x/2
-            camera_settings.search_y = camera_settings.search_y/2
-            camera_settings.grid_width = camera_settings.grid_width/2
-            camera_settings.grid_height = camera_settings.grid_height/2
-
-        colors = []
-        for i in range(0, len(stereo_image)):
-            _colors = np.random.randint(0, 255, (len(keypoints[0].kps2d), 3),
-                                    dtype=np.uint8)
-            _colors = list(map(lambda x: {'r': x[0], 'g': x[1], 'b': x[2]}, _colors))
-            colors.append(_colors)
+        colors = np.random.randint(0, 255, (len(keypoints.kps2d), 3), dtype=np.uint8)
+        colors = list(map(lambda x: {'r': x[0], 'g': x[1], 'b': x[2]}, colors))
+        #colors = []
+        #for i in range(0, len(keypoints.kps3d)):
+        #    colors.append({
+        #        'r': ((40.0-keypoints.kps3d[i]['z'])/40.0)*255.0,
+        #        'g': 0,
+        #        'b': 0})
 
         kf = KeyFrame()
 

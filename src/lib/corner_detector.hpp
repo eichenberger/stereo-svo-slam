@@ -3,6 +3,8 @@
 
 #include <opencv2/opencv.hpp>
 
+#include "stereo_slam_types.hpp"
+
 using namespace cv;
 using namespace std;
 
@@ -13,7 +15,9 @@ public:
 
     void detect_keypoints(const Mat &image,
             int grid_width, int grid_height,
-            vector<Point> &keypoints);
+            vector<KeyPoint2d> &keypoints,
+            vector<KeyPointInformation> &kp_info,
+            int level);
 
 };
 

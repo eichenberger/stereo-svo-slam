@@ -25,10 +25,10 @@ cdef extern from "slam_accelerator_helper.hpp":
         double *keypoints2d,
         int number_of_keypoints) nogil
 
-cimport stereo_slam_types
 cimport depth_calculator
 cimport transform_keypoints
 cimport image_comparison
+cimport stereo_slam_types
 
 cdef _c2np(stereo_slam_types.Mat image):
     rows = image.rows
@@ -84,9 +84,14 @@ def transform_keypoints_inverse(pose, input):
 cdef class DepthCalculator:
     cdef depth_calculator.DepthCalculator _depth_calculator
 
-    def calculate_depth(self, StereoImage stereo_image, CameraSettings camera_settings):
+    def calculate_depth(self, stereo_images, CameraSettings camera_settings):
         keypoints = KeyPoints()
-        self._depth_calculator.calculate_depth(stereo_image._stereo_image,
+
+        cdef vector[stereo_slam_types.StereoImage] _stereo_images
+        for stereo_image in stereo_images:
+            _stereo_images.push_back((<StereoImage>stereo_image)._stereo_image)
+
+        self._depth_calculator.calculate_depth(_stereo_images,
                                                camera_settings._camera_settings,
                                                keypoints._keypoints)
 
@@ -94,7 +99,6 @@ cdef class DepthCalculator:
 
 cdef class StereoImage:
     cdef stereo_slam_types.StereoImage _stereo_image
-
 
     @property
     def left(self):
@@ -194,12 +198,6 @@ cdef class KeyPoints:
     @kps3d.setter
     def kps3d(self, kps3d):
         self._keypoints.kps3d = kps3d
-    @property
-    def err(self):
-        return np.asarray(self._keypoints.err)
-    @err.setter
-    def err(self, err):
-        self._keypoints.err= err
 
 cdef class KeyFrame:
     cdef stereo_slam_types.KeyFrame _keyframe
@@ -238,17 +236,12 @@ cdef class KeyFrame:
 
     @property
     def kps(self):
-        kps = []
-        for i in range(0, self._keyframe.kps.size()):
-            _kps = KeyPoints()
-            _kps._keypoints = self._keyframe.kps[i]
-            kps.append(_kps)
+        kps = KeyPoints()
+        kps._keypoints = self._keyframe.kps
         return kps
     @kps.setter
     def kps(self, kps):
-        self._keyframe.kps.resize(len(kps))
-        for i, _kps in enumerate(kps):
-            self._keyframe.kps[i] = (<KeyPoints>_kps)._keypoints
+        self._keyframe.kps = (<KeyPoints>kps)._keypoints
 
     @property
     def colors(self):

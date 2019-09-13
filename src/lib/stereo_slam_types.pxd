@@ -1,7 +1,7 @@
 from libcpp.vector cimport vector
 
 # Declares OpenCV's cv::Mat class
-cdef extern from "opencv2/core/core.hpp":
+cdef extern from "opencv2/core/core.hpp" namespace "cv":
     cdef cppclass Mat:
         Mat()
         Mat (int rows, int cols, int type, void *data)
@@ -11,18 +11,24 @@ cdef extern from "opencv2/core/core.hpp":
         int cols
         pass
 
-cdef extern from "<array>" namespace "std" nogil:
-    cdef cppclass array3 "std::array<float, 3>":
-        array3() except+
-        float& operator[](size_t)
-    cdef cppclass array2 "std::array<float, 2>":
-        array2() except+
-        float& operator[](size_t)
+#cdef extern from "<array>" namespace "std" nogil:
+#    cdef cppclass array3 "std::array<float, 3>":
+#        array3() except+
+#        float& operator[](size_t)
+#    cdef cppclass array2 "std::array<float, 2>":
+#        array2() except+
+#        float& operator[](size_t)
 
 cdef extern from "stereo_slam_types.hpp":
+    cdef enum KeyPointType
+        KP_FAST,
+        KP_EDGELET
+
     cdef struct KeyPoint2d:
         float x
         float y
+        int level
+        KeyPointType type
 
     cdef struct KeyPoint3d:
         float x
@@ -48,7 +54,7 @@ cdef extern from "stereo_slam_types.hpp":
     cdef struct KeyPoints:
         vector[KeyPoint2d] kps2d
         vector[KeyPoint3d] kps3d
-        vector[unsigned int] err
+        vector[float] confidence
 
     cdef struct Pose:
         float x
@@ -66,5 +72,5 @@ cdef extern from "stereo_slam_types.hpp":
     cdef struct KeyFrame:
         Pose pose
         vector[StereoImage] stereo_images
-        vector[KeyPoints] kps
-        vector[vector[Color]] colors
+        KeyPoints kps
+        vector[Color] colors
