@@ -4,7 +4,10 @@ CXX      ?= g++
 CXXFLAGS  ?= -std=c++17 -O0 -ggdb -Wall -fopenmp -I. -I../lib -I/usr/local/include/opencv4
 LDFLAGS ?= -O0 -lstdc++ -fopenmp -L/usr/local/lib/ -lopencv_features2d -lopencv_core -lopencv_imgproc -lopencv_imgcodecs
 
-OBJ = ../lib/corner_detector.o test.o test_corner_detector.o ../lib/depth_calculator.o test_depth_calculator.o
+OBJ = ../lib/corner_detector.o test.o test_corner_detector.o ../lib/depth_calculator.o test_depth_calculator.o \
+	  test_exponential_map.o
+
+OBJ = test.o test_exponential_map.o
 PROGNAME = test
 
 exec_prefix ?= /usr

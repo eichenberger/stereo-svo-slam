@@ -20,20 +20,24 @@ cdef extern from "opencv2/core/core.hpp" namespace "cv":
 #        float& operator[](size_t)
 
 cdef extern from "stereo_slam_types.hpp":
-    cdef enum KeyPointType
+    cdef enum KeyPointType:
         KP_FAST,
         KP_EDGELET
 
     cdef struct KeyPoint2d:
         float x
         float y
-        int level
-        KeyPointType type
 
     cdef struct KeyPoint3d:
         float x
         float y
         float z
+
+    cdef struct KeyPointInformation:
+        float score
+        int level
+        KeyPointType type
+        float confidence
 
     cdef struct StereoImage:
         Mat left
@@ -54,7 +58,7 @@ cdef extern from "stereo_slam_types.hpp":
     cdef struct KeyPoints:
         vector[KeyPoint2d] kps2d
         vector[KeyPoint3d] kps3d
-        vector[float] confidence
+        vector[KeyPointInformation] info
 
     cdef struct Pose:
         float x

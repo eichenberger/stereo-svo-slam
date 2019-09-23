@@ -34,29 +34,3 @@ def draw_kps(stereo_images, kps, kf):
 
     plt.imshow(result)
     plt.show()
-
-#    for i in range(1, len(stereo_images)):
-#        _left_kf = cv2.cvtColor(kf.stereo_images[i].left, cv2.COLOR_GRAY2RGB)
-#        _left = cv2.cvtColor(stereo_images[i].left, cv2.COLOR_GRAY2RGB)
-#
-#        #divider = 2**i
-#        #for i in range(len(_kf_kps)):
-#        #    kp = cv2.KeyPoint(_kf_kps[i]['x']/divider, _kf_kps[i]['y']/divider, 2)
-#        #    color = (_colors[i]['r'], _colors[i]['g'], _colors[i]['b'])
-#        #    _left_kf = cv2.drawKeypoints(_left_kf, [kp], _left_kf, color=color)
-#
-#        #for i in range(len(_kps)):
-#        #    kp = cv2.KeyPoint(_kps[i]['x']/divider, _kps[i]['y']/divider, 2)
-#        #    color = (_colors[i]['r'], _colors[i]['g'], _colors[i]['b'])
-#        #    _left = cv2.drawKeypoints(_left, [kp], _left, color=color)
-#
-#        result = np.zeros((_left.shape[0], _left.shape[1]*2, 3), dtype=np.uint8)
-#        result[:, 0:_left.shape[1], :] = _left_kf
-#        result[:, _left.shape[1]:2*_left.shape[1], :] = _left
-#
-#        #plt.imshow(_left_kf)
-#        #plt.figure()
-#        #plt.imshow(_left)
-#        plt.imshow(result)
-#        plt.show()
-

@@ -29,6 +29,7 @@ cimport depth_calculator
 cimport transform_keypoints
 cimport image_comparison
 cimport stereo_slam_types
+cimport pose_estimator
 
 cdef _c2np(stereo_slam_types.Mat image):
     rows = image.rows
@@ -251,4 +252,25 @@ cdef class KeyFrame:
     def colors(self, colors):
         # Let autoconvert do the magic
         self._keyframe.colors = colors
+
+cdef class PoseEstimator:
+    cdef pose_estimator.PoseEstimator *_pose_estimator
+
+    def __cinit__(self, StereoImage current_stereo_image,
+                 StereoImage previous_stereo_image,
+                 KeyPoints previous_keypoints,
+                 CameraSettings camera_settings):
+        self._pose_estimator = new pose_estimator.PoseEstimator(
+            current_stereo_image._stereo_image,
+            previous_stereo_image._stereo_image,
+            previous_keypoints._keypoints,
+            camera_settings._camera_settings)
+
+    def __dealloc__(self):
+        del self._pose_estimator
+
+    def estimate_pose(self, pose_guess):
+        cdef stereo_slam_types.Pose estimated_pose
+        cost = self._pose_estimator.estimate_pose(pose_guess, estimated_pose)
+        return estimated_pose, cost
 

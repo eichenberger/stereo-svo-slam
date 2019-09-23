@@ -106,10 +106,10 @@ class PoseEstimator:
                 y2d = kp2d['y']/divider
 
                 int1 = cv2.getRectSubPix(_image, (1,1), (x2d, y2d), patchType=cv2.CV_32F)
-                int2 = cv2.getRectSubPix(_image, (1,1), (x2d+0.0001, y2d), patchType=cv2.CV_32F)
-                int3 = cv2.getRectSubPix(_image, (1,1), (x2d, y2d+0.0001), patchType=cv2.CV_32F)
+                int2 = cv2.getRectSubPix(_image, (1,1), (x2d+1.0, y2d), patchType=cv2.CV_32F)
+                int3 = cv2.getRectSubPix(_image, (1,1), (x2d, y2d+1.0), patchType=cv2.CV_32F)
                 # We have to norm the gradient
-                grad = -np.mat([int1[0]-int2[0], int1[0]-int3[0]])
+                grad = np.mat([int1[0]-int2[0], int1[0]-int3[0]])
                 #grad = grad/np.sum(grad)
 
                 jac = grad.transpose()*jacobian
@@ -136,13 +136,14 @@ class PoseEstimator:
             dp = dp + np.transpose(jacobian)*(int2[0]-int1[0])
 
         dp = np.asarray(np.matmul(self.hessian, dp)).reshape(6)
-        skew_mat = np.mat([[0, -dp[2], dp[1], dp[3]],
-                           [dp[2], 0, -dp[0], dp[4]],
-                           [-dp[1], dp[0], 0, dp[5]],
+        skew_mat = np.mat([[0, -dp[5], dp[4], dp[0]],
+                           [dp[5], 0, -dp[3], dp[1]],
+                           [-dp[4], dp[3], 0, dp[2]],
                            [0,0,0,0]])
         homogenous = expm(skew_mat)
         angles = cv2.Rodrigues(homogenous[0:3,0:3])[0].reshape(3)
-        dp = np.array([angles[0], angles[1], angles[2], homogenous[0,3], homogenous[1,3], homogenous[2,3]])
+        dp = np.array([homogenous[0,3], homogenous[1,3], homogenous[2,3],
+                       angles[0], angles[1], angles[2]])
 
         return dp/np.linalg.norm(dp)
 
@@ -158,12 +159,12 @@ class PoseEstimator:
             #dp2 = np.array([0.0,0.0,0.0,-1.0,0.0,0.0])
             #dp3 = self._get_derivate2(x)
             while i < MAX_ITER:
-                new_x['roll'] =  new_x['roll'] + k*dp[0]
-                new_x['pitch'] =  new_x['pitch'] + k*dp[1]
-                new_x['yaw'] =  new_x['yaw'] + k*dp[2]
-                new_x['x'] =  new_x['x'] + k*dp[3]
-                new_x['y'] =  new_x['y'] + k*dp[4]
-                new_x['z'] =  new_x['z'] + k*dp[5]
+                new_x['x'] =  new_x['x'] + k*dp[0]
+                new_x['y'] =  new_x['y'] + k*dp[1]
+                new_x['z'] =  new_x['z'] + k*dp[2]
+                new_x['roll'] =  new_x['roll'] + k*dp[3]
+                new_x['pitch'] =  new_x['pitch'] + k*dp[4]
+                new_x['yaw'] =  new_x['yaw'] + k*dp[5]
                 new_total_diff, new_diff = self._optimize_pose_newton(new_x)
 
                 if new_total_diff < total_diff:

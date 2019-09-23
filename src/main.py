@@ -58,7 +58,7 @@ class EconInput():
 class BlenderInput():
     def __init__(self, video):
         self.cap = cv2.VideoCapture(video)
-        self.frame_nr = 1
+        self.frame_nr = 37
 
         width = 752
         height = 480

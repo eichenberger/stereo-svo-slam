@@ -1,15 +1,17 @@
 import cv2
 import numpy as np
 
-#from pose_estimator import PoseEstimator
-from pose_estimator_grad import PoseEstimator
 #from depth_calculator import DepthCalculator
 from draw_kps import draw_kps
 
-from slam_accelerator import CameraSettings, StereoImage
+from slam_accelerator import CameraSettings, StereoImage, KeyPoints
 from slam_accelerator import project_keypoints
 #from pose_refiner import PoseRefiner
 #from cloud_refiner import CloudRefiner
+
+#from pose_estimator import PoseEstimator
+#from pose_estimator_grad import PoseEstimator
+from slam_accelerator import PoseEstimator
 
 from mapping import Mapping
 
@@ -91,8 +93,8 @@ class StereoSLAM:
             new_pose, cost = self._estimate_pose()
             _cs = CameraSettings(self.camera_settings)
             self.previous_kps.kps2d = project_keypoints(new_pose,
-                                                            self.previous_kps.kps3d,
-                                                            _cs)
+                                                        self.previous_kps.kps3d,
+                                                        _cs)
 
             draw_kps(self.stereo_image, self.previous_kps, kf)
             self.pose = new_pose
@@ -172,6 +174,37 @@ class StereoSLAM:
 #                self.previous_keypoints2d = current_kf.keypoints2d
 
     def _estimate_pose(self):
-        estimator = PoseEstimator(self.stereo_image, self.prev_stereo_image,
-                                  self.previous_kps, self.camera_settings)
-        return estimator.estimate_pose(self.pose)
+        #estimator = PoseEstimator(self.stereo_image, self.prev_stereo_image,
+        #                          self.previous_kps, self.camera_settings)
+        #return estimator.estimate_pose(self.pose)
+
+        pose = self.pose
+        for i in range(len(self.stereo_image)):
+            level = len(self.stereo_image) - 1 - i
+            divider = 2**level
+            current = self.stereo_image[level]
+            previous = self.prev_stereo_image[level]
+
+            previous_kps = KeyPoints()
+            kps2d = self.previous_kps.kps2d.copy()
+            for j in range(len(kps2d)):
+                kps2d[j]['x'] /= divider
+                kps2d[j]['y'] /= divider
+
+            previous_kps.kps2d = kps2d
+            previous_kps.kps3d = self.previous_kps.kps3d
+
+            camera_settings = CameraSettings(self.camera_settings)
+            camera_settings.fx /= divider
+            camera_settings.fy /= divider
+            camera_settings.cx /= divider
+            camera_settings.cy /= divider
+
+            estimator = PoseEstimator(current, previous,
+                                      previous_kps, camera_settings)
+            pose, cost = estimator.estimate_pose(pose)
+            print (f'current pose: {pose}, cost: {cost}')
+
+        print (f'final pose: {pose}, cost: {cost}')
+        return pose, cost
+

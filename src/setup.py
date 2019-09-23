@@ -28,6 +28,7 @@ sources = ["lib/slam_accelerator.pyx",
             "lib/transform_keypoints.cpp",
             "lib/depth_calculator.cpp",
             "lib/image_comparison.cpp",
+            "lib/pose_estimator.cpp",
             "lib/corner_detector.cpp"]
 libraries = ["m", "opencv_core", 'omp5', 'opencv_features2d',
              'opencv_imgproc', 'opencv_calib3d']
