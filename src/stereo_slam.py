@@ -6,6 +6,7 @@ from draw_kps import draw_kps
 
 from slam_accelerator import CameraSettings, StereoImage, KeyPoints
 from slam_accelerator import project_keypoints
+from slam_accelerator import PoseRefiner, OpticalFlow
 #from pose_refiner import PoseRefiner
 #from cloud_refiner import CloudRefiner
 
@@ -92,86 +93,28 @@ class StereoSLAM:
             #kps3d = self.get_kps3d(kf)
             new_pose, cost = self._estimate_pose()
             _cs = CameraSettings(self.camera_settings)
-            self.previous_kps.kps2d = project_keypoints(new_pose,
-                                                        self.previous_kps.kps3d,
-                                                        _cs)
 
-            draw_kps(self.stereo_image, self.previous_kps, kf)
+            estimated_keypoints = project_keypoints(new_pose,
+                                                    self.previous_kps.kps3d,
+                                                    self.camera_settings)
+
+            optical_flow = OpticalFlow()
+            refined_keypoints, err = optical_flow.calculate_optical_flow(
+                kf.stereo_images, kf.kps.kps2d,
+                self.stereo_image, estimated_keypoints)
+
+            import pdb; pdb.set_trace()  # XXX BREAKPOINT
+            pose_refiner = PoseRefiner(self.camera_settings)
+            refined_pose = pose_refiner.refine_pose(refined_keypoints,
+                                                    kf.kps.kps3d,
+                                                    new_pose)
+
+            self.previous_kps.kps2d = project_keypoints(
+                refined_pose, kf.kps3d, _cs)
+
+            draw_kps(self.stereo_image, self.previous_kps, kf.kps3d)
             self.pose = new_pose
 
-            # # We get the pose between the last and the current image.
-            # # We need to update the global pose
-            # keypoints2d = transform_keypoints(new_pose,
-            #                                   kf.keypoints3d[0],
-            #                                   self.fx, self.fy,
-            #                                   self.cx, self.cy)
-
-            # keypoints2d_list = [None]*len(kf.keypoints2d)
-            # for i in range(0, len(keypoints2d_list)):
-            #     keypoints2d_list[i] = transform_keypoints(new_pose,
-            #                                     kf.keypoints3d[i],
-            #                                     self.fx, self.fy,
-            #                                     self.cx, self.cy)
-
-            # self.detect_outliers(self.left, self.prev_left, keypoints2d_list,
-            #                      self.previous_keypoints2d, kf)
-
-            # point_aligner = PointAligner(kf.keypoints2d[0], keypoints2d,
-            #                              kf.left[0], self.left[0])
-
-            # warp, cost = point_aligner.align_points()
-
-            # keypoints2d_ext = np.ones((3, keypoints2d.shape[1]))
-            # keypoints2d_ext[0:2,:] = keypoints2d
-
-            # warped_points = np.matmul(warp, keypoints2d_ext)
-
-            # # Needs more testing!
-            # #new_pose = self.pose_refiner.refine_pose(new_pose,
-            # #                                          kf.keypoints3d[0],
-            # #                                          warped_points)
-
-            # # Needs more testing!
-            # keypoints3d_refined = self.cloud_refiner.refine_cloud(new_pose,
-            #                                                  kf.keypoints3d[0],
-            #                                                  warped_points)
-            # # Only take refined keypoints that are valid
-            # kf.keypoints3d[0] = keypoints3d_refined
-
-            # MARGIN = 10
-            # valid_indexes = (keypoints2d[0,:]>MARGIN) &\
-            #                 (keypoints2d[1,:]>MARGIN) &\
-            #                 (keypoints2d[0,:]<(self.left[0].shape[1]-MARGIN))&\
-            #                 (keypoints2d[1,:]<(self.left[0].shape[0]-MARGIN))
-
-            # matches = np.count_nonzero(valid_indexes==True)
-
-            # print(f"Found matches: {matches}")
-
-#            self.mapping.new_image(self.stereo_image, new_pose, matches, 0)
-#            self.mapping.process_image()
-#
-#
-#            self.motion_model =  new_pose - self.pose
-#            self.pose =  new_pose
-
-#            draw_kps(self.pose, self.stereo_image[0].left,
-#                     kf.stereo_image[0].left,
-#                     kf.kps[0].kps2d[0],
-#                     kf.kps[0].kps3d[0],
-#                     kf.colors,
-#                     self.fx, self.fy,
-#                     self.cx, self.cy)
-#
-#            current_kf = self.mapping.get_last_keyframe()
-#
-#            # Be careful when new kf is added
-#            if current_kf == kf:
-#                self.previous_kps2d = project_keypoints(new_pose,
-#                                                        kf.kps3d[i],
-#                                                        self.camera_settings)
-#            else:
-#                self.previous_keypoints2d = current_kf.keypoints2d
 
     def _estimate_pose(self):
         #estimator = PoseEstimator(self.stereo_image, self.prev_stereo_image,

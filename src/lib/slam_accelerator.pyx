@@ -13,23 +13,13 @@ from libc.string cimport memcpy
 
 ctypedef double (*opt_fun)(const double*)
 
-cdef extern from "slam_accelerator_helper.hpp":
-    cdef void c_rotation_matrix(double* angle, double* rotation_matrix)
-
-    cdef void c_refine_cloud(double fx,
-        double fy,
-        double cx,
-        double cy,
-        double *pose,
-        double *keypoints3d,
-        double *keypoints2d,
-        int number_of_keypoints) nogil
-
 cimport depth_calculator
 cimport transform_keypoints
 cimport image_comparison
 cimport stereo_slam_types
 cimport pose_estimator
+cimport optical_flow
+cimport pose_refinement
 
 cdef _c2np(stereo_slam_types.Mat image):
     rows = image.rows
@@ -42,13 +32,6 @@ cdef _np2c(pyimage, stereo_slam_types.Mat &cimage):
     cimage.create(r, c, cv2.CV_8UC1)
     cdef unsigned char[:,:] image_buffer = pyimage
     memcpy(cimage.data, &image_buffer[0,0], r*c)
-
-
-def rotation_matrix(double[:] angle):
-    cdef double[:,:] rot_mat = np.zeros((3,3))
-
-    c_rotation_matrix(&angle[0], &rot_mat[0,0])
-    return np.asarray(rot_mat)
 
 def project_keypoints(pose, input, CameraSettings camera_settings):
     cdef vector[stereo_slam_types.KeyPoint2d] keypoints2d
@@ -69,11 +52,6 @@ def get_total_intensity_diff(image1, image2, keypoints1, keypoints2, patchSize):
                                               keypoints2, patchSize, diff)
 
     return np.asarray(diff)
-
-def refine_cloud(double fx, double fy, double cx, double cy, double[:] pose, double[:,:] keypoints3d, double[:,:] keypoints2d):
-    c_refine_cloud(fx, fy, cx, cy, &pose[0], &keypoints3d[0,0], &keypoints2d[0,0], keypoints3d.shape[1])
-
-    return np.asarray(keypoints3d)
 
 def transform_keypoints_inverse(pose, input):
     cdef vector[stereo_slam_types.KeyPoint3d] output
@@ -274,3 +252,52 @@ cdef class PoseEstimator:
         cost = self._pose_estimator.estimate_pose(pose_guess, estimated_pose)
         return estimated_pose, cost
 
+
+cdef class OpticalFlow:
+    cdef optical_flow.OpticalFlow *_optical_flow
+
+    def __cinit__(self):
+        self._optical_flow= new optical_flow.OpticalFlow()
+
+    def __dealloc__(self):
+        del self._optical_flow
+
+    def calculate_optical_flow(self, previous_stereo_image_pyr,
+                               previous_keypoints2d,
+                               current_stereo_image_pyr,
+                               current_keypoints2d):
+        cdef vector[stereo_slam_types.StereoImage] _previous_stereo_image_pyr
+        for stereo_image in previous_stereo_image_pyr:
+            _previous_stereo_image_pyr.push_back((<StereoImage>stereo_image)._stereo_image)
+
+        cdef vector[stereo_slam_types.StereoImage] _current_stereo_image_pyr
+        for stereo_image in current_stereo_image_pyr:
+            _current_stereo_image_pyr.push_back((<StereoImage>stereo_image)._stereo_image)
+
+        cdef vector[stereo_slam_types.KeyPoint2d] refined_keypoints = current_keypoints2d.copy()
+        cdef vector[float] err
+
+        self._optical_flow.calculate_optical_flow(_previous_stereo_image_pyr,
+                                                  previous_keypoints2d,
+                                                  _current_stereo_image_pyr,
+                                                  refined_keypoints,
+                                                  err)
+
+        return refined_keypoints, err
+
+cdef class PoseRefiner:
+    cdef pose_refinement.PoseRefiner *_pose_refiner
+
+    def __cinit__(self, CameraSettings camera_settings):
+        self._pose_refiner = new pose_refinement.PoseRefiner(camera_settings._camera_settings)
+
+    def __dealloc__(self):
+        del self._pose_refiner
+
+    def refine_pose(self, keypoints2d, keypoints3d, estimated_pose):
+        cdef stereo_slam_types.Pose refined_pose
+
+        self._pose_refiner.refine_pose(keypoints2d, keypoints3d, estimated_pose,
+                                       refined_pose)
+
+        return refined_pose

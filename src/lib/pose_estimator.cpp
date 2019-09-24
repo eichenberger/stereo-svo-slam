@@ -9,9 +9,12 @@
 #include "transform_keypoints.hpp"
 #include "image_comparison.hpp"
 
+//#define SUPER_VERBOSE 1
+
 using namespace cv;
 using namespace std;
 
+// We could use one of the opencv solver. However, they don't really fit
 class PoseEstimatorCallback : public MinProblemSolver::Function
 {
 public:
@@ -45,13 +48,11 @@ PoseEstimator::PoseEstimator(const StereoImage &current_stereo_image,
 
 float PoseEstimator::estimate_pose(const Pose &pose_guess, Pose &pose)
 {
-    Ptr<MinProblemSolver> solver = ConjGradSolver::create(solver_callback);
-
     Mat x0 = (Mat_<double>(6,1) <<
         pose_guess.x, pose_guess.y, pose_guess.z,
         pose_guess.roll, pose_guess.pitch, pose_guess.yaw);
 
-    size_t maxIter = 200;
+    size_t maxIter = 50;
     float k = 1.0;
     double prev_cost = solver_callback->calc(x0.ptr<double>(0));
     for (size_t i = 0; i < maxIter; i++) {
@@ -83,18 +84,7 @@ float PoseEstimator::estimate_pose(const Pose &pose_guess, Pose &pose)
     pose.pitch = x0.at<double>(4);
     pose.yaw = x0.at<double>(5);
 
-    cout << std::endl;
-
     return prev_cost;
-
-    //pose.x = x0.at<double>(0);
-    //pose.y = x0.at<double>(1);
-    //pose.z = x0.at<double>(2);
-    //pose.roll = x0.at<double>(3);
-    //pose.pitch = x0.at<double>(4);
-    //pose.yaw = x0.at<double>(5);
-
-    //return cost;
 }
 
 PoseEstimatorCallback::PoseEstimatorCallback(const StereoImage &current_stereo_image,
@@ -140,14 +130,16 @@ double PoseEstimatorCallback::calc(const double *x) const
         diff_sum += diff;
     }
 
-//    cout << "Diff sum: " << diff_sum << " x: " <<
-//        x[0] << "," <<
-//        x[1] << "," <<
-//        x[2] << "," <<
-//        x[3] << "," <<
-//        x[4] << "," <<
-//        x[5] << "," <<
-//        std::endl;
+#ifdef SUPER_VERBOSE
+    cout << "Diff sum: " << diff_sum << " x: " <<
+        x[0] << "," <<
+        x[1] << "," <<
+        x[2] << "," <<
+        x[3] << "," <<
+        x[4] << "," <<
+        x[5] << "," <<
+        std::endl;
+#endif
 
     return diff_sum;
 }
@@ -182,11 +174,6 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
 
     const Mat &current_image = current_stereo_image.left;
     const Mat &previous_image = previous_stereo_image.left;
-    //Mat current_image, previous_image;
-
-    //current_stereo_image.left.convertTo(current_image, CV_32F);
-    //previous_stereo_image.left.convertTo(previous_image, CV_32F);
-
 
     // If we haven't calculated the hessian_inv yet we will do it now.
     // Because of compositional lucas kanade we only do it once
@@ -209,17 +196,7 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
                 fx/z, 0, -fx*x/(z*z), -fx*x*y/(z*z), fx*(1+(x*x)/(z*z)), -fx*y/z,
                 0, fy/z, -fy*y/(z*z), -fy*(1+(y*y)/(z*z)), fy*x*y/(z*z), fy*x/z);
 
-            //float dx = 0.5f * ((w_ref_tl*ref_img_ptr[1] + w_ref_tr*ref_img_ptr[2] + w_ref_bl*ref_img_ptr[stride+1] + w_ref_br*ref_img_ptr[stride+2])
-            //                  -(w_ref_tl*ref_img_ptr[-1] + w_ref_tr*ref_img_ptr[0] + w_ref_bl*ref_img_ptr[stride-1] + w_ref_br*ref_img_ptr[stride]));
-            //float dy = 0.5f * ((w_ref_tl*ref_img_ptr[stride] + w_ref_tr*ref_img_ptr[1+stride] + w_ref_bl*ref_img_ptr[stride*2] + w_ref_br*ref_img_ptr[stride*2+1])
-            //                  -(w_ref_tl*ref_img_ptr[-stride] + w_ref_tr*ref_img_ptr[1-stride] + w_ref_bl*ref_img_ptr[0] + w_ref_br*ref_img_ptr[1]));
-
             Mat int1, int2, int3, int4;
-            // uint8_t int1, int2, int3, int4;
-            // int1 = previous_image.at<uint8_t>(round(kp2d.y), round(kp2d.x-1.0));
-            // int2 = previous_image.at<uint8_t>(round(kp2d.y), round(kp2d.x+1.0));
-            // int3 = previous_image.at<uint8_t>(round(kp2d.y-1.0), round(kp2d.x));
-            // int4 = previous_image.at<uint8_t>(round(kp2d.y+1.0), round(kp2d.x));
             cv::getRectSubPix(previous_image,
                     Size(2,2), Point2f(kp2d.x-1.0,kp2d.y), int1, CV_32F);
             cv::getRectSubPix(previous_image,
@@ -231,13 +208,13 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
 
             auto diff1 = cv::sum(int2-int1)[0];
             auto diff2 = cv::sum(int4-int3)[0];
-            // auto diff1 = int2-int1;
-            // auto diff2 = int4-int3;
             Mat _grad = -(Mat_<double>(1,2) <<
                     diff1, diff2);
 
-            //cout << "Gradient at " << kp2d.x << ", " <<kp2d.y << ": ";
-            //cout << "(" << diff1 << ", " << diff2 << ") " << endl;
+#ifdef SUPER_VERBOSE
+            cout << "Gradient at " << kp2d.x << ", " <<kp2d.y << ": ";
+            cout << "(" << diff1 << ", " << diff2 << ") " << endl;
+#endif
 
             Mat _grad_times_jac = _grad*jacobian;
             // Store the result of grad*jacobian for further usage
@@ -248,13 +225,15 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
         }
 
         *hessian_inv = hessian.inv();
-//        std::cout << "Hessian matrix: " << std::endl;
-//        for (size_t i = 0; i < 6; i++) {
-//            for (size_t j = 0; j < 6; j++) {
-//                std::cout << hessian_inv->at<double>(i, j) << ", ";
-//            }
-//            std::cout << std::endl;
-//        }
+#ifdef SUPER_VERBOSE
+        std::cout << "Hessian matrix: " << std::endl;
+        for (size_t i = 0; i < 6; i++) {
+            for (size_t j = 0; j < 6; j++) {
+                std::cout << hessian_inv->at<double>(i, j) << ", ";
+            }
+            std::cout << std::endl;
+        }
+#endif
     }
 
     // See ICRA Forster 14 for the whole algorithm
@@ -284,20 +263,18 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
     }
 
     Mat delta_pos = *hessian_inv * residual;
-    //cv::solve(*hessian_inv, residual, delta_pos);
-    //delta_pos = (Mat_<double>(6,1) <<
-    //        0.000469386, -0.00240017, -0.000722628, -0.000622904, -0.000458349, 3.3463e-05);
     Mat pose_gradient(6, 1, CV_64F, grad);
-    //cout << "Delta Pos: " <<
-    //    delta_pos.at<double>(0) << "," <<
-    //    delta_pos.at<double>(1) << "," <<
-    //    delta_pos.at<double>(2) << "," <<
-    //    delta_pos.at<double>(3) << "," <<
-    //    delta_pos.at<double>(4) << "," <<
-    //    delta_pos.at<double>(5) << "," <<
-    //    std::endl;
-
     exponential_map(delta_pos, pose_gradient);
+
+#ifdef SUPER_VERBOSE
+    cout << "Delta Pos: " <<
+        delta_pos.at<double>(0) << "," <<
+        delta_pos.at<double>(1) << "," <<
+        delta_pos.at<double>(2) << "," <<
+        delta_pos.at<double>(3) << "," <<
+        delta_pos.at<double>(4) << "," <<
+        delta_pos.at<double>(5) << "," <<
+        std::endl;
 
     cout << "Current Pose: " <<
         x[0] << "," <<
@@ -317,16 +294,17 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
         grad[5] << "," <<
         std::endl;
 
-    //double _norm = cv::norm(pose_gradient);
-    //cout << "Norm: " << _norm << std::endl;
-    //pose_gradient = pose_gradient/_norm;
-    //cout << "Gradient normalized: " <<
-    //    grad[0] << "," <<
-    //    grad[1] << "," <<
-    //    grad[2] << "," <<
-    //    grad[3] << "," <<
-    //    grad[4] << "," <<
-    //    grad[5] << "," <<
-    //    std::endl;
+    double _norm = cv::norm(pose_gradient);
+    cout << "Norm: " << _norm << std::endl;
+    pose_gradient = pose_gradient/_norm;
+    cout << "Gradient normalized: " <<
+        grad[0] << "," <<
+        grad[1] << "," <<
+        grad[2] << "," <<
+        grad[3] << "," <<
+        grad[4] << "," <<
+        grad[5] << "," <<
+        std::endl;
+#endif
 }
 

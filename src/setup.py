@@ -29,9 +29,11 @@ sources = ["lib/slam_accelerator.pyx",
             "lib/depth_calculator.cpp",
             "lib/image_comparison.cpp",
             "lib/pose_estimator.cpp",
+            "lib/pose_refinement.cpp",
+            "lib/optical_flow.cpp",
             "lib/corner_detector.cpp"]
 libraries = ["m", "opencv_core", 'omp5', 'opencv_features2d',
-             'opencv_imgproc', 'opencv_calib3d']
+             'opencv_imgproc', 'opencv_calib3d','opencv_video']
 library_dirs = ['/usr/local/lib']
 include_dirs = ['/usr/local/include/opencv4']
 
