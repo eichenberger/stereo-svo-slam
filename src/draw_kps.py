@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 
-def draw_kps(stereo_images, kps, kf):
+def draw_kps(stereo_images, kps2d, kf):
     _left_kf = cv2.cvtColor(kf.stereo_images[0].left, cv2.COLOR_GRAY2RGB)
     _left = cv2.cvtColor(stereo_images[0].left, cv2.COLOR_GRAY2RGB)
 
@@ -22,7 +22,7 @@ def draw_kps(stereo_images, kps, kf):
                                1.0,
                                (255,0,0))
 
-    _kps = kps.kps2d
+    _kps = kps2d
     for i in range(len(_kps)):
         kp = cv2.KeyPoint(_kps[i]['x'], _kps[i]['y'], 2)
         color = (_colors[i]['r'], _colors[i]['g'], _colors[i]['b'])
@@ -33,4 +33,5 @@ def draw_kps(stereo_images, kps, kf):
     result[:, _left.shape[1]:2*_left.shape[1], :] = _left
 
     plt.imshow(result)
-    plt.pause(0.05)
+    plt.show()
+    #plt.pause(0.05)

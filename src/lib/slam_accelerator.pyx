@@ -131,6 +131,36 @@ cdef class CameraSettings:
     def cy(self, cy):
         self._camera_settings.cy = cy
     @property
+    def k1(self):
+        return self._camera_settings.k1
+    @k1.setter
+    def k1(self, k1):
+        self._camera_settings.k1 = k1
+    @property
+    def k2(self):
+        return self._camera_settings.k2
+    @k2.setter
+    def k2(self, k2):
+        self._camera_settings.k2 = k2
+    @property
+    def k3(self):
+        return self._camera_settings.k3
+    @k3.setter
+    def k3(self, k3):
+        self._camera_settings.k3 = k3
+    @property
+    def p1(self):
+        return self._camera_settings.p1
+    @p1.setter
+    def p1(self, p1):
+        self._camera_settings.p1 = p1
+    @property
+    def p2(self):
+        return self._camera_settings.p2
+    @p2.setter
+    def p2(self, p2):
+        self._camera_settings.p2 = p2
+    @property
     def grid_height(self):
         return self._camera_settings.grid_height
     @grid_height.setter
@@ -177,6 +207,17 @@ cdef class KeyPoints:
     @kps3d.setter
     def kps3d(self, kps3d):
         self._keypoints.kps3d = kps3d
+
+    def copy(self):
+        new_keypoints = KeyPoints()
+
+        new_keypoints._keypoints.kps2d = self._keypoints.kps2d
+        new_keypoints._keypoints.kps3d = self._keypoints.kps3d
+        new_keypoints._keypoints.info = self._keypoints.info
+
+        return new_keypoints
+
+
 
 cdef class KeyFrame:
     cdef stereo_slam_types.KeyFrame _keyframe
@@ -294,10 +335,10 @@ cdef class PoseRefiner:
     def __dealloc__(self):
         del self._pose_refiner
 
-    def refine_pose(self, keypoints2d, keypoints3d, estimated_pose):
+    def refine_pose(self, KeyPoints keypoints, estimated_pose):
         cdef stereo_slam_types.Pose refined_pose
 
-        self._pose_refiner.refine_pose(keypoints2d, keypoints3d, estimated_pose,
+        self._pose_refiner.refine_pose(keypoints._keypoints, estimated_pose,
                                        refined_pose)
 
         return refined_pose

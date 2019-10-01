@@ -10,6 +10,8 @@ import json
 
 from stereo_slam import StereoSLAM
 
+from slam_accelerator import CameraSettings
+
 from econ_utils import set_auto_exposure, set_manual_exposure
 
 class EconInput():
@@ -22,27 +24,26 @@ class EconInput():
         self.settings = cv2.FileStorage(settings, cv2.FILE_STORAGE_READ)
 
         l_d = self.settings.getNode('LEFT.D').mat()
-        l_k = self.settings.getNode('LEFT.K').mat()
-        l_r = self.settings.getNode('LEFT.R').mat()
-        l_p = self.settings.getNode('LEFT.P').mat()
-        l_width = int(self.settings.getNode('LEFT.width').real())
-        l_height = int(self.settings.getNode('LEFT.height').real())
 
-        r_d = self.settings.getNode('RIGHT.D').mat()
-        r_k = self.settings.getNode('RIGHT.K').mat()
-        r_r = self.settings.getNode('RIGHT.R').mat()
-        r_p = self.settings.getNode('RIGHT.P').mat()
-        r_width = int(self.settings.getNode('RIGHT.width').real())
-        r_height = int(self.settings.getNode('RIGHT.height').real())
+        self.camera_settings = CameraSettings()
 
-        self.m1l, self.m2l = cv2.initUndistortRectifyMap(l_k, l_d, l_r, l_p, (l_width, l_height), cv2.CV_32F)
-        self.m1r, self.m2r = cv2.initUndistortRectifyMap(r_k, r_d, r_r, r_p, (r_width, r_height), cv2.CV_32F)
+        self.camera_settings.baseline = self.settings.getNode('Camera.bf')
+        self.camera_settings.fx = self.settings.getNode('Camera.fx')
+        self.camera_settings.fy = self.settings.getNode('Camera.fy')
+        self.camera_settings.cx = self.settings.getNode('Camera.cx')
+        self.camera_settings.cy = self.settings.getNode('Camera.cy')
 
-        self.baseline = self.settings.getNode('Camera.bf')
-        self.fx = self.settings.getNode('Camera.fx')
-        self.fy = self.settings.getNode('Camera.fy')
-        self.cx = self.settings.getNode('Camera.cx')
-        self.cy = self.settings.getNode('Camera.cy')
+        self.camera_settings.k1 = l_d[0]
+        self.camera_settings.k2 = l_d[1]
+        self.camera_settings.k3 = l_d[4]
+
+        self.camera_settings.p1 = l_d[2]
+        self.camera_settings.p2 = l_d[3]
+
+        self.camera_settings.grid_width = 40
+        self.camera_settings.grid_height = 30
+        self.camera_settings.search_x = 30
+        self.camera_settings.search_y = 6
 
 
     def read(self):
@@ -50,28 +51,46 @@ class EconInput():
         gray_r = cv2.extractChannel(image, 1);
         gray_l = cv2.extractChannel(image, 2);
 
-        gray_l = cv2.remap(gray_l, self.m1l, self.m2l, cv2.INTER_LINEAR)
-        gray_r = cv2.remap(gray_r, self.m1r, self.m2r, cv2.INTER_LINEAR)
+        #gray_l = cv2.remap(gray_l, self.m1l, self.m2l, cv2.INTER_LINEAR)
+        #gray_r = cv2.remap(gray_r, self.m1r, self.m2r, cv2.INTER_LINEAR)
 
         return gray_l, gray_r
 
 class BlenderInput():
     def __init__(self, video):
         self.cap = cv2.VideoCapture(video)
-        self.frame_nr = 1
+        self.frame_nr = 10
 
         width = 752
         height = 480
         sensor_size = 32
         focal_length = 25
-        self.cx = width/2
-        self.cy = height/2
-        self.fx = focal_length/(sensor_size/width)
-        self.fy = focal_length/(sensor_size/height)
+        self.camera_settings = CameraSettings()
+        self.camera_settings.cx = width/2
+        self.camera_settings.cy = height/2
+        self.camera_settings.fx = focal_length/(sensor_size/width)
+        self.camera_settings.fy = focal_length/(sensor_size/height)
 
-        self.baseline = 0.06*self.fx
+        self.camera_settings.baseline = 0.06*self.camera_settings.fx
+
+        self.camera_settings.k1 = 0.0
+        self.camera_settings.k2 = 0.0
+        self.camera_settings.k3 = 0.0
+
+        self.camera_settings.p1 = 0.0
+        self.camera_settings.p2 = 0.0
+
+        self.camera_settings.grid_width = 40
+        self.camera_settings.grid_height = 30
+        self.camera_settings.search_x = 30
+        self.camera_settings.search_y = 6
+
+
 
     def read(self):
+
+        if self.frame_nr == 75:
+            raise("Hallo")
         self.cap.set(1, self.frame_nr)
         ret, image = self.cap.read()
         self.frame_nr += 1
@@ -93,27 +112,26 @@ class VideoInput():
         self.settings = cv2.FileStorage(settings, cv2.FILE_STORAGE_READ)
 
         l_d = self.settings.getNode('LEFT.D').mat()
-        l_k = self.settings.getNode('LEFT.K').mat()
-        l_r = self.settings.getNode('LEFT.R').mat()
-        l_p = self.settings.getNode('LEFT.P').mat()
-        l_width = int(self.settings.getNode('LEFT.width').real())
-        l_height = int(self.settings.getNode('LEFT.height').real())
 
-        r_d = self.settings.getNode('RIGHT.D').mat()
-        r_k = self.settings.getNode('RIGHT.K').mat()
-        r_r = self.settings.getNode('RIGHT.R').mat()
-        r_p = self.settings.getNode('RIGHT.P').mat()
-        r_width = int(self.settings.getNode('RIGHT.width').real())
-        r_height = int(self.settings.getNode('RIGHT.height').real())
+        self.camera_settings = CameraSettings()
 
-        self.m1l, self.m2l = cv2.initUndistortRectifyMap(l_k, l_d, l_r, l_p, (l_width, l_height), cv2.CV_32F)
-        self.m1r, self.m2r = cv2.initUndistortRectifyMap(r_k, r_d, r_r, r_p, (r_width, r_height), cv2.CV_32F)
+        self.camera_settings.baseline = self.settings.getNode('Camera.bf')
+        self.camera_settings.fx = self.settings.getNode('Camera.fx')
+        self.camera_settings.fy = self.settings.getNode('Camera.fy')
+        self.camera_settings.cx = self.settings.getNode('Camera.cx')
+        self.camera_settings.cy = self.settings.getNode('Camera.cy')
 
-        self.baseline = self.settings.getNode('Camera.bf').real()
-        self.fx = self.settings.getNode('Camera.fx').real()
-        self.fy = self.settings.getNode('Camera.fy').real()
-        self.cx = self.settings.getNode('Camera.cx').real()
-        self.cy = self.settings.getNode('Camera.cy').real()
+        self.camera_settings.k1 = l_d[0]
+        self.camera_settings.k2 = l_d[1]
+        self.camera_settings.k3 = l_d[4]
+
+        self.camera_settings.p1 = l_d[2]
+        self.camera_settings.p2 = l_d[3]
+
+        self.camera_settings.grid_width = 40
+        self.camera_settings.grid_height = 30
+        self.camera_settings.search_x = 30
+        self.camera_settings.search_y = 6
 
     def read(self):
         ret, iml = self.capl.read()
@@ -159,7 +177,7 @@ def main():
     args = parser.parse_args()
     camera = args.func(args)
 
-    slam = StereoSLAM(camera.baseline, camera.fx, camera.fy, camera.cx, camera.cy)
+    slam = StereoSLAM(camera.camera_settings)
 
     gray_l, gray_r = camera.read()
     async def read_frame():

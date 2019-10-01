@@ -9,7 +9,7 @@
 #include "transform_keypoints.hpp"
 #include "image_comparison.hpp"
 
-//#define SUPER_VERBOSE 1
+#define SUPER_VERBOSE 1
 
 using namespace cv;
 using namespace std;
@@ -46,11 +46,40 @@ PoseEstimator::PoseEstimator(const StereoImage &current_stereo_image,
             previous_stereo_image, previous_keypoints, camera_settings);
 }
 
+#if 0
+
+float PoseEstimator::estimate_pose(const Pose &pose_guess, Pose &pose)
+{
+
+    Mat x0 = (Mat_<double>(6,1) <<
+        pose_guess.x, pose_guess.y, pose_guess.z,
+        pose_guess.pitch, pose_guess.yaw, pose_guess.roll);
+
+    Ptr<DownhillSolver> solver = DownhillSolver::create(solver_callback);
+    Mat step = Mat::ones(6,1, CV_64F);
+    step *= 0.01;
+    solver->setInitStep(step);
+
+    solver->minimize(x0);
+
+    pose.x = x0.at<double>(0);
+    pose.y = x0.at<double>(1);
+    pose.z = x0.at<double>(2);
+    pose.pitch = x0.at<double>(3);
+    pose.yaw = x0.at<double>(4);
+    pose.roll = x0.at<double>(5);
+
+    double err = solver_callback->calc(x0.ptr<double>());
+
+    return err;
+}
+
+#else
 float PoseEstimator::estimate_pose(const Pose &pose_guess, Pose &pose)
 {
     Mat x0 = (Mat_<double>(6,1) <<
         pose_guess.x, pose_guess.y, pose_guess.z,
-        pose_guess.roll, pose_guess.pitch, pose_guess.yaw);
+        pose_guess.pitch, pose_guess.yaw, pose_guess.roll);
 
     size_t maxIter = 50;
     float k = 1.0;
@@ -80,12 +109,14 @@ float PoseEstimator::estimate_pose(const Pose &pose_guess, Pose &pose)
     pose.x = x0.at<double>(0);
     pose.y = x0.at<double>(1);
     pose.z = x0.at<double>(2);
-    pose.roll = x0.at<double>(3);
-    pose.pitch = x0.at<double>(4);
-    pose.yaw = x0.at<double>(5);
+    pose.pitch = x0.at<double>(3);
+    pose.yaw = x0.at<double>(4);
+    pose.roll = x0.at<double>(5);
 
     return prev_cost;
 }
+
+#endif
 
 PoseEstimatorCallback::PoseEstimatorCallback(const StereoImage &current_stereo_image,
                           const StereoImage &previous_stereo_image,
@@ -105,9 +136,9 @@ static inline Pose pose_from_x(const double *x){
     pose.x = x[0];
     pose.y = x[1];
     pose.z = x[2];
-    pose.roll = x[3];
-    pose.pitch = x[4];
-    pose.yaw = x[5];
+    pose.pitch = x[3];
+    pose.yaw = x[4];
+    pose.roll = x[5];
 
     return pose;
 }
@@ -253,9 +284,9 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
 
         auto diff = cv::sum(int2-int1)[0];
 
-        //cout << "Intensity difference template at " <<
-        //    keypoints.kps2d[i].x << ", " << keypoints.kps2d[i].y << " image at " <<
-        //    kps2d[i].x << ", " << kps2d[i].y << " diff: " << diff << endl;
+        cout << "Intensity difference template at " <<
+            keypoints.kps2d[i].x << ", " << keypoints.kps2d[i].y << " image at " <<
+            kps2d[i].x << ", " << kps2d[i].y << " diff: " << diff << endl;
 
         Mat residual_kp = _grad_times_jac*diff;
         transpose(residual_kp, residual_kp);
@@ -263,8 +294,10 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
     }
 
     Mat delta_pos = *hessian_inv * residual;
-    Mat pose_gradient(6, 1, CV_64F, grad);
+    Mat pose_gradient(6, 1, CV_64F);
     exponential_map(delta_pos, pose_gradient);
+
+    memcpy(grad, pose_gradient.ptr<double>(), 6*sizeof(double));
 
 #ifdef SUPER_VERBOSE
     cout << "Delta Pos: " <<

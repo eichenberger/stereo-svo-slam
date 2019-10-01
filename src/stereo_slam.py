@@ -17,20 +17,11 @@ from slam_accelerator import PoseEstimator
 from mapping import Mapping
 
 class StereoSLAM:
-    def __init__(self, baseline, fx, fy, cx, cy):
+    def __init__(self, camera_settings):
         self.keypoints = None
         self.stereo_image = None
 
-        self.camera_settings = CameraSettings()
-        self.camera_settings.baseline = baseline
-        self.camera_settings.fx = fx
-        self.camera_settings.fy = fy
-        self.camera_settings.cx = cx
-        self.camera_settings.cy = cy
-        self.camera_settings.grid_width = 40
-        self.camera_settings.grid_height = 30
-        self.camera_settings.search_x = 30
-        self.camera_settings.search_y = 6
+        self.camera_settings = camera_settings
         self.pyramid_levels = 4
         # vx, vy, vz, gx, gy, gz
         self.motion_model = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
@@ -43,26 +34,6 @@ class StereoSLAM:
         # self.depth_adjustment = DepthAdjustment()
 
         self.mapping = Mapping(self.camera_settings)
-
-
-#    def detect_outliers(self, current, previous,
-#                        current_keypoints2d, previous_keypoints, kf):
-#        for i in range(0, len(current)):
-#            for j in range(0, current_keypoints2d[i].shape[1]):
-#                diff = get_intensity_diff(current[i], previous[i],
-#                                    current_keypoints2d[i][:, j],
-#                                    previous_keypoints[i][:,j], 0)
-#                if diff > 100:
-#                    kf.blacklist[i][j] = True
-#
-#    def get_kps3d(self, kf):
-#        kps3d = [None]*len(kf.blacklist)
-#        for i in range(0, len(kf.blacklist)):
-#            kps3d[i] = kf.keypoints3d[i][:, np.array(kf.blacklist[i]) == False]
-#
-#        return kps3d
-
-
 
     def new_image(self, left, right):
         self.prev_stereo_image = self.stereo_image
@@ -86,7 +57,7 @@ class StereoSLAM:
             self.mapping.new_image(self.stereo_image, self.pose, 0, 0)
             self.mapping.process_image()
             kf = self.mapping.get_last_keyframe()
-            self.previous_kps = kf.kps
+            self.previous_kps = kf.kps.copy()
         else:
             kf = self.mapping.get_last_keyframe()
 
@@ -98,22 +69,31 @@ class StereoSLAM:
                                                     self.previous_kps.kps3d,
                                                     self.camera_settings)
 
+            #draw_kps(self.stereo_image, estimated_keypoints, kf)
+
+            refined_keypoints = self.previous_kps.copy()
+
             optical_flow = OpticalFlow()
-            refined_keypoints, err = optical_flow.calculate_optical_flow(
+            refined_keypoints.kps2d, err = optical_flow.calculate_optical_flow(
                 kf.stereo_images, kf.kps.kps2d,
                 self.stereo_image, estimated_keypoints)
 
-            import pdb; pdb.set_trace()  # XXX BREAKPOINT
+
+
+            for i in range(0, len(refined_keypoints.kps2d)):
+                if err[i] > 100:
+                    refined_keypoints.kps2d[i] = estimated_keypoints[i]
+
+            draw_kps(self.stereo_image, refined_keypoints.kps2d, kf)
+
             pose_refiner = PoseRefiner(self.camera_settings)
-            refined_pose = pose_refiner.refine_pose(refined_keypoints,
-                                                    kf.kps.kps3d,
-                                                    new_pose)
+            refined_pose = pose_refiner.refine_pose(refined_keypoints, new_pose)
 
             self.previous_kps.kps2d = project_keypoints(
-                refined_pose, kf.kps3d, _cs)
+                refined_pose, kf.kps.kps3d, _cs)
 
-            draw_kps(self.stereo_image, self.previous_kps, kf.kps3d)
-            self.pose = new_pose
+            draw_kps(self.stereo_image, self.previous_kps.kps2d, kf)
+            self.pose = refined_pose
 
 
     def _estimate_pose(self):

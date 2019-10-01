@@ -14,8 +14,7 @@ class PoseRefiner
 public:
     PoseRefiner(const CameraSettings &camera_settings);
 
-    float refine_pose(const std::vector<KeyPoint2d> &keypoints2d,
-            const std::vector<KeyPoint3d> &keypoints3d,
+    float refine_pose(const KeyPoints &keypoints,
             const Pose &estimated_pose,
             Pose &refined_pose);
 

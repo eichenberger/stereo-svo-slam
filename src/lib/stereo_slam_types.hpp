@@ -10,6 +10,11 @@ struct CameraSettings {
     float fy;
     float cx;
     float cy;
+    float k1;
+    float k2;
+    float k3;
+    float p1;
+    float p2;
     int grid_height;
     int grid_width;
     int search_x;
@@ -57,9 +62,9 @@ struct Pose {
     float x;
     float y;
     float z;
-    float roll; // around x
-    float pitch; //around y
-    float yaw; //around z
+    float pitch;    // around x
+    float yaw;      // around y
+    float roll;     // around z
 };
 
 struct Color {

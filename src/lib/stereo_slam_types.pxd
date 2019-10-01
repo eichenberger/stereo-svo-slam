@@ -49,6 +49,11 @@ cdef extern from "stereo_slam_types.hpp":
         float fy
         float cx
         float cy
+        float k1
+        float k2
+        float k3
+        float p1
+        float p2
         int grid_height
         int grid_width
         int search_x
@@ -64,9 +69,9 @@ cdef extern from "stereo_slam_types.hpp":
         float x
         float y
         float z
-        float roll # around x
-        float pitch #around y
-        float yaw #around z
+        float pitch # around x
+        float yaw   # around y
+        float roll  # around z
 
     cdef struct Color:
         unsigned char r

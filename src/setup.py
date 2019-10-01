@@ -61,8 +61,9 @@ ext_modules_debug = [
 
 
 
-ext_modules = ext_modules_debug
-setup(name="SLAM", ext_modules=cythonize(ext_modules,
+#ext_modules = ext_modules_debug
+_ext_modules = ext_modules_debug
+setup(name="SLAM", ext_modules=cythonize(_ext_modules,
                                          nthreads=NB_COMPILE_JOBS,
                                          compiler_directives={'language_level': 3}))
 
