@@ -33,5 +33,5 @@ def draw_kps(stereo_images, kps2d, kf):
     result[:, _left.shape[1]:2*_left.shape[1], :] = _left
 
     plt.imshow(result)
-    plt.show()
-    #plt.pause(0.05)
+    #plt.show()
+    plt.pause(0.05)

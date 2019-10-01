@@ -43,7 +43,8 @@ ext_modules_release = [
               libraries=libraries,  # Unix-like specific
               library_dirs=library_dirs,
               include_dirs=include_dirs,
-              extra_compile_args=['-std=c++17','-fopenmp', '-O3', '-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION'],
+              extra_compile_args=['-std=c++17','-fopenmp', '-O3',
+                                  '-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION'],
               language='c++'
               )
 ]
@@ -54,15 +55,16 @@ ext_modules_debug = [
               libraries=libraries,  # Unix-like specific
               library_dirs=library_dirs,
               include_dirs=include_dirs,
-              extra_compile_args=['-std=c++17','-fopenmp', '-ggdb', '-O0', '-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION'],
+              extra_compile_args=['-std=c++17','-fopenmp', '-ggdb', '-O0',
+                                  '-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION'],
               language='c++'
               )
 ]
 
 
 
-#ext_modules = ext_modules_debug
 _ext_modules = ext_modules_debug
+#_ext_modules = ext_modules_release
 setup(name="SLAM", ext_modules=cythonize(_ext_modules,
                                          nthreads=NB_COMPILE_JOBS,
                                          compiler_directives={'language_level': 3}))

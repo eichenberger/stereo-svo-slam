@@ -88,8 +88,6 @@ float PoseEstimator::estimate_pose(const Pose &pose_guess, Pose &pose)
         Mat gradient(6,1,CV_64F);
         solver_callback->getGradient(x0.ptr<double>(0),
                 gradient.ptr<double>(0));
-        //gradient = (Mat_<double>(6,1) <<
-        //    -0.00606467,-0.00224579,0.00177167,-0.000263923,-0.000262003,0.0013641);
         for (;i < maxIter; i++) {
             Mat x = x0 + (k*gradient);
             double new_cost = solver_callback->calc(x.ptr<double>(0));
@@ -161,6 +159,12 @@ double PoseEstimatorCallback::calc(const double *x) const
     vector<KeyPoint2d> kps2d;
     project_keypoints(pose, keypoints.kps3d, camera_settings, kps2d);
 
+    cout << "keypoints 2d: ";
+    for (auto kp:kps2d) {
+        cout << kp.x << "x" << kp.y <<", ";
+    }
+    cout << endl;
+
     vector<float> diffs;
     // Difference will always be positive (absdiff)
     get_total_intensity_diff(previous_stereo_image.left, current_stereo_image.left,
@@ -168,12 +172,12 @@ double PoseEstimatorCallback::calc(const double *x) const
 
     // Use float because maybe it is faster? TODO: Verify
     float diff_sum = 0;
-    cout << "Diffs: ";
+    //cout << "Diffs: ";
+    //    cout << diff << ", ";
+    //cout << endl;
     for (auto diff:diffs) {
-        cout << diff << ", ";
         diff_sum += diff;
     }
-    cout << endl;
 
 #ifdef SUPER_VERBOSE
     cout << "Diff sum: " << diff_sum << " x: " <<

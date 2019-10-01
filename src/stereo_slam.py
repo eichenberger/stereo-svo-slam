@@ -62,7 +62,13 @@ class StereoSLAM:
             kf = self.mapping.get_last_keyframe()
 
             #kps3d = self.get_kps3d(kf)
+            timer = cv2.TickMeter()
+            timer.start()
             new_pose, cost = self._estimate_pose()
+            timer.stop()
+            print(f"Time estimate pose: {timer.getTimeSec()}")
+            timer.reset()
+
             _cs = CameraSettings(self.camera_settings)
 
             estimated_keypoints = project_keypoints(new_pose,
@@ -73,11 +79,15 @@ class StereoSLAM:
 
             refined_keypoints = self.previous_kps.copy()
 
+            timer.start()
             optical_flow = OpticalFlow()
             refined_keypoints.kps2d, err = optical_flow.calculate_optical_flow(
                 kf.stereo_images, kf.kps.kps2d,
                 self.stereo_image, estimated_keypoints)
 
+            timer.stop()
+            print(f"Time optical flow: {timer.getTimeSec()}")
+            timer.reset()
 
 
             for i in range(0, len(refined_keypoints.kps2d)):
@@ -86,11 +96,15 @@ class StereoSLAM:
 
             draw_kps(self.stereo_image, refined_keypoints.kps2d, kf)
 
+            timer.start()
             pose_refiner = PoseRefiner(self.camera_settings)
             refined_pose = pose_refiner.refine_pose(refined_keypoints, new_pose)
-
             self.previous_kps.kps2d = project_keypoints(
                 refined_pose, kf.kps.kps3d, _cs)
+
+            timer.stop()
+            print(f"Time refine keypoints: {timer.getTimeSec()}")
+            timer.reset()
 
             draw_kps(self.stereo_image, self.previous_kps.kps2d, kf)
             self.pose = refined_pose
