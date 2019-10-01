@@ -88,10 +88,21 @@ float PoseEstimator::estimate_pose(const Pose &pose_guess, Pose &pose)
         Mat gradient(6,1,CV_64F);
         solver_callback->getGradient(x0.ptr<double>(0),
                 gradient.ptr<double>(0));
+        //gradient = (Mat_<double>(6,1) <<
+        //    -0.00606467,-0.00224579,0.00177167,-0.000263923,-0.000262003,0.0013641);
         for (;i < maxIter; i++) {
             Mat x = x0 + (k*gradient);
             double new_cost = solver_callback->calc(x.ptr<double>(0));
             if (new_cost < prev_cost) {
+                cout << "Better value pev cost: " << prev_cost << " new cost: " << new_cost << endl;
+                cout << "x: " <<
+                    x.at<double>(0) << "," <<
+                    x.at<double>(1) << "," <<
+                    x.at<double>(2) << "," <<
+                    x.at<double>(3) << "," <<
+                    x.at<double>(4) << "," <<
+                    x.at<double>(5) << "," <<
+                    std::endl;
                 x0 = x;
                 prev_cost = new_cost;
                 break;
@@ -157,9 +168,12 @@ double PoseEstimatorCallback::calc(const double *x) const
 
     // Use float because maybe it is faster? TODO: Verify
     float diff_sum = 0;
+    cout << "Diffs: ";
     for (auto diff:diffs) {
+        cout << diff << ", ";
         diff_sum += diff;
     }
+    cout << endl;
 
 #ifdef SUPER_VERBOSE
     cout << "Diff sum: " << diff_sum << " x: " <<
@@ -189,7 +203,7 @@ static void exponential_map(const Mat &twist, Mat &pose)
             -w.at<double>(1), w.at<double>(0), 0);
     float _norm = 1.0;
     Mat _eye = Mat::eye(3,3, CV_64F);
-    Mat translation = Mat(3,1, CV_64F, pose.ptr<double>(0));
+    Mat translation = Mat(3,1, CV_64F);
 
     // Take closed form solution from robotics vision and control page 53
     // Note: This exponential map doesn't give the exact same value as expm
@@ -197,6 +211,9 @@ static void exponential_map(const Mat &twist, Mat &pose)
     // expm uses norm set to 1.0. However, this differs from the closed form
     // solution written in robotics vision and control.
     translation = (_eye*_norm + (1-cos(_norm))*w_skew+(_norm-sin(_norm))*(w_skew*w_skew))*v;
+
+    memcpy(pose.ptr<double>(), translation.ptr<double>(), 3*sizeof(double));
+
 }
 
 void PoseEstimatorCallback::getGradient(const double *x, double *grad)
@@ -284,9 +301,9 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
 
         auto diff = cv::sum(int2-int1)[0];
 
-        cout << "Intensity difference template at " <<
-            keypoints.kps2d[i].x << ", " << keypoints.kps2d[i].y << " image at " <<
-            kps2d[i].x << ", " << kps2d[i].y << " diff: " << diff << endl;
+        // cout << "Intensity difference template at " <<
+        //     keypoints.kps2d[i].x << ", " << keypoints.kps2d[i].y << " image at " <<
+        //     kps2d[i].x << ", " << kps2d[i].y << " diff: " << diff << endl;
 
         Mat residual_kp = _grad_times_jac*diff;
         transpose(residual_kp, residual_kp);
@@ -331,12 +348,12 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
     cout << "Norm: " << _norm << std::endl;
     pose_gradient = pose_gradient/_norm;
     cout << "Gradient normalized: " <<
-        grad[0] << "," <<
-        grad[1] << "," <<
-        grad[2] << "," <<
-        grad[3] << "," <<
-        grad[4] << "," <<
-        grad[5] << "," <<
+        pose_gradient.at<double>(0) << "," <<
+        pose_gradient.at<double>(1) << "," <<
+        pose_gradient.at<double>(2) << "," <<
+        pose_gradient.at<double>(3) << "," <<
+        pose_gradient.at<double>(4) << "," <<
+        pose_gradient.at<double>(5) << "," <<
         std::endl;
 #endif
 }

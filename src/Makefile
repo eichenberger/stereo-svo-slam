@@ -8,6 +8,7 @@ test:
 
 clean:
 	python3 setup.py clean --all
-	rm slam_accelerator*.so
+	rm -f slam_accelerator*.so
 	rm -f lib/*.gch
 	rm -f lib/*.o
+	rm -f lib/slam_accelerator.cpp
