@@ -182,7 +182,6 @@ void DepthCalculator::calculate_depth(Frame &frame,
     merge_keypoints(frame, _keypoints2d, _kp_info,
             camera_settings.grid_width, camera_settings.grid_height);
 
-    keypoints3d.clear();
     keypoints3d.resize(keypoints2d.size());
 
     const Mat &left = frame.stereo_image.left[0];

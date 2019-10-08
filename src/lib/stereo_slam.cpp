@@ -85,6 +85,8 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
             cout << "New keyframe is needed" << endl;
             keyframe = new KeyFrame;
             keyframe_inserter.new_keyframe(*frame, *keyframe);
+            frame->pose = keyframe->pose;
+            frame->kps = keyframe->kps;
         }
     }
 }
