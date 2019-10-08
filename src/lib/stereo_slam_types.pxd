@@ -6,6 +6,7 @@ cdef extern from "opencv2/core/core.hpp" namespace "cv":
         Mat()
         Mat (int rows, int cols, int type, void *data)
         void create(int rows, int cols, int type)
+        void copyTo(Mat m) const
         unsigned char* data
         int rows
         int cols
@@ -40,8 +41,8 @@ cdef extern from "stereo_slam_types.hpp":
         float confidence
 
     cdef struct StereoImage:
-        Mat left
-        Mat right
+        vector[Mat] left
+        vector[Mat] right
 
     cdef struct CameraSettings:
         float baseline
@@ -59,6 +60,8 @@ cdef extern from "stereo_slam_types.hpp":
         int search_x
         int search_y
         int window_size
+        int window_size_opt_flow
+        int max_pyramid_levels
 
     cdef struct KeyPoints:
         vector[KeyPoint2d] kps2d
@@ -78,8 +81,16 @@ cdef extern from "stereo_slam_types.hpp":
         unsigned char g
         unsigned char b
 
+    cdef struct Frame:
+        Pose pose
+        StereoImage stereo_image
+        KeyPoints kps
+
     cdef struct KeyFrame:
         Pose pose
-        vector[StereoImage] stereo_images
+        StereoImage stereo_image
         KeyPoints kps
         vector[Color] colors
+
+
+

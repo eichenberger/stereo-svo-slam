@@ -209,7 +209,7 @@ Lets assume we have a warp matrix in the following form:
 
 Lucas Kanade tries to optimize the following problem \cite{inverse_compositional}:
 \begin{equation}\label{eq:lk_problem}
-	\sum_x\sum_y(I_{k}(x',x')-I_{k-1}(x,y))^2
+	\sum_x\sum_y(I_{k}(x',y')-I_{k-1}(x,y))^2
 \end{equation}
 \begin{align*}
 	x,y				&:	\text{Pixel position in template}\\
@@ -457,7 +457,7 @@ We would need to find 12 gradients if we use the formulation in equation \ref{eq
 	\Delta p_{ij}	&:	\text{change of $p_{ij}$ per iteration}
 \end{align*}
 
-To make things easier we use the SE(3) formulation which is part of the Lie Groups. The whole idea is basically to transform the angles and translations into another space where it's easier to find the Jacobian. The optimization is then done in this SE(3) space. The result needs only to be transformed back into the original space. The problem we need to solve stays the same as in equation \ref{eq:iclk_problem}. However we need to find $x''$ and $y''$ differently. We use the following formulation:
+To make finding the Jacobian for this matrix possible we use Lie algebra. The whole idea is to transform the angles and translations into another space where it's easier to find the Jacobian. The optimization is then done with Lie algebra. The result from the optimization needs to be transformed from Lie algebra back to a Lie group which will give us pose and angles. The problem we need to solve stays the same as in equation \ref{eq:iclk_problem}. However we need to find $x''$ and $y''$ differently. We use the following formulation:
 \begin{equation}
 	W=e^{\xi}*P*p
 \end{equation}

@@ -1,3 +1,4 @@
+from functools import reduce
 import cv2
 import numpy as np
 
@@ -89,7 +90,6 @@ class StereoSLAM:
             print(f"Time optical flow: {timer.getTimeSec()}")
             timer.reset()
 
-
             for i in range(0, len(refined_keypoints.kps2d)):
                 if err[i] > 100:
                     refined_keypoints.kps2d[i] = estimated_keypoints[i]
@@ -105,6 +105,8 @@ class StereoSLAM:
             timer.stop()
             print(f"Time refine keypoints: {timer.getTimeSec()}")
             timer.reset()
+
+
 
             draw_kps(self.stereo_image, self.previous_kps.kps2d, kf)
             self.pose = refined_pose

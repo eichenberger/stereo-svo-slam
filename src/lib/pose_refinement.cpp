@@ -62,7 +62,7 @@ static void exponential_map(const Mat &twist, Mat &pose)
     // solution written in robotics vision and control.
     translation = (_eye*_norm + (1-cos(_norm))*w_skew+(_norm-sin(_norm))*(w_skew*w_skew))*v;
 }
-#if 1
+#if 0
 float PoseRefiner::refine_pose(const KeyPoints &keypoints,
         const Pose &estimated_pose,
         Pose &refined_pose)
@@ -114,10 +114,9 @@ float PoseRefiner::refine_pose(const KeyPoints &keypoints,
 }
 
 #else
-
 float PoseRefiner::refine_pose(const KeyPoints &keypoints,
         const Pose &estimated_pose,
-        Pose &refined_pose);
+        Pose &refined_pose)
 {
     const vector<KeyPoint2d> &keypoints2d = keypoints.kps2d;
     const vector<KeyPoint3d> &keypoints3d = keypoints.kps3d;
@@ -127,7 +126,7 @@ float PoseRefiner::refine_pose(const KeyPoints &keypoints,
         estimated_pose.pitch, estimated_pose.yaw, estimated_pose.roll);
 
     size_t maxIter = 50;
-    float k = 0.01;
+    float k = 0.1;
 
     Ptr<MinProblemSolver::Function> solver_callback = new PoseRefinerCallback(keypoints2d,
             keypoints3d, camera_settings);
@@ -145,7 +144,7 @@ float PoseRefiner::refine_pose(const KeyPoints &keypoints,
                 prev_cost = new_cost;
                 break;
             }
-            else if (fabs(new_cost - prev_cost) < 0.01) {
+            else if (fabs(new_cost - prev_cost) < 0.0001) {
                 i = maxIter;
                 break;
             }
@@ -200,7 +199,6 @@ double PoseRefinerCallback::calc(const double *x) const
     pose.yaw = x[4];
     pose.roll = x[5];
 
-    cout << "pose: " << pose.x << "," << pose.y << ","  << pose.z << "," << pose.pitch << ","  << pose.yaw << "," << pose.roll << endl;
     vector<KeyPoint2d> projected_keypoints2d;
     project_keypoints(pose, keypoints3d, camera_settings, projected_keypoints2d);
     Mat _projected_keypoints2d(2, projected_keypoints2d.size(), CV_32F, &projected_keypoints2d[0].x);
@@ -208,7 +206,12 @@ double PoseRefinerCallback::calc(const double *x) const
 
     Mat diff;
     absdiff(_projected_keypoints2d, _keypoints2d, diff);
-    return sum(diff)[0];
+
+    cout << "pose: " << pose.x << "," << pose.y << ","  << pose.z << "," << pose.pitch << ","  << pose.yaw << "," << pose.roll << endl;
+    double tot_diff = sum(diff)[0];
+    cout << "Diff: " << tot_diff << endl;
+
+    return tot_diff;
 }
 
 void PoseRefinerCallback::getGradient(const double *x, double *grad)
@@ -227,18 +230,27 @@ void PoseRefinerCallback::getGradient(const double *x, double *grad)
     Mat err = Mat::zeros(6, 1, CV_64F);
     Mat hessian = Mat::zeros(6,6, CV_64F);
 
+    Mat tot_diff = Mat::zeros(2,1, CV_64F);
+
+    cout << "Diff: ";
     for (size_t i = 0; i < keypoints3d.size(); i++) {
         auto x = keypoints3d[i].x;
         auto y = keypoints3d[i].y;
         auto z = keypoints3d[i].z;
 
-        Mat jacobian = (Mat_<double>(2,6) <<
-                1/z, 0, -1*x/(z*z), -1*x*y/(z*z), 1*(1+(x*x)/(z*z)), -1*y/z,
-                0, 1/z, -1*y/(z*z), -1*(1+(y*y)/(z*z)), 1*x*y/(z*z), 1*x/z);
+        Mat jacobian = -(Mat_<double>(2,6) <<
+                1.0/z, 0, -1.0*x/(z*z), -1.0*x*y/(z*z), 1.0*(1.0+(x*x)/(z*z)), -1.0*y/z,
+                0, 1.0/z, -1.0*y/(z*z), -1.0*(1+(y*y)/(z*z)), 1.0*x*y/(z*z), 1.0*x/z);
 
         Mat diff = (Mat_<double>(2,1) <<
                 keypoints2d[i].x -projected_keypoints2d[i].x,
                 keypoints2d[i].y -projected_keypoints2d[i].y);
+
+        if ((fabs(diff.at<double>(0)) > 3.0) ||
+                (fabs(diff.at<double>(1)) > 3.0))
+            continue;
+        tot_diff += diff;
+        cout << diff.at<double>(0) << "x" << diff.at<double>(1) << ",";
 
 #if 0
         double weight = max(0.1, (2.0 - cv::norm(diff))/2.0);
@@ -255,6 +267,8 @@ void PoseRefinerCallback::getGradient(const double *x, double *grad)
 
     }
 
+    cout << endl;
+
     Mat hessian_inv = hessian.inv();
 
     Mat twist = hessian_inv*err / keypoints2d.size();
@@ -268,6 +282,7 @@ void PoseRefinerCallback::getGradient(const double *x, double *grad)
     // gradient /= _norm;
 
     cout << "gradient: " << data[0] << "," << data[1] << "," << data[2] << ","<< data[3] << ","<< data[4] << ","<< data[5] << "," << endl;
+    cout << "Total diff: " << tot_diff << endl;
 
     memcpy(grad, data, 6*sizeof(double));
 }

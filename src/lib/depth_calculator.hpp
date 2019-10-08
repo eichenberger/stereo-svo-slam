@@ -16,9 +16,8 @@ class DepthCalculator
 {
 public:
     DepthCalculator(){}
-    void calculate_depth(const std::vector<struct StereoImage> &stereo_images,
-            const struct CameraSettings &camera_settings,
-            struct KeyPoints &keypoints);
+    void calculate_depth(Frame &frame,
+            const struct CameraSettings &camera_settings);
 
 
 private:

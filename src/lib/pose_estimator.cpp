@@ -9,7 +9,8 @@
 #include "transform_keypoints.hpp"
 #include "image_comparison.hpp"
 
-#define SUPER_VERBOSE 1
+#define VERBOSE 1
+// #define SUPER_VERBOSE 1
 
 using namespace cv;
 using namespace std;
@@ -17,6 +18,7 @@ using namespace std;
 // We could use one of the opencv solver. However, they don't really fit
 class PoseEstimatorCallback : public MinProblemSolver::Function
 {
+    friend class PoseEstimator;
 public:
     PoseEstimatorCallback(const StereoImage &current_stereo_image,
                           const StereoImage &previous_stereo_image,
@@ -25,12 +27,16 @@ public:
     double calc(const double *x) const;
     int getDims() const { return 6; };
     void getGradient(const double *x, double *grad);
+    void setLevel(int level);
 
 private:
     const StereoImage &current_stereo_image;
     const StereoImage &previous_stereo_image;
     const KeyPoints &keypoints;
     const CameraSettings &camera_settings;
+    CameraSettings level_camera_settings;
+    vector<KeyPoint2d> level_keypoints2d;
+    int level;
 
     cv::Ptr<Mat> hessian_inv;
     cv::Ptr<vector<Mat>> gradient_times_jacobians;
@@ -40,24 +46,46 @@ private:
 PoseEstimator::PoseEstimator(const StereoImage &current_stereo_image,
     const StereoImage &previous_stereo_image,
     const KeyPoints &previous_keypoints,
-    const CameraSettings &camera_settings)
+    const CameraSettings &camera_settings) :
+    max_levels(camera_settings.max_pyramid_levels)
 {
     solver_callback = new PoseEstimatorCallback(current_stereo_image,
             previous_stereo_image, previous_keypoints, camera_settings);
+
+}
+
+
+float PoseEstimator::estimate_pose(const Pose &pose_guess, Pose &pose)
+{
+    float err = 0;
+    Pose pose_estimate = pose_guess;
+    for (int i = 2; i < max_levels; i++) {
+        Pose new_estimate;
+        int current_level = max_levels - i;
+
+        err = estimate_pose_at_level(pose_estimate, new_estimate, current_level);
+        pose_estimate = new_estimate;
+    }
+
+    pose = pose_estimate;
+
+    return err;
 }
 
 #if 0
 
-float PoseEstimator::estimate_pose(const Pose &pose_guess, Pose &pose)
+float PoseEstimator::estimate_pose_at_level(const Pose &pose_guess, Pose &pose,
+        int level)
 {
 
     Mat x0 = (Mat_<double>(6,1) <<
         pose_guess.x, pose_guess.y, pose_guess.z,
         pose_guess.pitch, pose_guess.yaw, pose_guess.roll);
 
+    solver_callback->setLevel(level);
     Ptr<DownhillSolver> solver = DownhillSolver::create(solver_callback);
     Mat step = Mat::ones(6,1, CV_64F);
-    step *= 0.01;
+    step *= 0.001;
     solver->setInitStep(step);
 
     solver->minimize(x0);
@@ -75,7 +103,8 @@ float PoseEstimator::estimate_pose(const Pose &pose_guess, Pose &pose)
 }
 
 #else
-float PoseEstimator::estimate_pose(const Pose &pose_guess, Pose &pose)
+float PoseEstimator::estimate_pose_at_level(const Pose &pose_guess, Pose &pose,
+        int level)
 {
     Mat x0 = (Mat_<double>(6,1) <<
         pose_guess.x, pose_guess.y, pose_guess.z,
@@ -83,6 +112,7 @@ float PoseEstimator::estimate_pose(const Pose &pose_guess, Pose &pose)
 
     size_t maxIter = 50;
     float k = 1.0;
+    solver_callback->setLevel(level);
     double prev_cost = solver_callback->calc(x0.ptr<double>(0));
     for (size_t i = 0; i < maxIter; i++) {
         Mat gradient(6,1,CV_64F);
@@ -92,6 +122,7 @@ float PoseEstimator::estimate_pose(const Pose &pose_guess, Pose &pose)
             Mat x = x0 + (k*gradient);
             double new_cost = solver_callback->calc(x.ptr<double>(0));
             if (new_cost < prev_cost) {
+#ifdef VERBOSE
                 cout << "Better value pev cost: " << prev_cost << " new cost: " << new_cost << endl;
                 cout << "x: " <<
                     x.at<double>(0) << "," <<
@@ -101,6 +132,7 @@ float PoseEstimator::estimate_pose(const Pose &pose_guess, Pose &pose)
                     x.at<double>(4) << "," <<
                     x.at<double>(5) << "," <<
                     std::endl;
+#endif
                 x0 = x;
                 prev_cost = new_cost;
                 break;
@@ -134,7 +166,8 @@ PoseEstimatorCallback::PoseEstimatorCallback(const StereoImage &current_stereo_i
     current_stereo_image(current_stereo_image),
     previous_stereo_image(previous_stereo_image),
     keypoints(previous_keypoints),
-    camera_settings(camera_settings)
+    camera_settings(camera_settings),
+    level(0)
 {
 }
 
@@ -157,18 +190,21 @@ double PoseEstimatorCallback::calc(const double *x) const
     Pose pose = pose_from_x(x);
 
     vector<KeyPoint2d> kps2d;
-    project_keypoints(pose, keypoints.kps3d, camera_settings, kps2d);
+    project_keypoints(pose, keypoints.kps3d, level_camera_settings, kps2d);
 
+#ifdef SUPER_VERBOSE
     cout << "keypoints 2d: ";
     for (auto kp:kps2d) {
         cout << kp.x << "x" << kp.y <<", ";
     }
     cout << endl;
+#endif
 
     vector<float> diffs;
     // Difference will always be positive (absdiff)
-    get_total_intensity_diff(previous_stereo_image.left, current_stereo_image.left,
-            keypoints.kps2d, kps2d, 4, diffs);
+    get_total_intensity_diff(previous_stereo_image.left[2*level],
+            current_stereo_image.left[2*level],
+            level_keypoints2d, kps2d, level_camera_settings.window_size, diffs);
 
     // Use float because maybe it is faster? TODO: Verify
     float diff_sum = 0;
@@ -224,8 +260,8 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
 {
     Pose pose = pose_from_x(x);
 
-    const Mat &current_image = current_stereo_image.left;
-    const Mat &previous_image = previous_stereo_image.left;
+    const Mat &current_image = current_stereo_image.left[2*level];
+    const Mat &previous_image = previous_stereo_image.left[2*level];
 
     // If we haven't calculated the hessian_inv yet we will do it now.
     // Because of compositional lucas kanade we only do it once
@@ -233,14 +269,14 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
         hessian_inv = new Mat(6,6, CV_64F);
         Mat hessian = Mat::zeros(6,6, CV_64F);
         gradient_times_jacobians = new vector<Mat>;
-        for (size_t i = 0; i < keypoints.kps2d.size(); i++) {
-            auto kp2d = keypoints.kps2d[i];
+        for (size_t i = 0; i < level_keypoints2d.size(); i++) {
+            auto kp2d = level_keypoints2d[i];
             auto x = keypoints.kps3d[i].x;
             auto y = keypoints.kps3d[i].y;
             auto z = keypoints.kps3d[i].z;
 
-            auto fx = camera_settings.fx;
-            auto fy = camera_settings.fy;
+            auto fx = level_camera_settings.fx;
+            auto fy = level_camera_settings.fy;
 
             // See A tutorial on SE(3) transformation parameterizations and on-manifold optimization page 58
             // for the jaccobian. Take - because we want to minimize
@@ -290,14 +326,14 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
 
     // See ICRA Forster 14 for the whole algorithm
     vector<KeyPoint2d> kps2d;
-    project_keypoints(pose, keypoints.kps3d, camera_settings, kps2d);
+    project_keypoints(pose, keypoints.kps3d, level_camera_settings, kps2d);
 
     Mat residual = Mat::zeros(6,1, CV_64F);
     for (size_t i = 0; i < kps2d.size(); i++) {
         Mat int1, int2;
 
         cv::getRectSubPix(previous_image, Size(2,2),
-                Point2f(keypoints.kps2d[i].x, keypoints.kps2d[i].y), int1, CV_32F);
+                Point2f(level_keypoints2d[i].x, level_keypoints2d[i].y), int1, CV_32F);
         cv::getRectSubPix(current_image, Size(2,2),
                 Point2f(kps2d[i].x,kps2d[i].y), int2, CV_32F);
 
@@ -305,9 +341,11 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
 
         auto diff = cv::sum(int2-int1)[0];
 
-        // cout << "Intensity difference template at " <<
-        //     keypoints.kps2d[i].x << ", " << keypoints.kps2d[i].y << " image at " <<
-        //     kps2d[i].x << ", " << kps2d[i].y << " diff: " << diff << endl;
+#if SUPER_VERBOSE
+        cout << "Intensity difference template at " <<
+             level_keypoints2d[i].x << ", " << level_keypoints2d[i].y << " image at " <<
+             kps2d[i].x << ", " << kps2d[i].y << " diff: " << diff << endl;
+#endif
 
         Mat residual_kp = _grad_times_jac*diff;
         transpose(residual_kp, residual_kp);
@@ -362,3 +400,26 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
 #endif
 }
 
+void PoseEstimatorCallback::setLevel(int level)
+{
+    this->level = level;
+    int divider = 1 << level;
+
+    level_camera_settings = camera_settings;
+    level_camera_settings.fx /= divider;
+    level_camera_settings.fy /= divider;
+    level_camera_settings.cx /= divider;
+    level_camera_settings.cy /= divider;
+    level_camera_settings.baseline /= divider;
+
+
+    level_keypoints2d = keypoints.kps2d;
+
+    if (level == 0)
+        return;
+
+    for (size_t i = 0; i < level_keypoints2d.size(); i++) {
+        level_keypoints2d[i].x /= divider;
+        level_keypoints2d[i].y /= divider;
+    }
+}

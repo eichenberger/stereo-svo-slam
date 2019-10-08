@@ -9,6 +9,7 @@ def parallelCCompile(self, sources, output_dir=None, macros=None, include_dirs=N
     # those lines are copied from distutils.ccompiler.CCompiler directly
     macros, objects, extra_postargs, pp_opts, build = self._setup_compile(output_dir, macros, include_dirs, sources, depends, extra_postargs)
     cc_args = self._get_cc_args(pp_opts, debug, extra_preargs)
+
     # parallel code
     N=NB_COMPILE_JOBS # number of parallel compilations
     import multiprocessing.pool
@@ -19,6 +20,7 @@ def parallelCCompile(self, sources, output_dir=None, macros=None, include_dirs=N
     # convert to list, imap is evaluated on-demand
     list(multiprocessing.pool.ThreadPool(N).imap(_single_compile,objects))
     return objects
+
 import distutils.ccompiler
 distutils.ccompiler.CCompiler.compile=parallelCCompile
 
@@ -31,9 +33,11 @@ sources = ["lib/slam_accelerator.pyx",
             "lib/pose_estimator.cpp",
             "lib/pose_refinement.cpp",
             "lib/optical_flow.cpp",
+            "lib/stereo_slam.cpp",
+            "lib/keyframe_inserter.cpp",
             "lib/corner_detector.cpp"]
 libraries = ["m", "opencv_core", 'omp5', 'opencv_features2d',
-             'opencv_imgproc', 'opencv_calib3d','opencv_video']
+             'opencv_imgproc', 'opencv_calib3d','opencv_video', 'opencv_highgui']
 library_dirs = ['/usr/local/lib']
 include_dirs = ['/usr/local/include/opencv4']
 
@@ -43,7 +47,7 @@ ext_modules_release = [
               libraries=libraries,  # Unix-like specific
               library_dirs=library_dirs,
               include_dirs=include_dirs,
-              extra_compile_args=['-std=c++17','-fopenmp', '-O3',
+              extra_compile_args=['-std=c++17','-fopenmp', '-O3','-g0','-s',
                                   '-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION'],
               language='c++'
               )

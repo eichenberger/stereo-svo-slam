@@ -8,9 +8,9 @@ import websockets
 import yaml
 import json
 
-from stereo_slam import StereoSLAM
+from slam_accelerator import CameraSettings, StereoSlam
 
-from slam_accelerator import CameraSettings
+from draw_kps import draw_frame
 
 from econ_utils import set_auto_exposure, set_manual_exposure
 
@@ -27,18 +27,18 @@ class EconInput():
 
         self.camera_settings = CameraSettings()
 
-        self.camera_settings.baseline = self.settings.getNode('Camera.bf')
-        self.camera_settings.fx = self.settings.getNode('Camera.fx')
-        self.camera_settings.fy = self.settings.getNode('Camera.fy')
-        self.camera_settings.cx = self.settings.getNode('Camera.cx')
-        self.camera_settings.cy = self.settings.getNode('Camera.cy')
+        self.camera_settings.baseline = self.settings.getNode('Camera.bf').real()
+        self.camera_settings.fx = self.settings.getNode('Camera.fx').real()
+        self.camera_settings.fy = self.settings.getNode('Camera.fy').real()
+        self.camera_settings.cx = self.settings.getNode('Camera.cx').real()
+        self.camera_settings.cy = self.settings.getNode('Camera.cy').real()
 
-        self.camera_settings.k1 = l_d[0]
-        self.camera_settings.k2 = l_d[1]
-        self.camera_settings.k3 = l_d[4]
+        self.camera_settings.k1 = l_d[0,0]
+        self.camera_settings.k2 = l_d[0,1]
+        self.camera_settings.k3 = l_d[0,4]
 
-        self.camera_settings.p1 = l_d[2]
-        self.camera_settings.p2 = l_d[3]
+        self.camera_settings.p1 = l_d[0,2]
+        self.camera_settings.p2 = l_d[0,3]
 
         self.camera_settings.grid_width = 40
         self.camera_settings.grid_height = 30
@@ -59,7 +59,7 @@ class EconInput():
 class BlenderInput():
     def __init__(self, video):
         self.cap = cv2.VideoCapture(video)
-        self.frame_nr = 37
+        self.frame_nr = 2
 
         width = 752
         height = 480
@@ -115,18 +115,18 @@ class VideoInput():
 
         self.camera_settings = CameraSettings()
 
-        self.camera_settings.baseline = self.settings.getNode('Camera.bf')
-        self.camera_settings.fx = self.settings.getNode('Camera.fx')
-        self.camera_settings.fy = self.settings.getNode('Camera.fy')
-        self.camera_settings.cx = self.settings.getNode('Camera.cx')
-        self.camera_settings.cy = self.settings.getNode('Camera.cy')
+        self.camera_settings.baseline = self.settings.getNode('Camera.bf').real()
+        self.camera_settings.fx = self.settings.getNode('Camera.fx').real()
+        self.camera_settings.fy = self.settings.getNode('Camera.fy').real()
+        self.camera_settings.cx = self.settings.getNode('Camera.cx').real()
+        self.camera_settings.cy = self.settings.getNode('Camera.cy').real()
 
-        self.camera_settings.k1 = l_d[0]
-        self.camera_settings.k2 = l_d[1]
-        self.camera_settings.k3 = l_d[4]
+        self.camera_settings.k1 = l_d[0,0]
+        self.camera_settings.k2 = l_d[0,1]
+        self.camera_settings.k3 = l_d[0,4]
 
-        self.camera_settings.p1 = l_d[2]
-        self.camera_settings.p2 = l_d[3]
+        self.camera_settings.p1 = l_d[0,2]
+        self.camera_settings.p2 = l_d[0,3]
 
         self.camera_settings.grid_width = 40
         self.camera_settings.grid_height = 30
@@ -177,7 +177,13 @@ def main():
     args = parser.parse_args()
     camera = args.func(args)
 
-    slam = StereoSLAM(camera.camera_settings)
+    # Size of window for depth estimation and pose estimation
+    camera.camera_settings.window_size = 4
+    # Size of window for optical flow
+    camera.camera_settings.window_size_opt_flow = 8
+    camera.camera_settings.max_pyramid_levels = 3
+
+    slam = StereoSlam(camera.camera_settings)
 
     gray_l, gray_r = camera.read()
     async def read_frame():
@@ -188,7 +194,10 @@ def main():
                 gray_l, gray_r = camera.read()
                 tm = cv2.TickMeter()
                 tm.start()
-                slam.new_image(gray_l, gray_r)
+                slam.new_image(gray_l.copy(), gray_r.copy())
+
+                draw_frame(slam.get_keyframe(), slam.get_frame())
+
                 tm.stop()
                 print(f"processing took: {tm.getTimeMilli()} ms")
                 key = cv2.waitKey(1)

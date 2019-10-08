@@ -13,332 +13,687 @@ from libc.string cimport memcpy
 
 ctypedef double (*opt_fun)(const double*)
 
-cimport depth_calculator
-cimport transform_keypoints
-cimport image_comparison
-cimport stereo_slam_types
-cimport pose_estimator
-cimport optical_flow
-cimport pose_refinement
+cimport stereo_slam
 
-cdef _c2np(stereo_slam_types.Mat image):
+from stereo_slam_types cimport KeyPointType as _KeyPointType
+from stereo_slam_types cimport CameraSettings as _CameraSettings
+from stereo_slam_types cimport Color as _Color
+from stereo_slam_types cimport Frame as _Frame
+from stereo_slam_types cimport KeyFrame as _KeyFrame
+from stereo_slam_types cimport KeyPoint2d as _KeyPoint2d
+from stereo_slam_types cimport KeyPoint3d as _KeyPoint3d
+from stereo_slam_types cimport KeyPointInformation as _KeyPointInformation
+from stereo_slam_types cimport KeyPoints as _KeyPoints
+from stereo_slam_types cimport Mat as _Mat
+from stereo_slam_types cimport Pose as _Pose
+from stereo_slam_types cimport StereoImage as _StereoImage
+
+
+cdef _c2np(_Mat image):
+    cdef _Mat _copy
+    image.copyTo(_copy)
     rows = image.rows
     cols = image.cols
-    return np.asarray(<np.uint8_t[:rows,:cols]> image.data)
+    _array = np.asarray(<np.uint8_t[:rows,:cols]> _copy.data)
+    return _array.copy()
 
-cdef _np2c(pyimage, stereo_slam_types.Mat &cimage):
+cdef _np2c(pyimage, _Mat &cimage):
     r = pyimage.shape[0]
     c = pyimage.shape[1]
     cimage.create(r, c, cv2.CV_8UC1)
     cdef unsigned char[:,:] image_buffer = pyimage
     memcpy(cimage.data, &image_buffer[0,0], r*c)
 
-def project_keypoints(pose, input, CameraSettings camera_settings):
-    cdef vector[stereo_slam_types.KeyPoint2d] keypoints2d
 
-    transform_keypoints.project_keypoints(pose, input, camera_settings._camera_settings, keypoints2d)
-
-    return keypoints2d
-
-def get_total_intensity_diff(image1, image2, keypoints1, keypoints2, patchSize):
-    cdef vector[float] diff
-    cdef stereo_slam_types.Mat _image1
-    cdef stereo_slam_types.Mat _image2
-
-    _np2c(image1, _image1)
-    _np2c(image2, _image2)
-
-    image_comparison.get_total_intensity_diff(_image1, _image2, keypoints1,
-                                              keypoints2, patchSize, diff)
-
-    return np.asarray(diff)
-
-def transform_keypoints_inverse(pose, input):
-    cdef vector[stereo_slam_types.KeyPoint3d] output
-
-    transform_keypoints.transform_keypoints_inverse(pose, input, output)
-
-    return output
-
-cdef class DepthCalculator:
-    cdef depth_calculator.DepthCalculator _depth_calculator
-
-    def calculate_depth(self, stereo_images, CameraSettings camera_settings):
-        keypoints = KeyPoints()
-
-        cdef vector[stereo_slam_types.StereoImage] _stereo_images
-        for stereo_image in stereo_images:
-            _stereo_images.push_back((<StereoImage>stereo_image)._stereo_image)
-
-        self._depth_calculator.calculate_depth(_stereo_images,
-                                               camera_settings._camera_settings,
-                                               keypoints._keypoints)
-
-        return keypoints
-
-cdef class StereoImage:
-    cdef stereo_slam_types.StereoImage _stereo_image
-
-    @property
-    def left(self):
-        return _c2np(self._stereo_image.left)
-    @left.setter
-    def left(self, left):
-        _np2c(left, self._stereo_image.left)
-    @property
-    def right(self):
-        return _c2np(self._stereo_image.right)
-    @right.setter
-    def right(self, right):
-        _np2c(right, self._stereo_image.right)
-
-cdef class CameraSettings:
-    cdef stereo_slam_types.CameraSettings _camera_settings
-
-    def __init__(self, CameraSettings camera_settings = None):
-        if camera_settings:
-            memcpy(&self._camera_settings,
-                   &camera_settings._camera_settings, sizeof(stereo_slam_types.CameraSettings))
-
-    @property
-    def baseline(self):
-        return self._camera_settings.baseline
-    @baseline.setter
-    def baseline(self, baseline):
-        self._camera_settings.baseline = baseline
-    @property
-    def fx(self):
-        return self._camera_settings.fx
-    @fx.setter
-    def fx(self, fx):
-        self._camera_settings.fx = fx
-    @property
-    def fy(self):
-        return self._camera_settings.fy
-    @fy.setter
-    def fy(self, fy):
-        self._camera_settings.fy = fy
-    @property
-    def cx(self):
-        return self._camera_settings.cx
-    @cx.setter
-    def cx(self, cx):
-        self._camera_settings.cx = cx
-    @property
-    def cy(self):
-        return self._camera_settings.cy
-    @cy.setter
-    def cy(self, cy):
-        self._camera_settings.cy = cy
-    @property
-    def k1(self):
-        return self._camera_settings.k1
-    @k1.setter
-    def k1(self, k1):
-        self._camera_settings.k1 = k1
-    @property
-    def k2(self):
-        return self._camera_settings.k2
-    @k2.setter
-    def k2(self, k2):
-        self._camera_settings.k2 = k2
-    @property
-    def k3(self):
-        return self._camera_settings.k3
-    @k3.setter
-    def k3(self, k3):
-        self._camera_settings.k3 = k3
-    @property
-    def p1(self):
-        return self._camera_settings.p1
-    @p1.setter
-    def p1(self, p1):
-        self._camera_settings.p1 = p1
-    @property
-    def p2(self):
-        return self._camera_settings.p2
-    @p2.setter
-    def p2(self, p2):
-        self._camera_settings.p2 = p2
-    @property
-    def grid_height(self):
-        return self._camera_settings.grid_height
-    @grid_height.setter
-    def grid_height(self, grid_height):
-        self._camera_settings.grid_height = grid_height
-    @property
-    def grid_width(self):
-        return self._camera_settings.grid_width
-    @grid_width.setter
-    def grid_width(self, grid_width):
-        self._camera_settings.grid_width = grid_width
-    @property
-    def search_x(self):
-        return self._camera_settings.search_x
-    @search_x.setter
-    def search_x(self, search_x):
-        self._camera_settings.search_x = search_x
-    @property
-    def search_y(self):
-        return self._camera_settings.search_y
-    @search_y.setter
-    def search_y(self, search_y):
-        self._camera_settings.search_y = search_y
-    @property
-    def window_size(self):
-        return self._camera_settings.window_size
-    @window_size.setter
-    def window_size(self, window_size):
-        self._camera_settings.window_size = window_size
-
-
-cdef class KeyPoints:
-    cdef stereo_slam_types.KeyPoints _keypoints
-
-    @property
-    def kps2d(self):
-        return self._keypoints.kps2d
-    @kps2d.setter
-    def kps2d(self, kps2d):
-        self._keypoints.kps2d = kps2d
-    @property
-    def kps3d(self):
-        return self._keypoints.kps3d
-    @kps3d.setter
-    def kps3d(self, kps3d):
-        self._keypoints.kps3d = kps3d
-
-    def copy(self):
-        new_keypoints = KeyPoints()
-
-        new_keypoints._keypoints.kps2d = self._keypoints.kps2d
-        new_keypoints._keypoints.kps3d = self._keypoints.kps3d
-        new_keypoints._keypoints.info = self._keypoints.info
-
-        return new_keypoints
-
-
-
-cdef class KeyFrame:
-    cdef stereo_slam_types.KeyFrame _keyframe
-
-    @property
-    def pose(self):
-        return self._keyframe.pose
-    @pose.setter
-    def pose(self, pose):
-        self._keyframe.pose = pose
-
-    @property
-    def stereo_images(self):
-        # Create a list of stereo images from C vector
-        stereo_images = []
-        for i in range(0, self._keyframe.stereo_images.size()):
-            stereo_image = StereoImage()
-            rows = self._keyframe.stereo_images[i].left.rows
-            cols = self._keyframe.stereo_images[i].left.cols
-
-            # Because of a strange reason if the matrix is not created yet
-            # it will fail to assign another matrix to it. Therfore, we create one
-            stereo_image._stereo_image.left.create(rows, cols, cv2.CV_8UC1)
-            stereo_image._stereo_image.left = self._keyframe.stereo_images[i].left
-
-            stereo_image._stereo_image.right.create(rows, cols, cv2.CV_8UC1)
-            stereo_image._stereo_image.right = self._keyframe.stereo_images[i].right
-            stereo_images.append(stereo_image)
-        return stereo_images
-    @stereo_images.setter
-    def stereo_images(self, stereo_images):
-        # Assign list of StereoImages to C type
-        self._keyframe.stereo_images.resize(len(stereo_images))
-        for i, stereo_image in enumerate(stereo_images):
-            self._keyframe.stereo_images[i] = (<StereoImage>stereo_image)._stereo_image
-
-    @property
-    def kps(self):
-        kps = KeyPoints()
-        kps._keypoints = self._keyframe.kps
-        return kps
-    @kps.setter
-    def kps(self, kps):
-        self._keyframe.kps = (<KeyPoints>kps)._keypoints
-
-    @property
-    def colors(self):
-        # Let autoconvert do the magic (Color will be a dict)
-        return self._keyframe.colors
-    @colors.setter
-    def colors(self, colors):
-        # Let autoconvert do the magic
-        self._keyframe.colors = colors
-
-cdef class PoseEstimator:
-    cdef pose_estimator.PoseEstimator *_pose_estimator
-
-    def __cinit__(self, StereoImage current_stereo_image,
-                 StereoImage previous_stereo_image,
-                 KeyPoints previous_keypoints,
-                 CameraSettings camera_settings):
-        self._pose_estimator = new pose_estimator.PoseEstimator(
-            current_stereo_image._stereo_image,
-            previous_stereo_image._stereo_image,
-            previous_keypoints._keypoints,
-            camera_settings._camera_settings)
-
-    def __dealloc__(self):
-        del self._pose_estimator
-
-    def estimate_pose(self, pose_guess):
-        cdef stereo_slam_types.Pose estimated_pose
-        cost = self._pose_estimator.estimate_pose(pose_guess, estimated_pose)
-        return estimated_pose, cost
-
-
-cdef class OpticalFlow:
-    cdef optical_flow.OpticalFlow *_optical_flow
-
-    def __cinit__(self):
-        self._optical_flow= new optical_flow.OpticalFlow()
-
-    def __dealloc__(self):
-        del self._optical_flow
-
-    def calculate_optical_flow(self, previous_stereo_image_pyr,
-                               previous_keypoints2d,
-                               current_stereo_image_pyr,
-                               current_keypoints2d):
-        cdef vector[stereo_slam_types.StereoImage] _previous_stereo_image_pyr
-        for stereo_image in previous_stereo_image_pyr:
-            _previous_stereo_image_pyr.push_back((<StereoImage>stereo_image)._stereo_image)
-
-        cdef vector[stereo_slam_types.StereoImage] _current_stereo_image_pyr
-        for stereo_image in current_stereo_image_pyr:
-            _current_stereo_image_pyr.push_back((<StereoImage>stereo_image)._stereo_image)
-
-        cdef vector[stereo_slam_types.KeyPoint2d] refined_keypoints = current_keypoints2d.copy()
-        cdef vector[float] err
-
-        self._optical_flow.calculate_optical_flow(_previous_stereo_image_pyr,
-                                                  previous_keypoints2d,
-                                                  _current_stereo_image_pyr,
-                                                  refined_keypoints,
-                                                  err)
-
-        return refined_keypoints, err
-
-cdef class PoseRefiner:
-    cdef pose_refinement.PoseRefiner *_pose_refiner
+cdef class StereoSlam:
+    cdef stereo_slam.StereoSlam *_stereo_slam
 
     def __cinit__(self, CameraSettings camera_settings):
-        self._pose_refiner = new pose_refinement.PoseRefiner(camera_settings._camera_settings)
+        self._stereo_slam = new stereo_slam.StereoSlam(camera_settings.inst);
 
     def __dealloc__(self):
-        del self._pose_refiner
+        del self._stereo_slam
 
-    def refine_pose(self, KeyPoints keypoints, estimated_pose):
-        cdef stereo_slam_types.Pose refined_pose
+    def new_image(self, left, right):
+        cdef _Mat _left
+        cdef _Mat _right
 
-        self._pose_refiner.refine_pose(keypoints._keypoints, estimated_pose,
-                                       refined_pose)
+        _np2c(left, _left)
+        _np2c(right, _right)
 
-        return refined_pose
+        self._stereo_slam.new_image(_left, _right)
+
+    def get_keyframe(self):
+        kf = KeyFrame()
+        self._stereo_slam.get_keyframe(kf.inst)
+
+        return kf
+
+
+    def get_frame(self):
+        frame = Frame()
+        self._stereo_slam.get_frame(frame.inst)
+
+        return frame
+
+cdef class StereoImage:
+    """
+    Cython implementation of _StereoImage
+    """
+
+    cdef _StereoImage inst
+
+    property left:
+        def __set__(self, list left):
+            cdef vector[_Mat] v0
+            cdef _Mat _item0
+            for item0 in left:
+                _np2c(item0, _item0)
+                v0.push_back(_item0)
+            self.inst.left = v0
+
+        def __get__(self):
+            _r = self.inst.left
+            py_result = []
+            for i in range(_r.size()):
+               py_result.append(_c2np(_r[i]))
+            return py_result
+
+    property right:
+        def __set__(self, list right):
+            cdef vector[_Mat] v0
+            cdef _Mat _item0
+            for item0 in right:
+                _np2c(item0, _item0)
+                v0.push_back(_item0)
+            self.inst.right = v0
+
+        def __get__(self):
+            _r = self.inst.right
+            py_result = []
+            for i in range(_r.size()):
+               py_result.append(_c2np(_r[i]))
+            return py_result
+
+###### Most stuff was autogenerated with autowrap below here ######
+
+cdef class CameraSettings:
+    """
+    Cython implementation of _CameraSettings
+    """
+
+    cdef _CameraSettings inst
+
+    property baseline:
+        def __set__(self, float baseline):
+
+            self.inst.baseline = (<float>baseline)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.baseline
+            py_result = <float>_r
+            return py_result
+
+    property fx:
+        def __set__(self, float fx):
+
+            self.inst.fx = (<float>fx)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.fx
+            py_result = <float>_r
+            return py_result
+
+    property fy:
+        def __set__(self, float fy):
+
+            self.inst.fy = (<float>fy)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.fy
+            py_result = <float>_r
+            return py_result
+
+    property cx:
+        def __set__(self, float cx):
+
+            self.inst.cx = (<float>cx)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.cx
+            py_result = <float>_r
+            return py_result
+
+    property cy:
+        def __set__(self, float cy):
+
+            self.inst.cy = (<float>cy)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.cy
+            py_result = <float>_r
+            return py_result
+
+    property k1:
+        def __set__(self, float k1):
+
+            self.inst.k1 = (<float>k1)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.k1
+            py_result = <float>_r
+            return py_result
+
+    property k2:
+        def __set__(self, float k2):
+
+            self.inst.k2 = (<float>k2)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.k2
+            py_result = <float>_r
+            return py_result
+
+    property k3:
+        def __set__(self, float k3):
+
+            self.inst.k3 = (<float>k3)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.k3
+            py_result = <float>_r
+            return py_result
+
+    property p1:
+        def __set__(self, float p1):
+
+            self.inst.p1 = (<float>p1)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.p1
+            py_result = <float>_r
+            return py_result
+
+    property p2:
+        def __set__(self, float p2):
+
+            self.inst.p2 = (<float>p2)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.p2
+            py_result = <float>_r
+            return py_result
+
+    property grid_height:
+        def __set__(self,  grid_height):
+
+            self.inst.grid_height = (<int>grid_height)
+
+
+        def __get__(self):
+            cdef int _r = self.inst.grid_height
+            py_result = <int>_r
+            return py_result
+
+    property grid_width:
+        def __set__(self,  grid_width):
+
+            self.inst.grid_width = (<int>grid_width)
+
+
+        def __get__(self):
+            cdef int _r = self.inst.grid_width
+            py_result = <int>_r
+            return py_result
+
+    property search_x:
+        def __set__(self,  search_x):
+
+            self.inst.search_x = (<int>search_x)
+
+
+        def __get__(self):
+            cdef int _r = self.inst.search_x
+            py_result = <int>_r
+            return py_result
+
+    property search_y:
+        def __set__(self,  search_y):
+
+            self.inst.search_y = (<int>search_y)
+
+
+        def __get__(self):
+            cdef int _r = self.inst.search_y
+            py_result = <int>_r
+            return py_result
+
+    property window_size:
+        def __set__(self,  window_size):
+
+            self.inst.window_size = (<int>window_size)
+
+
+        def __get__(self):
+            cdef int _r = self.inst.window_size
+            py_result = <int>_r
+            return py_result
+
+    property window_size_opt_flow:
+        def __set__(self,  window_size_opt_flow):
+
+            self.inst.window_size_opt_flow = (<int>window_size_opt_flow)
+
+
+        def __get__(self):
+            cdef int _r = self.inst.window_size_opt_flow
+            py_result = <int>_r
+            return py_result
+
+    property max_pyramid_levels:
+        def __set__(self,  max_pyramid_levels):
+
+            self.inst.max_pyramid_levels = (<int>max_pyramid_levels)
+
+
+        def __get__(self):
+            cdef int _r = self.inst.max_pyramid_levels
+            py_result = <int>_r
+            return py_result
+
+cdef class Color:
+    """
+    Cython implementation of _Color
+    """
+
+    cdef _Color inst
+
+    property r:
+        def __set__(self, bytes r):
+
+            self.inst.r = (<char>((r)[0]))
+
+
+        def __get__(self):
+            cdef char  _r = self.inst.r
+            py_result = chr(<char>(_r))
+            return py_result
+
+    property g:
+        def __set__(self, bytes g):
+
+            self.inst.g = (<char>((g)[0]))
+
+
+        def __get__(self):
+            cdef char  _r = self.inst.g
+            py_result = chr(<char>(_r))
+            return py_result
+
+    property b:
+        def __set__(self, bytes b):
+
+            self.inst.b = (<char>((b)[0]))
+
+
+        def __get__(self):
+            cdef char  _r = self.inst.b
+            py_result = chr(<char>(_r))
+            return py_result
+
+cdef class Frame:
+    """
+    Cython implementation of _Frame
+    """
+
+    cdef _Frame inst
+
+    property pose:
+        def __set__(self, Pose pose):
+
+            self.inst.pose = (pose.inst)
+
+
+        def __get__(self):
+            cdef Pose py_result = Pose()
+            py_result.inst = self.inst.pose
+            return py_result
+
+    property stereo_image:
+        def __set__(self, StereoImage stereo_image):
+
+            self.inst.stereo_image = (stereo_image.inst)
+
+
+        def __get__(self):
+            cdef StereoImage py_result = StereoImage()
+            py_result.inst = self.inst.stereo_image
+            return py_result
+
+    property kps:
+        def __set__(self, KeyPoints kps):
+
+            self.inst.kps = (kps.inst)
+
+
+        def __get__(self):
+            cdef KeyPoints py_result = KeyPoints()
+            py_result.inst = self.inst.kps
+            return py_result
+
+cdef class KeyFrame:
+    """
+    Cython implementation of _KeyFrame
+    """
+
+    cdef _KeyFrame inst
+
+
+    property pose:
+        def __set__(self, Pose pose):
+
+            self.inst.pose = (pose.inst)
+
+
+        def __get__(self):
+            cdef Pose py_result = Pose()
+            py_result.inst = self.inst.pose
+            return py_result
+
+    property stereo_image:
+        def __set__(self, StereoImage stereo_image):
+
+            self.inst.stereo_image = (stereo_image.inst)
+
+
+        def __get__(self):
+            cdef StereoImage py_result = StereoImage()
+            py_result.inst = self.inst.stereo_image
+            return py_result
+
+    property kps:
+        def __set__(self, KeyPoints kps):
+
+            self.inst.kps = (kps.inst)
+
+
+        def __get__(self):
+            cdef KeyPoints py_result = KeyPoints()
+            py_result.inst = self.inst.kps
+            return py_result
+
+    property colors:
+        def __set__(self, colors):
+            self.inst.colors = colors
+
+        def __get__(self):
+            return self.inst.colors
+
+cdef class KeyPoint2d:
+    """
+    Cython implementation of _KeyPoint2d
+    """
+
+    cdef _KeyPoint2d inst
+
+    property x:
+        def __set__(self, float x):
+
+            self.inst.x = (<float>x)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.x
+            py_result = <float>_r
+            return py_result
+
+    property y:
+        def __set__(self, float y):
+
+            self.inst.y = (<float>y)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.y
+            py_result = <float>_r
+            return py_result
+
+cdef class KeyPoint3d:
+    """
+    Cython implementation of _KeyPoint3d
+    """
+
+    cdef _KeyPoint3d inst
+
+    property x:
+        def __set__(self, float x):
+
+            self.inst.x = (<float>x)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.x
+            py_result = <float>_r
+            return py_result
+
+    property y:
+        def __set__(self, float y):
+
+            self.inst.y = (<float>y)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.y
+            py_result = <float>_r
+            return py_result
+
+    property z:
+        def __set__(self, float z):
+
+            self.inst.z = (<float>z)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.z
+            py_result = <float>_r
+            return py_result
+
+cdef class KeyPointInformation:
+    """
+    Cython implementation of _KeyPointInformation
+    """
+    
+    cdef _KeyPointInformation inst
+
+    property score:
+        def __set__(self, float score):
+
+            self.inst.score = (<float>score)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.score
+            py_result = <float>_r
+            return py_result
+
+    property level:
+        def __set__(self,  level):
+
+            self.inst.level = (<int>level)
+
+
+        def __get__(self):
+            cdef int _r = self.inst.level
+            py_result = <int>_r
+            return py_result
+
+    property type:
+        def __set__(self, int type):
+
+            self.inst.type = (<_KeyPointType>type)
+
+
+        def __get__(self):
+            cdef _KeyPointType _r = self.inst.type
+            py_result = <int>_r
+            return py_result
+
+    property confidence:
+        def __set__(self, float confidence):
+
+            self.inst.confidence = (<float>confidence)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.confidence
+            py_result = <float>_r
+            return py_result
+
+cdef class KeyPoints:
+    """
+    Cython implementation of _KeyPoints
+    """
+
+    cdef _KeyPoints inst
+
+    property kps2d:
+        def __set__(self, list kps2d):
+            cdef vector[_KeyPoint2d] v0
+            cdef KeyPoint2d item0
+            for item0 in kps2d:
+                v0.push_back(item0.inst)
+            self.inst.kps2d = v0
+
+        def __get__(self):
+            _r = self.inst.kps2d
+            py_result = []
+            cdef KeyPoint2d item_py_result
+            for i in range(0, _r.size()):
+                kp2d = KeyPoint2d()
+                kp2d.inst = _r[i]
+                py_result.append(kp2d)
+            return py_result
+
+    property kps3d:
+        def __set__(self, list kps3d):
+            cdef vector[_KeyPoint3d] v0
+            cdef KeyPoint3d item0
+            for item0 in kps3d:
+                v0.push_back(item0.inst)
+            self.inst.kps3d = v0
+
+        def __get__(self):
+            _r = self.inst.kps3d
+            py_result = []
+            cdef KeyPoint3d item_py_result
+            for i in range(0, _r.size()):
+                kp3d = KeyPoint3d()
+                kp3d.inst = _r[i]
+                py_result.append(kp3d)
+            return py_result
+
+    property info:
+        def __set__(self, list info):
+            cdef vector[_KeyPointInformation] v0
+            cdef KeyPointInformation item0
+            for item0 in info:
+                v0.push_back(item0.inst)
+            self.inst.info = v0
+
+        def __get__(self):
+            _r = self.inst.info
+            py_result = []
+            cdef KeyPointInformation item_py_result
+            for i in range(0, _r.size()):
+                kpi = KeyPointInformation()
+                kpi.inst = _r[i]
+                py_result.append(kpi)
+            return py_result
+
+cdef class Pose:
+    """
+    Cython implementation of _Pose
+    """
+
+    cdef _Pose inst
+
+    property x:
+        def __set__(self, float x):
+
+            self.inst.x = (<float>x)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.x
+            py_result = <float>_r
+            return py_result
+
+    property y:
+        def __set__(self, float y):
+
+            self.inst.y = (<float>y)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.y
+            py_result = <float>_r
+            return py_result
+
+    property z:
+        def __set__(self, float z):
+
+            self.inst.z = (<float>z)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.z
+            py_result = <float>_r
+            return py_result
+
+    property pitch:
+        def __set__(self, float pitch):
+
+            self.inst.pitch = (<float>pitch)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.pitch
+            py_result = <float>_r
+            return py_result
+
+    property yaw:
+        def __set__(self, float yaw):
+
+            self.inst.yaw = (<float>yaw)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.yaw
+            py_result = <float>_r
+            return py_result
+
+    property roll:
+        def __set__(self, float roll):
+
+            self.inst.roll = (<float>roll)
+
+
+        def __get__(self):
+            cdef float _r = self.inst.roll
+            py_result = <float>_r
+            return py_result
+
+
+cdef class KeyPointType:
+    KP_FAST = 0
+    KP_EDGELET = 1

@@ -26,7 +26,7 @@ Match DepthCalculator::match(Mat &roi, Mat &templ)
 }
 
 static void detect_keypoints_on_each_level(
-        const vector<struct StereoImage> &stereo_images,
+        const StereoImage &stereo_images,
         const struct CameraSettings &camera_settings,
         vector<vector<KeyPoint2d>> &keypoints_pyr,
         vector<vector<KeyPointInformation>> &kp_info_pyr)
@@ -36,13 +36,14 @@ static void detect_keypoints_on_each_level(
     auto grid_width = camera_settings.grid_width;
     auto grid_height = camera_settings.grid_width;
 
-    keypoints_pyr.resize(stereo_images.size());
-    kp_info_pyr.resize(stereo_images.size());
+    keypoints_pyr.resize(stereo_images.left.size()/2);
+    kp_info_pyr.resize(stereo_images.left.size()/2);
 //#pragma omp parallel for
-    for (unsigned int i = 0; i < stereo_images.size(); i++) {
+    for (unsigned int i = 0; i < stereo_images.left.size()/2; i++) {
         vector<KeyPoint2d> _keypoints;
         vector<KeyPointInformation> _kp_info;
-        const Mat &left = stereo_images[i].left;
+        const Mat &left = stereo_images.left[2*i];
+        // TODO: We can use the gradient image from the pyramid
         detector.detect_keypoints(left, grid_width, grid_height, _keypoints,
                 _kp_info, i);
         keypoints_pyr[i] = _keypoints;
@@ -81,14 +82,75 @@ static void select_best_keypoints(
     }
 }
 
-void DepthCalculator::calculate_depth(
-        const vector<struct StereoImage> &stereo_images,
-        const struct CameraSettings &camera_settings,
-        struct KeyPoints &keypoints)
+static void find_bad_keypoints(Frame &frame) {
+    auto &width = frame.stereo_image.left[0].cols;
+    auto &height = frame.stereo_image.left[0].rows;
+    auto &kps2d = frame.kps.kps2d;
+    auto &kps3d = frame.kps.kps3d;
+    auto &info = frame.kps.info;
+
+    for (size_t i = 0; i < kps2d.size(); i++) {
+        auto &kp2d = kps2d[i];
+        if ((kp2d.x < 0) || (kp2d.y < 0) ||
+                (kp2d.x > width) || (kp2d.y > height)) {
+            kps2d.erase(kps2d.begin() + i);
+            kps3d.erase(kps3d.begin() + i);
+            info.erase(info.begin() +i);
+            i--;
+        }
+    }
+}
+
+static void merge_keypoints(Frame &frame,
+        vector<KeyPoint2d> new_keypoints, vector<KeyPointInformation> new_info,
+        int grid_height, int grid_width) {
+    auto &kps2d = frame.kps.kps2d;
+    auto &info = frame.kps.info;
+
+    int image_width = frame.stereo_image.left[0].cols;
+    int image_height = frame.stereo_image.left[0].rows;
+
+    for (int x = 0; x < image_width; x += grid_width) {
+        int left = x;
+        int right = left + grid_width;
+        for (int y = 0; y < image_height; y += grid_height) {
+            int top = y;
+            int bottom = y + grid_height;
+            bool match = false;
+
+            // Check if we already have a keypoint in the current grid box
+            for (size_t i = 0; i < kps2d.size(); i++) {
+                auto &kp2d = kps2d[i];
+
+                if (kp2d.x  > left && kp2d.x < right&&
+                        kp2d.y > top && kp2d.y < bottom) {
+                    match = true;
+                    break;
+                }
+            }
+
+            if (!match) {
+                // Add one of the new points if no old one can be found
+                for (size_t i = 0; i < new_keypoints.size(); i++) {
+                    auto &kp2d = new_keypoints[i];
+
+                    if (kp2d.x  > left && kp2d.x < right&&
+                            kp2d.y > top && kp2d.y < bottom) {
+                        kps2d.push_back(kp2d);
+                        info.push_back(new_info[i]);
+                    }
+                }
+            }
+       }
+    }
+}
+
+void DepthCalculator::calculate_depth(Frame &frame,
+        const struct CameraSettings &camera_settings)
 {
-    auto &keypoints2d = keypoints.kps2d;
-    auto &keypoints3d = keypoints.kps3d;
-    auto &kp_info = keypoints.info;
+    auto &keypoints2d = frame.kps.kps2d;
+    auto &keypoints3d = frame.kps.kps3d;
+    auto &kp_info = frame.kps.info;
     float fx = camera_settings.fx;
     float fy = camera_settings.fy;
     float cx = camera_settings.cx;
@@ -103,20 +165,32 @@ void DepthCalculator::calculate_depth(
     vector<vector<KeyPoint2d>> keypoints_pyr;
     vector<vector<KeyPointInformation>> kp_info_pyr;
 
-    detect_keypoints_on_each_level(stereo_images,
+
+    detect_keypoints_on_each_level(frame.stereo_image,
             camera_settings, keypoints_pyr, kp_info_pyr);
 
-    keypoints2d.clear();
-    select_best_keypoints(keypoints_pyr, kp_info_pyr, keypoints2d, kp_info);
+    // Remove keypoints that are not within the image
+    find_bad_keypoints(frame);
+
+    vector<KeyPoint2d> _keypoints2d;
+    vector<KeyPointInformation> _kp_info;
+    select_best_keypoints(keypoints_pyr, kp_info_pyr, _keypoints2d, _kp_info);
+
+
+    size_t old_keypoint_count = keypoints2d.size();
+
+    merge_keypoints(frame, _keypoints2d, _kp_info,
+            camera_settings.grid_width, camera_settings.grid_height);
 
     keypoints3d.clear();
     keypoints3d.resize(keypoints2d.size());
 
-    const Mat &left = stereo_images[0].left;
-    const Mat &right= stereo_images[0].right;
+    const Mat &left = frame.stereo_image.left[0];
+    const Mat &right= frame.stereo_image.right[0];
+
     // Estimate the depth now
-//#pragma omp parallel for
-    for (uint32_t i = 0; i < keypoints2d.size(); i++) {
+#pragma omp parallel for
+    for (uint32_t i = old_keypoint_count; i < keypoints2d.size(); i++) {
         auto keypoint = keypoints2d[i];
         int x = static_cast<int>(keypoint.x);
         int y = static_cast<int>(keypoint.y);

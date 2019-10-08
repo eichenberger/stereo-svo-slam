@@ -22,7 +22,11 @@ public:
     float estimate_pose(const Pose &pose_guess, Pose &estimaged_pose);
 
 private:
+    float estimate_pose_at_level(const Pose &pose_guess, Pose &estimaged_pose,
+            int level);
+
     cv::Ptr<PoseEstimatorCallback> solver_callback;
+    int max_levels;
 };
 
 #endif

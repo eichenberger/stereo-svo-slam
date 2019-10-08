@@ -20,11 +20,16 @@ struct CameraSettings {
     int search_x;
     int search_y;
     int window_size;
+    int window_size_opt_flow;
+    int max_pyramid_levels;
+    int image_width;
+    int image_height;
+
 };
 
 struct StereoImage {
-    cv::Mat left;
-    cv::Mat right;
+    std::vector<cv::Mat> left;
+    std::vector<cv::Mat> right;
 };
 
 enum KeyPointType {
@@ -73,11 +78,15 @@ struct Color {
     uint8_t b;
 };
 
-struct KeyFrame {
+struct Frame {
     struct Pose pose;
-    std::vector<struct StereoImage> stereo_images;
+    struct StereoImage stereo_image;
     struct KeyPoints kps;
+};
+
+struct KeyFrame : Frame{
     std::vector<struct Color> colors;
 };
+
 
 #endif

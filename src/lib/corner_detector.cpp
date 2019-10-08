@@ -31,11 +31,8 @@ void CornerDetector::detect_keypoints(const Mat &image,
         auto right = grid_width;
 
         while (true) {
-            right += grid_width;
             if (right > image.cols)
                 break;
-
-            left += grid_width;
 
             // First see if we find a FAST corner
             KeyPoint2d candidate;
@@ -70,6 +67,9 @@ void CornerDetector::detect_keypoints(const Mat &image,
             info.level = level;
             keypoints.push_back(candidate);
             kp_info.push_back(info);
+
+            left += grid_width;
+            right += grid_width;
         }
 
         bottom += grid_height;
