@@ -20,6 +20,7 @@ class PoseRefinerCallback : public MinProblemSolver::Function
 public:
     PoseRefinerCallback(const vector<KeyPoint2d> &keypoints2d,
                         const vector<KeyPoint3d> &keypoints3d,
+                        const vector<KeyPointInformation> &keypoint_information,
                         const CameraSettings &camera_settings);
     //bool compute(InputArray param, OutputArray err, OutputArray J) const;
     double calc(const double *x) const;
@@ -30,6 +31,7 @@ public:
 private:
     const vector<KeyPoint2d> &keypoints2d;
     const vector<KeyPoint3d> &keypoints3d;
+    const vector<KeyPointInformation> &keypoint_information;
     const CameraSettings &camera_settings;
 };
 
@@ -120,6 +122,7 @@ float PoseRefiner::refine_pose(const KeyPoints &keypoints,
 {
     const vector<KeyPoint2d> &keypoints2d = keypoints.kps2d;
     const vector<KeyPoint3d> &keypoints3d = keypoints.kps3d;
+    const vector<KeyPointInformation> &keypoint_information = keypoints.info;
 
     Mat x0 = (Mat_<double>(6,1) <<
         estimated_pose.x, estimated_pose.y, estimated_pose.z,
@@ -129,7 +132,7 @@ float PoseRefiner::refine_pose(const KeyPoints &keypoints,
     float k = 0.1;
 
     Ptr<MinProblemSolver::Function> solver_callback = new PoseRefinerCallback(keypoints2d,
-            keypoints3d, camera_settings);
+            keypoints3d, keypoint_information, camera_settings);
 
     double prev_cost = solver_callback->calc(x0.ptr<double>(0));
     for (size_t i = 0; i < maxIter; i++) {
@@ -182,9 +185,11 @@ float PoseRefiner::refine_pose(const KeyPoints &keypoints,
 
 PoseRefinerCallback::PoseRefinerCallback(const vector<KeyPoint2d> &keypoints2d,
         const vector<KeyPoint3d> &keypoints3d,
+        const vector<KeyPointInformation> &keypoint_information,
         const CameraSettings &camera_settings):
     keypoints2d(keypoints2d),
     keypoints3d(keypoints3d),
+    keypoint_information(keypoint_information),
     camera_settings(camera_settings)
 {
 }
@@ -207,9 +212,15 @@ double PoseRefinerCallback::calc(const double *x) const
     Mat diff;
     absdiff(_projected_keypoints2d, _keypoints2d, diff);
 
+    double tot_diff = 0;
+    for (size_t i=0; i < keypoint_information.size(); i++) {
+        tot_diff += keypoint_information[i].confidence
+            *(diff.at<float>(0, i) + diff.at<float>(1, i));
+    }
+#ifdef SUPER_VERBOSE
     cout << "pose: " << pose.x << "," << pose.y << ","  << pose.z << "," << pose.pitch << ","  << pose.yaw << "," << pose.roll << endl;
-    double tot_diff = sum(diff)[0];
     cout << "Diff: " << tot_diff << endl;
+#endif
 
     return tot_diff;
 }
@@ -232,7 +243,6 @@ void PoseRefinerCallback::getGradient(const double *x, double *grad)
 
     Mat tot_diff = Mat::zeros(2,1, CV_64F);
 
-    cout << "Diff: ";
     for (size_t i = 0; i < keypoints3d.size(); i++) {
         auto x = keypoints3d[i].x;
         auto y = keypoints3d[i].y;
@@ -242,7 +252,7 @@ void PoseRefinerCallback::getGradient(const double *x, double *grad)
                 1.0/z, 0, -1.0*x/(z*z), -1.0*x*y/(z*z), 1.0*(1.0+(x*x)/(z*z)), -1.0*y/z,
                 0, 1.0/z, -1.0*y/(z*z), -1.0*(1+(y*y)/(z*z)), 1.0*x*y/(z*z), 1.0*x/z);
 
-        Mat diff = (Mat_<double>(2,1) <<
+        Mat diff = keypoint_information[i].confidence*(Mat_<double>(2,1) <<
                 keypoints2d[i].x -projected_keypoints2d[i].x,
                 keypoints2d[i].y -projected_keypoints2d[i].y);
 
@@ -250,8 +260,6 @@ void PoseRefinerCallback::getGradient(const double *x, double *grad)
                 (fabs(diff.at<double>(1)) > 3.0))
             continue;
         tot_diff += diff;
-        cout << diff.at<double>(0) << "x" << diff.at<double>(1) << ",";
-
 #if 0
         double weight = max(0.1, (2.0 - cv::norm(diff))/2.0);
 
@@ -267,8 +275,6 @@ void PoseRefinerCallback::getGradient(const double *x, double *grad)
 
     }
 
-    cout << endl;
-
     Mat hessian_inv = hessian.inv();
 
     Mat twist = hessian_inv*err / keypoints2d.size();
@@ -281,8 +287,10 @@ void PoseRefinerCallback::getGradient(const double *x, double *grad)
     // double _norm = cv::norm(gradient);
     // gradient /= _norm;
 
+#ifdef SUPER_VERBOSE
     cout << "gradient: " << data[0] << "," << data[1] << "," << data[2] << ","<< data[3] << ","<< data[4] << ","<< data[5] << "," << endl;
     cout << "Total diff: " << tot_diff << endl;
+#endif
 
     memcpy(grad, data, 6*sizeof(double));
 }

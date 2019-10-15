@@ -11,6 +11,20 @@
 using namespace cv;
 using namespace std;
 
+#define PRINT_TIME_TRACE
+
+#ifdef PRINT_TIME_TRACE
+static TickMeter tick_meter;
+#define START_MEASUREMENT() tick_meter.reset(); tick_meter.start()
+
+#define END_MEASUREMENT(_name) tick_meter.stop();\
+    cout << _name << " took: " << tick_meter.getTimeMilli() << "ms" << endl
+
+#else
+#define START_MEASUREMENT()
+#define END_MEASUREMENT(_name)
+#endif
+
 StereoSlam::StereoSlam(const CameraSettings &camera_settings) :
     camera_settings(camera_settings), keyframe_inserter(camera_settings)
 {
@@ -29,22 +43,30 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
     buildOpticalFlowPyramid(right, frame->stereo_image.right,
             window_size, camera_settings.max_pyramid_levels);
 
+    // Check if this is the first frame
     if (previous_frame.empty()) {
-        keyframe = new KeyFrame();
-        keyframe_inserter.new_keyframe(*frame, *keyframe);
+        keyframes.push_back(KeyFrame());
+        keyframe = &keyframes.back();
+
+        frame->id = 0;
         frame->pose.x = 0;
         frame->pose.y = 0;
         frame->pose.z = 0;
         frame->pose.pitch = 0;
         frame->pose.yaw = 0;
         frame->pose.roll = 0;
+
+        keyframe_inserter.new_keyframe(*frame, *keyframe);
     }
     else {
+        START_MEASUREMENT();
+        frame->id = previous_frame->id + 1;
         PoseEstimator estimator(frame->stereo_image, previous_frame->stereo_image,
                 previous_frame->kps, camera_settings);
 
         Pose estimated_pose;
         float cost = estimator.estimate_pose(previous_frame->pose, estimated_pose);
+        END_MEASUREMENT("estimator");
 
         cout << "Cost after estimation: " << cost << endl;
         cout << "Pose after estimation: " <<
@@ -59,10 +81,12 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
         OpticalFlow optical_flow;
         vector<float> err;
 
-        // TODO: This is probably not a deep copy!
+        START_MEASUREMENT();
         KeyPoints refined_kps = previous_frame->kps;
         optical_flow.calculate_optical_flow(keyframe->stereo_image,
                 keyframe->kps.kps2d, frame->stereo_image, refined_kps.kps2d, err);
+
+        END_MEASUREMENT("optical flow");
 
         for (size_t i = 0; i < refined_kps.kps2d.size(); i++) {
             if (err[i] > 1000) {
@@ -70,9 +94,12 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
             }
         }
 
+        START_MEASUREMENT();
         Pose refined_pose;
         PoseRefiner refiner(camera_settings);
         refiner.refine_pose(refined_kps, estimated_pose, refined_pose);
+
+        END_MEASUREMENT("pose refinement");
 
         project_keypoints(refined_pose, keyframe->kps.kps3d, camera_settings,
                 frame->kps.kps2d);
@@ -83,11 +110,21 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
 
         if (keyframe_inserter.keyframe_needed(*frame)) {
             cout << "New keyframe is needed" << endl;
-            keyframe = new KeyFrame;
+            keyframes.push_back(KeyFrame());
+            keyframe = &keyframes.back();
             keyframe_inserter.new_keyframe(*frame, *keyframe);
             frame->pose = keyframe->pose;
             frame->kps = keyframe->kps;
         }
+    }
+
+    if (!previous_frame.empty()) {
+        previous_frame->kps.kps2d.clear();
+        previous_frame->kps.kps3d.clear();
+        previous_frame->kps.info.clear();
+        previous_frame->stereo_image.left.clear();
+        previous_frame->stereo_image.right.clear();
+        previous_frame.release();
     }
 }
 
@@ -99,4 +136,9 @@ void StereoSlam::get_keyframe(KeyFrame &keyframe)
 void StereoSlam::get_frame(Frame &frame)
 {
     frame = *this->frame;
+}
+
+void StereoSlam::get_keyframes(std::vector<KeyFrame> &keyframes)
+{
+    keyframes = this->keyframes;
 }

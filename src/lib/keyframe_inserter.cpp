@@ -1,4 +1,5 @@
 #include <vector>
+#include <cstdlib>
 
 #include "depth_calculator.hpp"
 #include "transform_keypoints.hpp"
@@ -21,7 +22,8 @@ bool KeyframeInserter::keyframe_needed(const Frame &frame)
         }
     }
 
-    if (inside_frame < (frame.kps.kps3d.size()*0.9)) {
+    if ((inside_frame < (frame.kps.kps3d.size()*0.7)) &&
+            (inside_frame < 200)) {
         return true;
     }
 
@@ -31,16 +33,11 @@ bool KeyframeInserter::keyframe_needed(const Frame &frame)
 void KeyframeInserter::new_keyframe(Frame &frame, KeyFrame &keyframe)
 {
     DepthCalculator depth_calculator;
-    KeyPoints kps;
 
     depth_calculator.calculate_depth(frame, camera_settings);
-
-    // This makes sure that the 3d keypoints are in world coordinates
-    vector<KeyPoint3d> transformed_kps3d;
-    transform_keypoints_inverse(frame.pose, kps.kps3d, transformed_kps3d);
-    kps.kps3d = transformed_kps3d;
 
     keyframe.kps = frame.kps;
     keyframe.pose = frame.pose;
     keyframe.stereo_image = frame.stereo_image;
+    keyframe.id = frame.id;
 }

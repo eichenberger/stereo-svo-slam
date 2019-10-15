@@ -9,7 +9,7 @@
 #include "transform_keypoints.hpp"
 #include "image_comparison.hpp"
 
-#define VERBOSE 1
+// #define VERBOSE 1
 // #define SUPER_VERBOSE 1
 
 using namespace cv;
@@ -211,8 +211,10 @@ double PoseEstimatorCallback::calc(const double *x) const
     //cout << "Diffs: ";
     //    cout << diff << ", ";
     //cout << endl;
+    int i = 0;
     for (auto diff:diffs) {
-        diff_sum += diff;
+        diff_sum += diff * keypoints.info[i].confidence;
+        i++;
     }
 
 #ifdef SUPER_VERBOSE
@@ -304,7 +306,7 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
             cout << "(" << diff1 << ", " << diff2 << ") " << endl;
 #endif
 
-            Mat _grad_times_jac = _grad*jacobian;
+            Mat _grad_times_jac = _grad*jacobian*keypoints.info[i].confidence;
             // Store the result of grad*jacobian for further usage
             gradient_times_jacobians->push_back(_grad_times_jac);
 

@@ -16,6 +16,7 @@ public:
     void new_image(const cv::Mat &left, const cv::Mat &right);
 
     void get_keyframe(KeyFrame &keyframe);
+    void get_keyframes(std::vector<KeyFrame> &keyframes);
     void get_frame(Frame &frame);
 
 private:
@@ -23,8 +24,9 @@ private:
 
     const CameraSettings &camera_settings;
     KeyframeInserter keyframe_inserter;
-    cv::Ptr<KeyFrame> keyframe;
+    KeyFrame* keyframe;
     cv::Ptr<Frame> frame;
+    std::vector<KeyFrame> keyframes;
 };
 
 #endif

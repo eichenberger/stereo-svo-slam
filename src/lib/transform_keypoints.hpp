@@ -10,6 +10,6 @@ void project_keypoints(const struct Pose &pose,
         const std::vector<KeyPoint3d> &in, const CameraSettings &camera_settings,
         std::vector<KeyPoint2d> &out);
 
-void transform_keypoints_inverse(const struct Pose &pose,
-        const std::vector<KeyPoint3d> &in, std::vector<KeyPoint3d> &out);
+//void transform_keypoints_inverse(const struct Pose &pose,
+//        const std::vector<KeyPoint3d> &in, std::vector<KeyPoint3d> &out);
 #endif

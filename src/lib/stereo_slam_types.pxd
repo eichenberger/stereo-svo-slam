@@ -1,4 +1,5 @@
 from libcpp.vector cimport vector
+from libc.stdint cimport uint64_t
 
 # Declares OpenCV's cv::Mat class
 cdef extern from "opencv2/core/core.hpp" namespace "cv":
@@ -34,11 +35,18 @@ cdef extern from "stereo_slam_types.hpp":
         float y
         float z
 
+    cdef struct Color:
+        unsigned char r
+        unsigned char g
+        unsigned char b
+
     cdef struct KeyPointInformation:
         float score
         int level
         KeyPointType type
         float confidence
+        uint64_t keyframe_id
+        Color color
 
     cdef struct StereoImage:
         vector[Mat] left
@@ -76,21 +84,17 @@ cdef extern from "stereo_slam_types.hpp":
         float yaw   # around y
         float roll  # around z
 
-    cdef struct Color:
-        unsigned char r
-        unsigned char g
-        unsigned char b
-
     cdef struct Frame:
+        uint64_t id
         Pose pose
         StereoImage stereo_image
         KeyPoints kps
 
     cdef struct KeyFrame:
+        uint64_t id
         Pose pose
         StereoImage stereo_image
         KeyPoints kps
-        vector[Color] colors
 
 
 

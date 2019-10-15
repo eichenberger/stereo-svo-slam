@@ -59,7 +59,7 @@ class EconInput():
 class BlenderInput():
     def __init__(self, video):
         self.cap = cv2.VideoCapture(video)
-        self.frame_nr = 2
+        self.frame_nr = 0
 
         width = 752
         height = 480
@@ -89,8 +89,8 @@ class BlenderInput():
 
     def read(self):
 
-        if self.frame_nr == 75:
-            raise("Hallo")
+#        if self.frame_nr == 75:
+#            raise("Hallo")
         self.cap.set(1, self.frame_nr)
         ret, image = self.cap.read()
         self.frame_nr += 1
@@ -195,11 +195,11 @@ def main():
                 tm = cv2.TickMeter()
                 tm.start()
                 slam.new_image(gray_l.copy(), gray_r.copy())
+                tm.stop()
+                print(f"stereo slam took: {tm.getTimeMilli()} ms")
 
                 draw_frame(slam.get_keyframe(), slam.get_frame())
 
-                tm.stop()
-                print(f"processing took: {tm.getTimeMilli()} ms")
                 key = cv2.waitKey(1)
                 await asyncio.sleep(0.001)
         except cv2.error:
@@ -214,20 +214,50 @@ def main():
             if path == "/keyframes":
                 if message == "get":
                     keyframes = []
-                    for keyframe in slam.mapping.keyframes:
-                        x = keyframe.keypoints2d[0].astype(np.uint16)
-                        y = keyframe.keypoints2d[1].astype(np.uint16)
-                        # colors = keyframe.left[y, x]
+                    _keyframes = slam.get_keyframes()
+                    for keyframe in _keyframes:
+                        kps = []
+                        i = 0
+                        for kp in keyframe.kps.kps3d:
+                            kps.append({'x': kp.x, 'y': kp.y, 'z': kp.z})
+                            i += 1
+
+                        colors = []
+                        for inf in keyframe.kps.info:
+                            colors.append(inf.color)
+                            i += 1
+
+                        pose = {
+                            'x': keyframe.pose.x,
+                            'y': keyframe.pose.y,
+                            'z': keyframe.pose.z,
+                            'pitch': keyframe.pose.pitch,
+                            'yaw': keyframe.pose.yaw,
+                            'roll': keyframe.pose.roll
+                        }
+
+                        print(f"Pose: {pose}")
+
                         keyframes.append({
-                            'keypoints': keyframe.keypoints3d[0].tolist(),
-                            'pose': keyframe.pose.tolist(),
-                            'colors': keyframe.colors.tolist()})
+                            'keypoints': kps,
+                            'pose': pose,
+                            'colors': colors})
                     encoder = json.JSONEncoder()
                     await websocket.send(encoder.encode(keyframes))
             elif path == "/pose":
                 if message == "get":
                     encoder = json.JSONEncoder()
-                    pose = {'pose': slam.pose.tolist()}
+                    frame = slam.get_frame()
+                    pose = {
+                        'x': frame.pose.x,
+                        'y': frame.pose.y,
+                        'z': frame.pose.z,
+                        'pitch': frame.pose.pitch,
+                        'yaw': frame.pose.yaw,
+                        'roll': frame.pose.roll
+                    }
+
+                    pose = {'pose': pose}
                     await websocket.send(encoder.encode(pose))
 
 

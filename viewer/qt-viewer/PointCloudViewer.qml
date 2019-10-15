@@ -39,7 +39,7 @@ Scene3D {
     function showKeyframes() {
         if (keyframes === undefined)
             return;
-        var floats_per_keyframe = keyframes[0]['keypoints'][0].length*3;
+        var floats_per_keyframe = keyframes[0].keypoints.length*3;
         var _points = new Float32Array(keyframes.length*floats_per_keyframe);
         var _keyframePoses = new Float32Array(keyframes.length*6);
         var _pointColors = new Float32Array(keyframes.length*floats_per_keyframe);
@@ -47,22 +47,22 @@ Scene3D {
         if (showNKeyframes > 0 && showNKeyframes < keyframes.length)
             nKeyframes = showNKeyframes
         for (var i=0; i < nKeyframes; i++) {
-            for (var j=0; j < keyframes[i]['keypoints'][0].length; j++) {
-                _points[floats_per_keyframe*i+j*3+0] = keyframes[i]['keypoints'][0][j];
-                _points[floats_per_keyframe*i+j*3+1] = keyframes[i]['keypoints'][1][j];
-                _points[floats_per_keyframe*i+j*3+2] = keyframes[i]['keypoints'][2][j];
+            for (var j=0; j < keyframes[i].keypoints.length; j++) {
+                _points[floats_per_keyframe*i+j*3+0] = keyframes[i].keypoints[j].x;
+                _points[floats_per_keyframe*i+j*3+1] = keyframes[i].keypoints[j].y;
+                _points[floats_per_keyframe*i+j*3+2] = keyframes[i].keypoints[j].z;
 
-                _pointColors[floats_per_keyframe*i+j*3+0] = keyframes[i]['colors'][j][2]/255.0;
-                _pointColors[floats_per_keyframe*i+j*3+1] = keyframes[i]['colors'][j][1]/255.0;
-                _pointColors[floats_per_keyframe*i+j*3+2] = keyframes[i]['colors'][j][0]/255.0;
+                _pointColors[floats_per_keyframe*i+j*3+0] = keyframes[i].colors[j].b/255.0;
+                _pointColors[floats_per_keyframe*i+j*3+1] = keyframes[i].colors[j].g/255.0;
+                _pointColors[floats_per_keyframe*i+j*3+2] = keyframes[i].colors[j].r/255.0;
             }
 
-            _keyframePoses[i*6+0] = keyframes[i]['pose'][0];
-            _keyframePoses[i*6+1] = keyframes[i]['pose'][1];
-            _keyframePoses[i*6+2] = keyframes[i]['pose'][2];
-            _keyframePoses[i*6+3] = keyframes[i]['pose'][3];
-            _keyframePoses[i*6+4] = keyframes[i]['pose'][4];
-            _keyframePoses[i*6+5] = keyframes[i]['pose'][5];
+            _keyframePoses[i*6+0] = keyframes[i].pose.x;
+            _keyframePoses[i*6+1] = keyframes[i].pose.y;
+            _keyframePoses[i*6+2] = keyframes[i].pose.z;
+            _keyframePoses[i*6+3] = keyframes[i].pose.pitch;
+            _keyframePoses[i*6+4] = keyframes[i].pose.yaw;
+            _keyframePoses[i*6+5] = keyframes[i].pose.roll;
 
 
         }
@@ -260,8 +260,8 @@ Scene3D {
             Entity {
                 Transform {
                     id: keyframeTransformation
-                    translation: Qt.vector3d(-keyframeCollection.poses[index*6+0], -keyframeCollection.poses[index*6+1], -keyframeCollection.poses[index*6+2])
-                    rotation: fromEulerAngles(Qt.vector3d(-180.0*keyframeCollection.poses[index*6+3]/Math.PI, -180.0*keyframeCollection.poses[index*6+4]/Math.PI, -180.0*keyframeCollection.poses[index*6+5]/Math.PI))
+                    translation: Qt.vector3d(keyframeCollection.poses[index*6+0], keyframeCollection.poses[index*6+1], keyframeCollection.poses[index*6+2])
+                    rotation: fromEulerAngles(Qt.vector3d(180.0*keyframeCollection.poses[index*6+3]/Math.PI, 180.0*keyframeCollection.poses[index*6+4]/Math.PI, 180.0*keyframeCollection.poses[index*6+5]/Math.PI))
                 }
 
                 PhongMaterial {
@@ -285,8 +285,8 @@ Scene3D {
 
                 property var currentPose: scene3d.currentPose
 
-                translation: Qt.vector3d(-currentPose[0], -currentPose[1], -currentPose[2])
-                rotation: fromEulerAngles(Qt.vector3d(-180.0*currentPose[3]/Math.PI, -180.0*currentPose[4]/Math.PI, -180.0*currentPose[5]/Math.PI))
+                translation: Qt.vector3d(currentPose.x, currentPose.y, currentPose.z)
+                rotation: fromEulerAngles(Qt.vector3d(180.0*currentPose.pitch/Math.PI, 180.0*currentPose.yaw/Math.PI, 180.0*currentPose.roll/Math.PI))
             }
 
             components: [poseTransformation, keyframeRenderer, poseMaterial, pointLayer]

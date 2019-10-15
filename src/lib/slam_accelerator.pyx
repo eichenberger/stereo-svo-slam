@@ -2,6 +2,7 @@ cimport numpy as np
 import numpy as np
 import cv2
 from libcpp.vector cimport vector
+from libc.stdint cimport uint64_t
 
 from cython.parallel import parallel, prange
 from cython import boundscheck, wraparound
@@ -75,6 +76,20 @@ cdef class StereoSlam:
         self._stereo_slam.get_frame(frame.inst)
 
         return frame
+
+    def get_keyframes(self):
+        cdef vector[_KeyFrame] _keyframes
+        self._stereo_slam.get_keyframes(_keyframes)
+
+        keyframes = []
+        for i in range(_keyframes.size()):
+            kf = KeyFrame()
+            kf.inst = _keyframes[i]
+            keyframes.append(kf)
+
+        return keyframes
+
+
 
 cdef class StereoImage:
     """
@@ -311,52 +326,21 @@ cdef class CameraSettings:
             py_result = <int>_r
             return py_result
 
-cdef class Color:
-    """
-    Cython implementation of _Color
-    """
-
-    cdef _Color inst
-
-    property r:
-        def __set__(self, bytes r):
-
-            self.inst.r = (<char>((r)[0]))
-
-
-        def __get__(self):
-            cdef char  _r = self.inst.r
-            py_result = chr(<char>(_r))
-            return py_result
-
-    property g:
-        def __set__(self, bytes g):
-
-            self.inst.g = (<char>((g)[0]))
-
-
-        def __get__(self):
-            cdef char  _r = self.inst.g
-            py_result = chr(<char>(_r))
-            return py_result
-
-    property b:
-        def __set__(self, bytes b):
-
-            self.inst.b = (<char>((b)[0]))
-
-
-        def __get__(self):
-            cdef char  _r = self.inst.b
-            py_result = chr(<char>(_r))
-            return py_result
-
 cdef class Frame:
     """
     Cython implementation of _Frame
     """
 
     cdef _Frame inst
+
+    property id:
+        def __set__(self, uint64_t id):
+            self.inst.id = id
+
+
+        def __get__(self):
+            return self.inst.id
+
 
     property pose:
         def __set__(self, Pose pose):
@@ -398,6 +382,14 @@ cdef class KeyFrame:
 
     cdef _KeyFrame inst
 
+    property id:
+        def __set__(self, uint64_t id):
+
+            self.inst.id = id
+
+
+        def __get__(self):
+            return self.inst.id
 
     property pose:
         def __set__(self, Pose pose):
@@ -431,13 +423,6 @@ cdef class KeyFrame:
             cdef KeyPoints py_result = KeyPoints()
             py_result.inst = self.inst.kps
             return py_result
-
-    property colors:
-        def __set__(self, colors):
-            self.inst.colors = colors
-
-        def __get__(self):
-            return self.inst.colors
 
 cdef class KeyPoint2d:
     """
@@ -512,7 +497,7 @@ cdef class KeyPointInformation:
     """
     Cython implementation of _KeyPointInformation
     """
-    
+
     cdef _KeyPointInformation inst
 
     property score:
@@ -558,6 +543,22 @@ cdef class KeyPointInformation:
             cdef float _r = self.inst.confidence
             py_result = <float>_r
             return py_result
+
+
+    property keyframe_id:
+        def __set__(self, uint64_t id):
+            self.inst.keyframe_id = id
+
+        def __get__(self):
+            return self.inst.keyframe_id
+
+    property color:
+        def __set__(self, color):
+            self.inst.color = color
+
+        def __get__(self):
+            return self.inst.color
+
 
 cdef class KeyPoints:
     """

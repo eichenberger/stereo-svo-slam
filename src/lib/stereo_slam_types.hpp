@@ -48,11 +48,19 @@ struct KeyPoint3d {
     float z;
 };
 
+struct Color {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+};
+
 struct KeyPointInformation {
     float score;
     int level;
     enum KeyPointType type;
     float confidence;
+    uint64_t keyframe_id;
+    Color color;
 };
 
 // KeyPoints, each entry has the same index. We try to avaoid mixing
@@ -72,20 +80,14 @@ struct Pose {
     float roll;     // around z
 };
 
-struct Color {
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
-};
-
 struct Frame {
+    uint64_t id;
     struct Pose pose;
     struct StereoImage stereo_image;
     struct KeyPoints kps;
 };
 
 struct KeyFrame : Frame{
-    std::vector<struct Color> colors;
 };
 
 
