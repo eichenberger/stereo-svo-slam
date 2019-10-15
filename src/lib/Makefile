@@ -1,5 +1,5 @@
 CXX      ?= gcc
-CXXFLAGS  ?= -O0 -g0 -s
+CXXFLAGS  ?= -O0 -ggdb
 LDFLAGS ?= -O0
 
 SRC_FILES = corner_detector.cpp \
@@ -24,7 +24,7 @@ LIBDIRS = -L/usr/local/lib
 LIBS = -lm -lopencv_core -lomp5 -lopencv_features2d -lopencv_imgproc -lopencv_calib3d -lopencv_video -lopencv_highgui
 
 CXXFLAGS += -std=c++17 -pedantic -Wall -fopenmp -fPIC $(INCLUDEDIRS)
-LDFLAGS += -fPIC $(LIBDIRS) $(LIBS) -Wl,-rpath,/usr/local/lib
+LDFLAGS += -fPIC $(LIBDIRS) $(LIBS) -Wl,-rpath,/usr/local/lib,-rpath,.
 
 all: lib
 

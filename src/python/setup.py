@@ -53,7 +53,7 @@ ext_modules_debug = [
               include_dirs=include_dirs,
               extra_compile_args=['-std=c++17','-fopenmp', '-ggdb', '-O0',
                                   '-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION'],
-              extra_link_args=['-Wl,-rpath,../lib'],
+              extra_link_args=['-Wl,-rpath,../lib,-rpath,.'],
               language='c++'
               )
 ]
