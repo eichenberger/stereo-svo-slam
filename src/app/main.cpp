@@ -89,14 +89,15 @@ static void draw_frame(KeyFrame &keyframe, Frame &frame)
 void set_manual_exposure(const char *hidraw, int value)
 {
     int MAX_EXPOSURE = 300000;
+	cout << "Set expsure to: " << value << endl;
     if (value >= MAX_EXPOSURE) {
-        cout << "Exposure must be less than" << MAX_EXPOSURE << "is " << value << ")";
+        cout << "Exposure must be less than" << MAX_EXPOSURE << "is " << value << ")" << endl;
         return;
 	}
 
 	ofstream f;
 	f.open(hidraw, ios::binary);
-	f << 0x78 << 0x02 <<
+	f << (char)0x78 << (char)0x02 <<
 		(char)((value >> 24)&0xFF) <<
 		(char)((value >> 16)&0xFF) <<
 		(char)((value>>8)&0xFF) <<
@@ -115,6 +116,9 @@ int main(int argc, char **argv)
 	char *camera = argv[1];
 	char *config = argv[2];
 	char *hidraw = argv[3];
+	char *exposure = argv[4];
+
+	set_manual_exposure(hidraw, atoi(exposure));
 
 	FileStorage fs(config, FileStorage::READ);
 	CameraSettings camera_settings;
@@ -141,8 +145,6 @@ int main(int argc, char **argv)
     camera_settings.max_pyramid_levels = 3;
 
 	StereoSlam slam(camera_settings);
-
-	set_manual_exposure(hidraw, 20000);
 
 	VideoCapture cap(camera);
 	cap.set(CAP_PROP_FRAME_WIDTH, 752);
