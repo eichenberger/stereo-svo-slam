@@ -25,21 +25,12 @@ import distutils.ccompiler
 distutils.ccompiler.CCompiler.compile=parallelCCompile
 
 
-sources = ["lib/slam_accelerator.pyx",
-            "lib/slam_accelerator_helper.cpp",
-            "lib/transform_keypoints.cpp",
-            "lib/depth_calculator.cpp",
-            "lib/image_comparison.cpp",
-            "lib/pose_estimator.cpp",
-            "lib/pose_refinement.cpp",
-            "lib/optical_flow.cpp",
-            "lib/stereo_slam.cpp",
-            "lib/keyframe_inserter.cpp",
-            "lib/corner_detector.cpp"]
-libraries = ["m", "opencv_core", 'omp5', 'opencv_features2d',
-             'opencv_imgproc', 'opencv_calib3d','opencv_video', 'opencv_highgui']
-library_dirs = ['/usr/local/lib']
-include_dirs = ['/usr/local/include/opencv4']
+sources = ["wrapper/slam_accelerator.pyx"]
+libraries = ["stereosvo"]
+#libraries = ["m", "opencv_core", 'omp5', 'opencv_features2d',
+#             'opencv_imgproc', 'opencv_calib3d','opencv_video', 'opencv_highgui']
+library_dirs = ['../lib']
+include_dirs = ['/usr/local/include/opencv4', '../include']
 
 ext_modules_release = [
     Extension("slam_accelerator",
@@ -49,6 +40,7 @@ ext_modules_release = [
               include_dirs=include_dirs,
               extra_compile_args=['-std=c++17','-fopenmp', '-O3','-g0','-s',
                                   '-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION'],
+              extra_link_args=['-Wl,-rpath,../lib'],
               language='c++'
               )
 ]
@@ -61,6 +53,7 @@ ext_modules_debug = [
               include_dirs=include_dirs,
               extra_compile_args=['-std=c++17','-fopenmp', '-ggdb', '-O0',
                                   '-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION'],
+              extra_link_args=['-Wl,-rpath,../lib'],
               language='c++'
               )
 ]

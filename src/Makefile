@@ -1,14 +1,21 @@
-.PHONY: test clean
+CXX      ?= gcc
+CXXFLAGS  ?= -std=c++11 -pedantic -Wall
+LDFLAGS ?=
 
-all:
-	python3 setup.py build_ext --inplace
+.PHONY: test clean lib python
+
+all: lib python
+
+python:
+	$(MAKE) -C python all
+
+lib: 
+	$(MAKE) -C lib lib
 
 test:
 	$(MAKE) -C test all
 
 clean:
-	python3 setup.py clean --all
-	rm -f slam_accelerator*.so
-	rm -f lib/*.gch
-	rm -f lib/*.o
-	rm -f lib/slam_accelerator.cpp
+	$(MAKE) -C lib clean
+	$(MAKE) -C python clean
+	$(MAKE) -C test clean
