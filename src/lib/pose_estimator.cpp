@@ -9,8 +9,8 @@
 #include "transform_keypoints.hpp"
 #include "image_comparison.hpp"
 
-// #define VERBOSE 1
-// #define SUPER_VERBOSE 1
+#define VERBOSE 1
+//#define SUPER_VERBOSE 1
 
 using namespace cv;
 using namespace std;

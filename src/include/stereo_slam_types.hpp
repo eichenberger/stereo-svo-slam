@@ -21,10 +21,17 @@ struct CameraSettings {
     int search_y;
     int window_size;
     int window_size_opt_flow;
+    int window_size_depth_calculator;
     int max_pyramid_levels;
-    int image_width;
-    int image_height;
 
+    // Windows for confidence calculation
+    float dist_window_k0;   // min distance _/-\_
+    float dist_window_k1;   // min distance confidence 1.0
+    float dist_window_k2;   // max distance confidence 1.0
+    float dist_window_k3;   // max distance
+
+    float cost_k0;  // max cost confidence 1.0 -\_
+    float cost_k1;  // max cost
 };
 
 struct StereoImage {

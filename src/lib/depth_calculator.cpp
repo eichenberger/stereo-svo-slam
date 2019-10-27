@@ -63,6 +63,7 @@ static void select_best_keypoints(
     keypoints = keypoints_pyr[0];
     kp_info = kp_info_pyr[0];
 
+//#pragma omp parallel for
     for (unsigned int i = 1; i < keypoints_pyr.size(); i++) {
         vector<KeyPoint2d> _keypoints = keypoints_pyr[i];
         vector<KeyPointInformation> _info = kp_info_pyr[i];
@@ -113,6 +114,7 @@ static void merge_keypoints(Frame &frame,
     int image_width = frame.stereo_image.left[0].cols;
     int image_height = frame.stereo_image.left[0].rows;
 
+//#pragma omp parallel for
     for (int x = 0; x < image_width; x += grid_width) {
         int left = x;
         int right = left + grid_width;
@@ -158,21 +160,21 @@ void DepthCalculator::calculate_depth(Frame &frame,
     float fy = camera_settings.fy;
     float cx = camera_settings.cx;
     float cy = camera_settings.cy;
-    float dist_window_k0 = 0.5;
-    float dist_window_k1 = 2.5;
-    float dist_window_k2 = 9.0;
-    float dist_window_k3 = 13.0;
+    float dist_window_k0 = camera_settings.dist_window_k0;
+    float dist_window_k1 = camera_settings.dist_window_k1;
+    float dist_window_k2 = camera_settings.dist_window_k2;
+    float dist_window_k3 = camera_settings.dist_window_k3;
     float dist_fac0 = 1/(dist_window_k1 - dist_window_k0);
     float dist_fac1 = 1/(dist_window_k3 - dist_window_k2);
 
-    float cost_k0 = 50000;
-    float cost_k1 = 100000;
+    float cost_k0 = camera_settings.cost_k0;
+    float cost_k1 = camera_settings.cost_k1;
     float cost_fac0 = 1/(cost_k1-cost_k0);
 
     float baseline = camera_settings.baseline;
     int search_x = camera_settings.search_x;
     int search_y = camera_settings.search_y;
-    int window_size = 25;
+    int window_size = camera_settings.window_size_depth_calculator;
     int window_before = window_size/2;
     int window_after = (window_size+1)/2;
 

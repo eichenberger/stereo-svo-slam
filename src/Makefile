@@ -4,13 +4,17 @@ LDFLAGS ?=
 
 .PHONY: test clean lib python
 
-all: lib python
+all: lib python app
 
-python:
-	$(MAKE) -C python all
 
 lib: 
 	$(MAKE) -C lib lib
+
+python: lib
+	$(MAKE) -C python all
+
+app: lib
+	$(MAKE) -C app
 
 test:
 	$(MAKE) -C test all
