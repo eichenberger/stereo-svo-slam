@@ -2,7 +2,7 @@ CXX      ?= gcc
 CXXFLAGS  ?= -O0 -ggdb
 LDFLAGS ?= -O0
 
-SRC_FILES = main.cpp websocketserver.cpp
+SRC_FILES = main.cpp websocketserver.cpp svo_slam_backend.cpp
 
 OBJ_FILES = $(patsubst %.cpp, %.o, $(SRC_FILES))
 

@@ -10,6 +10,8 @@
 #include "stereo_slam_types.hpp"
 #include "stereo_slam.hpp"
 
+#include "svo_slam_backend.hpp"
+#include "websocketserver.hpp"
 
 using namespace cv;
 using namespace std;
@@ -121,7 +123,7 @@ void set_auto_exposure(const char *hidraw)
     set_manual_exposure(hidraw, 1);
 }
 
-static void read_image(VideoCapture &cap, StereoSlam &slam)
+static void read_image(VideoCapture &cap, StereoSlam *slam)
 {
     Mat image;
     cap.read(image);
@@ -130,11 +132,11 @@ static void read_image(VideoCapture &cap, StereoSlam &slam)
     extractChannel(image, gray_r, 1);
     extractChannel(image, gray_l, 2);
 
-    slam.new_image(gray_l, gray_r);
+    slam->new_image(gray_l, gray_r);
     Frame frame;
-    slam.get_frame(frame);
+    slam->get_frame(frame);
     KeyFrame keyframe;
-    slam.get_keyframe(keyframe);
+    slam->get_keyframe(keyframe);
     draw_frame(keyframe, frame);
     cout << "Current pose: " << frame.pose.x << "," <<
         frame.pose.y << "," <<
@@ -200,7 +202,11 @@ int main(int argc, char **argv)
     timer.setInterval(1.0/30.0*1000.0);
 
     QObject::connect(&timer, &QTimer::timeout,
-            std::bind(&read_image, cap, slam));
+            std::bind(&read_image, cap, &slam));
     timer.start();
+
+    SvoSlamBackend backend(&slam);
+    WebSocketServer server("svo", 8001, backend);
+
     app.exec();
 }
