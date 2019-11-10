@@ -18,6 +18,7 @@ public:
     void get_keyframe(KeyFrame &keyframe);
     void get_keyframes(std::vector<KeyFrame> &keyframes);
     void get_frame(Frame &frame);
+    void get_trajectory(std::vector<Pose> &trajectory);
 
 private:
     void new_keyframe();
@@ -27,6 +28,7 @@ private:
     KeyFrame* keyframe;
     cv::Ptr<Frame> frame;
     std::vector<KeyFrame> keyframes;
+    std::vector<Pose> trajectory;
 };
 
 #endif

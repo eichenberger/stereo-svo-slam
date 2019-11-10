@@ -27,6 +27,7 @@ private:
 
     cv::Ptr<PoseEstimatorCallback> solver_callback;
     int max_levels;
+    int min_level;
 };
 
 #endif

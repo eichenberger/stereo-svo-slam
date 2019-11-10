@@ -23,6 +23,10 @@ struct CameraSettings {
     int window_size_opt_flow;
     int window_size_depth_calculator;
     int max_pyramid_levels;
+    int min_pyramid_level_pose_estimation;
+
+    int image_width;
+    int image_height;
 
     // Windows for confidence calculation
     float dist_window_k0;   // min distance _/-\_

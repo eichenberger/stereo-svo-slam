@@ -47,7 +47,8 @@ PoseEstimator::PoseEstimator(const StereoImage &current_stereo_image,
     const StereoImage &previous_stereo_image,
     const KeyPoints &previous_keypoints,
     const CameraSettings &camera_settings) :
-    max_levels(camera_settings.max_pyramid_levels)
+    max_levels(camera_settings.max_pyramid_levels),
+    min_level(camera_settings.min_pyramid_level_pose_estimation)
 {
     solver_callback = new PoseEstimatorCallback(current_stereo_image,
             previous_stereo_image, previous_keypoints, camera_settings);
@@ -59,7 +60,7 @@ float PoseEstimator::estimate_pose(const Pose &pose_guess, Pose &pose)
 {
     float err = 0;
     Pose pose_estimate = pose_guess;
-    for (int i = 2; i < max_levels; i++) {
+    for (int i = min_level; i < max_levels; i++) {
         Pose new_estimate;
         int current_level = max_levels - i;
 

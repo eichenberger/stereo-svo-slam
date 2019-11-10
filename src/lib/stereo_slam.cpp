@@ -118,6 +118,8 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
         }
     }
 
+    trajectory.push_back(frame->pose);
+
     if (!previous_frame.empty()) {
         previous_frame->kps.kps2d.clear();
         previous_frame->kps.kps3d.clear();
@@ -142,3 +144,9 @@ void StereoSlam::get_keyframes(std::vector<KeyFrame> &keyframes)
 {
     keyframes = this->keyframes;
 }
+
+void StereoSlam::get_trajectory(std::vector<Pose> &trajectory)
+{
+    trajectory = this->trajectory;
+}
+

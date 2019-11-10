@@ -6,12 +6,19 @@
 
 #include <QtWidgets/QApplication>
 #include <QtCore/QTimer>
+#include <QtCore/QCommandLineParser>
+#include <QtCore/QCommandLineOption>
+#include <QtCore/QFile>
+#include <QtCore/QTextStream>
 
 #include "stereo_slam_types.hpp"
 #include "stereo_slam.hpp"
 
 #include "svo_slam_backend.hpp"
 #include "websocketserver.hpp"
+
+#include "econ_input.hpp"
+#include "video_input.hpp"
 
 using namespace cv;
 using namespace std;
@@ -60,7 +67,7 @@ static void draw_frame(KeyFrame &keyframe, Frame &frame)
 
         int marker = info[i].type == KP_FAST ? MARKER_CROSS : MARKER_SQUARE;
 
-        int marker_size = info[i].confidence*8 + 2;
+        int marker_size = info[i].confidence*16 + 4;
 
         cv::drawMarker(left, kp, color, marker, marker_size);
 
@@ -90,47 +97,15 @@ static void draw_frame(KeyFrame &keyframe, Frame &frame)
         key = waitKey(0);
 
     if (key == 'q')
-        throw("end");
+        QApplication::quit();
 }
 
-void set_manual_exposure(const char *hidraw, int value)
-{
-    int MAX_EXPOSURE = 300000;
-    cout << "Set expsure to: " << value << endl;
-    if (value >= MAX_EXPOSURE) {
-        cout << "Exposure must be less than" << MAX_EXPOSURE << "is " << value << ")" << endl;
-        return;
-    }
-
-#define BUFFER_SIZE 6
-    char buffer[BUFFER_SIZE] = {
-        0x78, 0x02,
-        (char)((value >> 24)&0xFF),
-        (char)((value >> 16)&0xFF),
-        (char)((value>>8)&0xFF),
-        (char)(value&0xFF)};
-
-
-    ofstream f;
-    f.open(hidraw, ios::binary);
-    f.write(buffer, BUFFER_SIZE);
-    f.flush();
-    f.close();
-}
-
-void set_auto_exposure(const char *hidraw)
-{
-    set_manual_exposure(hidraw, 1);
-}
-
-static void read_image(VideoCapture &cap, StereoSlam *slam)
+static void read_image(ImageInput *input, StereoSlam *slam)
 {
     Mat image;
-    cap.read(image);
 
     Mat gray_r, gray_l;
-    extractChannel(image, gray_r, 1);
-    extractChannel(image, gray_l, 2);
+    input->read(gray_l, gray_r);
 
     slam->new_image(gray_l, gray_r);
     Frame frame;
@@ -150,63 +125,92 @@ static void read_image(VideoCapture &cap, StereoSlam *slam)
 
 int main(int argc, char **argv)
 {
-    char *camera = argv[1];
-    char *config = argv[2];
-    char *hidraw = argv[3];
-    char *exposure = argv[4];
+    QApplication app(argc, argv);
 
-    set_manual_exposure(hidraw, atoi(exposure));
+    QCommandLineParser parser;
+    QStringList arguments = app.arguments();
+    parser.setApplicationDescription("SVO stereo SLAM application");
+    parser.addHelpOption();
+    parser.addPositionalArgument("camera", "The camera type to use can be econ, video or blender");
+    parser.addOptions({
+            {{"v", "video"}, "Path to camera or video (/dev/videoX, video.mov)", "video"},
+            {{"s", "settings"}, "Path to the settings file (Econ.yaml)", "settings"},
+            {{"r", "hidraw"}, "econ: HID device to control the camera (/dev/hidrawX)", "hidraw"},
+            {{"e", "exposure"}, "econ: The exposure for the camera 1-30000", "exposure"},
+            {{"t", "trajectory"}, "File to store trajectory", "trajectory"},
+            });
 
-    FileStorage fs(config, FileStorage::READ);
+
+    parser.process(arguments);
+    arguments.pop_back();
+
+    QString camera_type = parser.positionalArguments().at(0);
+    ImageInput *input;
+    if (camera_type == "econ") {
+        if (!parser.isSet("video") ||
+                !parser.isSet("hidraw") ||
+                !parser.isSet("settings") ||
+                !parser.isSet("exposure")) {
+            cout << "Please set all inputs for econ" << endl;
+            cout << parser.helpText().toStdString() << endl;
+            return -1;
+        }
+
+        EconInput *econ = new EconInput(parser.value("video").toStdString(),
+                parser.value("hidraw").toStdString(),
+                parser.value("settings").toStdString(),
+                parser.value("exposure").toInt());
+        input = econ;
+    }
+    else if (camera_type == "video") {
+        if (!parser.isSet("video") ||
+                !parser.isSet("settings")) {
+            cout << "Please set all inputs for video" << endl;
+            cout << parser.helpText().toStdString() << endl;
+            return -1;
+        }
+        VideoInput *video = new VideoInput(parser.value("video").toStdString(),
+                parser.value("settings").toStdString());
+        input = video;
+
+    }
+    else {
+        cout << "Unknown camera type " << camera_type.toStdString() << endl;
+        return -2;
+    }
+
     CameraSettings camera_settings;
-    camera_settings.fx = fs["Camera1.fx"];
-    camera_settings.fy = fs["Camera1.fy"];
-    camera_settings.cx = fs["Camera1.cx"];
-    camera_settings.cy = fs["Camera1.cy"];
-    camera_settings.baseline = fs["Camera.baseline"];
-    camera_settings.window_size = fs["Camera.window_size"];
-    camera_settings.window_size_opt_flow = fs["Camera.window_size_opt_flow"];
-    camera_settings.window_size_depth_calculator = fs["Camera.window_size_depth_calculator"];
-    camera_settings.max_pyramid_levels = fs["Camera.max_pyramid_levels"];
-
-    camera_settings.dist_window_k0 = fs["Camera.dist_window_k0"];
-    camera_settings.dist_window_k1 = fs["Camera.dist_window_k1"];
-    camera_settings.dist_window_k2 = fs["Camera.dist_window_k2"];
-    camera_settings.dist_window_k3 = fs["Camera.dist_window_k3"];
-    camera_settings.cost_k0 = fs["Camera.cost_k0"];
-    camera_settings.cost_k1 = fs["Camera.cost_k1"];
-
-
-
-    camera_settings.k1 = fs["Camera1.k1"];
-    camera_settings.k2 = fs["Camera1.k2"];
-    camera_settings.k3 = fs["Camera1.k3"];
-    camera_settings.p1 = fs["Camera1.p1"];
-    camera_settings.p2 = fs["Camera1.p2"];
-
-    camera_settings.grid_width = fs["Camera.grid_width"];
-    camera_settings.grid_height = fs["Camera.grid_height"];
-    camera_settings.search_x = fs["Camera.search_x"];
-    camera_settings.search_y = fs["Camera.search_y"];
+    input->get_camera_settings(camera_settings);
 
     StereoSlam slam(camera_settings);
 
-    QApplication app(argc, argv);
-
-    VideoCapture cap(camera);
-    cap.set(CAP_PROP_FRAME_WIDTH, 752);
-    cap.set(CAP_PROP_FRAME_HEIGHT, 480);
-
+    QCommandLineOption showProgressOption("p", QCoreApplication::translate("main", "Show progress during copy"));
+    parser.addOption(showProgressOption);
 
     QTimer timer;
     timer.setInterval(1.0/30.0*1000.0);
 
     QObject::connect(&timer, &QTimer::timeout,
-            std::bind(&read_image, cap, &slam));
+            std::bind(&read_image, input, &slam));
     timer.start();
 
     SvoSlamBackend backend(&slam);
     WebSocketServer server("svo", 8001, backend);
 
     app.exec();
+
+    if (parser.isSet("trajectory")) {
+        QFile trajectory_file(parser.value("trajectory"));
+        trajectory_file.open(QIODevice::WriteOnly | QIODevice::Text);
+        vector<Pose> trajectory;
+        slam.get_trajectory(trajectory);
+        QTextStream trajectory_stream(&trajectory_file);
+        for (auto pose: trajectory) {
+            trajectory_stream << pose.x << "," << pose.y << "," << pose.z << "," <<
+                pose.pitch << "," << pose.yaw << "," << pose.roll << endl;
+        }
+        trajectory_file.close();
+    }
+
+    delete input;
 }
