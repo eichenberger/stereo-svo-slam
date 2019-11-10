@@ -19,6 +19,8 @@ def set_auto_exposure(hidraw):
     set_manual_exposure(hidraw, 1)
 
 def main():
+    WIDTH = 752
+    HEIGHT = 480
     parser = argparse.ArgumentParser(description='OpenCV test')
     parser.add_argument('camera', help='camera to use', type=str)
     parser.add_argument('hidraw', help='hdiraw control device', type=str)
@@ -30,30 +32,31 @@ def main():
     args = parser.parse_args()
 
     cap1 = cv2.VideoCapture(args.camera)
-    cap1.set(cv2.CAP_PROP_FRAME_WIDTH, 752)
-    cap1.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+    cap1.set(cv2.CAP_PROP_FRAME_WIDTH, WIDTH)
+    cap1.set(cv2.CAP_PROP_FRAME_HEIGHT, HEIGHT)
 
     set_manual_exposure(args.hidraw, args.exposure)
 
     key = 0
     i = 0
 
-    left_writer = cv2.VideoWriter(args.out + "_left.avi", cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 30, (752, 480))
-    right_writer = cv2.VideoWriter(args.out + "_right.avi", cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 30, (752, 480))
+    out_image = np.zeros((HEIGHT, 2*WIDTH, 3), np.uint8)
+    video_writer = cv2.VideoWriter(args.out + ".avi", cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'), 30, (2*WIDTH, HEIGHT))
     while key != ord('q'):
         ret, image1 = cap1.read()
         gray_l = cv2.cvtColor(cv2.extractChannel(image1, 1), cv2.COLOR_GRAY2RGB);
         gray_r = cv2.cvtColor(cv2.extractChannel(image1, 2), cv2.COLOR_GRAY2RGB);
 
-        left_writer.write(gray_l)
-        right_writer.write(gray_r)
+        out_image[:,0:WIDTH] = gray_l
+        out_image[:,WIDTH:2*WIDTH] = gray_r
 
-        cv2.imshow("left", gray_l)
+        video_writer.write(out_image)
+
+        cv2.imshow("output", out_image)
         key = cv2.waitKey(1)
 
     cap1.release()
-    left_writer.release()
-    right_writer.release()
+    video_writer.release()
 
 if __name__ == "__main__":
     main()
