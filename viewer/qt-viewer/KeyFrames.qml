@@ -20,5 +20,4 @@ WebSocket {
     function getKeyFrames() {
         sendTextMessage("get");
     }
-
 }

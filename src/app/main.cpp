@@ -138,6 +138,7 @@ int main(int argc, char **argv)
             {{"r", "hidraw"}, "econ: HID device to control the camera (/dev/hidrawX)", "hidraw"},
             {{"e", "exposure"}, "econ: The exposure for the camera 1-30000", "exposure"},
             {{"t", "trajectory"}, "File to store trajectory", "trajectory"},
+            {{"m", "move"}, "video: skip first n frames", "move"},
             });
 
 
@@ -171,6 +172,9 @@ int main(int argc, char **argv)
         }
         VideoInput *video = new VideoInput(parser.value("video").toStdString(),
                 parser.value("settings").toStdString());
+        if (parser.isSet("move")) {
+            video->jump_to(parser.value("move").toInt());
+        }
         input = video;
 
     }

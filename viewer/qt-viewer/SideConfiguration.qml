@@ -7,6 +7,7 @@ Item {
 
     property var keyframes: keyframes.keyframes
     property var pose: pose.pose
+    property var trajectory: trajectory.trajectory
     property int nKeyframes: 0
     signal setTop()
     signal setSide()
@@ -24,10 +25,14 @@ Item {
             id: pose
         }
 
+        Trajectory {
+            id: trajectory
+        }
+
         Button {
             width: parent.width
             text: qsTr("Connect")
-            onClicked: {keyframes.active = true; pose.active = true;}
+            onClicked: {keyframes.active = true; pose.active = true; trajectory.active = true}
         }
 
         Button {
@@ -48,14 +53,17 @@ Item {
             onClicked: pose.getPose()
         }
 
+        Button {
+            width: parent.width
+            text: qsTr("Trajectory")
+            onClicked: trajectory.getTrajectory()
+        }
 
         Button {
             width: parent.width
             text: qsTr("Top View")
             onClicked: setTop()
         }
-
-
 
         Button {
             width: parent.width

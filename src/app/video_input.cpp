@@ -32,3 +32,8 @@ void VideoInput::read(cv::Mat &left, cv::Mat &right)
     right = image(Rect(0, 0, camera_settings.image_width, camera_settings.image_height));
     left = image(Rect(camera_settings.image_width, 0, camera_settings.image_width, camera_settings.image_height));
 }
+
+void VideoInput::jump_to(int frame_number)
+{
+    cap->set(cv::CAP_PROP_POS_FRAMES, frame_number);
+}

@@ -72,6 +72,7 @@ Item {
         height: parent.height
         keyframes: configuration.keyframes
         currentPose: configuration.pose
+        trajectory: configuration.trajectory
     }
 
 

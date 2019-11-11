@@ -5,5 +5,6 @@
         <file>KeyFrames.qml</file>
         <file>SideConfiguration.qml</file>
         <file>Pose.qml</file>
+        <file>Trajectory.qml</file>
     </qresource>
 </RCC>

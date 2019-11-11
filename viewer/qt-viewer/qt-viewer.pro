@@ -15,4 +15,5 @@ DISTFILES += \
     KeyFrames.qml \
     PointCloudViewer.qml \
     SideConfiguration.qml \
+    Trajectory.qml \
     Pose.qml

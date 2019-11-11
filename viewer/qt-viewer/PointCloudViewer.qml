@@ -3,13 +3,15 @@ import QtQuick.Scene3D 2.0
 import Qt3D.Core 2.0
 import Qt3D.Render 2.0
 import Qt3D.Input 2.0
-import Qt3D.Extras 2.0
+import Qt3D.Extras 2.12
 
 Scene3D {
     id: scene3d
     aspects: ["input", "logic"]
     property var keyframes
-    property var currentPose: new Float32Array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+    property var trajectory
+    property var currentPose
+    property var trajectoryVertecies: new Float32Array(0)
     property var pointVertices: new Float32Array(0)
     property var pointColors: new Float32Array(0)
     property int showNKeyframes: 0
@@ -73,9 +75,16 @@ Scene3D {
     }
 
     onKeyframesChanged: showKeyframes()
-
     onShowNKeyframesChanged: showKeyframes()
 
+
+    function showTrajectory() {
+        if (trajectory === undefined)
+            return;
+
+        trajectoryVertecies = new Float32Array(trajectory);
+    }
+    onTrajectoryChanged: showTrajectory()
 
     Entity {
         id: sceneRoot
@@ -86,7 +95,7 @@ Scene3D {
             fieldOfView: 45
             nearPlane : 0.1
             farPlane : 1000.0
-            position: Qt.vector3d( 0.0, 0.0, -1.0 )
+            position: Qt.vector3d( 0.0, 0.0, -5.0 )
             upVector: Qt.vector3d( 0.0, -1.0, 0.0 )
             viewCenter: Qt.vector3d( 0.0, 0.0, 0.0 )
         }
@@ -95,6 +104,7 @@ Scene3D {
         OrbitCameraController {
             id: controller
             camera: camera
+            linearSpeed: 100
         }
 
         Transform {
@@ -151,27 +161,27 @@ Scene3D {
             primitiveType: GeometryRenderer.Points
 
             geometry: Geometry {
-              Attribute {
-                attributeType: Attribute.VertexAttribute
-                vertexBaseType: Attribute.Float
-                vertexSize: 3
-                count: pointVertices.length/3
-                byteOffset: 0
-                byteStride: 3 * 4 // 1 vertex (=3 coordinates) * sizeof(float)
-                name: defaultPositionAttributeName
-                buffer: vertexBuffer
-            }
+                Attribute {
+                    attributeType: Attribute.VertexAttribute
+                    vertexBaseType: Attribute.Float
+                    vertexSize: 3
+                    count: pointVertices.length/3
+                    byteOffset: 0
+                    byteStride: 3 * 4 // 1 vertex (=3 coordinates) * sizeof(float)
+                    name: defaultPositionAttributeName
+                    buffer: vertexBuffer
+                }
 
-              Attribute {
-                attributeType: Attribute.VertexAttribute
-                vertexBaseType: Attribute.Float
-                vertexSize: 3
-                count: 3
-                byteOffset: 0
-                byteStride: 3 * 4 // 1 vertex (=3 colors) * sizeof(float)
-                name: defaultColorAttributeName
-                buffer: colorBuffer
-              }
+                Attribute {
+                    attributeType: Attribute.VertexAttribute
+                    vertexBaseType: Attribute.Float
+                    vertexSize: 3
+                    count: 3
+                    byteOffset: 0
+                    byteStride: 3 * 4 // 1 vertex (=3 colors) * sizeof(float)
+                    name: defaultColorAttributeName
+                    buffer: colorBuffer
+                }
             }
             // This can be the point cloud
             Buffer {
@@ -192,31 +202,66 @@ Scene3D {
             components: [pointcloudRenderer, pointCloudMaterial, pointLayer]
         }
 
+        // We will set the color of each vertex
+        PhongMaterial {
+            id: trajectoryMaterial
+            ambient: "red"
+        }
+
+        GeometryRenderer{
+            id: trajectoryRenderer
+
+            primitiveType: GeometryRenderer.LineStrip
+
+            geometry: Geometry {
+                Attribute {
+                    attributeType: Attribute.VertexAttribute
+                    vertexBaseType: Attribute.Float
+                    vertexSize: 3
+                    count: trajectoryVertecies.length/6
+                    byteOffset: 0
+                    byteStride: 6 * 4 // 1 vertex (=3 coordinates + 3 angles) * sizeof(float)
+                    name: defaultPositionAttributeName
+                    buffer: trjacetoryVertexBuffer
+                }
+            }
+            // This can be the point cloud
+            Buffer {
+                id: trjacetoryVertexBuffer
+                type: Buffer.VertexBuffer
+                data: trajectoryVertecies
+            }
+        }
+
+        Entity {
+            components: [trajectoryRenderer, trajectoryMaterial, pointLayer]
+        }
+
         GeometryRenderer{
             id: keyframeRenderer
 
             primitiveType: GeometryRenderer.Lines
 
             geometry: Geometry {
-              Attribute {
-                attributeType: Attribute.VertexAttribute
-                vertexBaseType: Attribute.Float
-                vertexSize: 3
-                count: 5
-                byteOffset: 0
-                byteStride: 3 * 4 // 1 vertex (=3 coordinates) * sizeof(float)
-                name: defaultPositionAttributeName
-                buffer: keyframeBuffer
-              }
-              Attribute {
-                  attributeType: Attribute.IndexAttribute
-                  vertexBaseType: Attribute.UnsignedInt
-                  vertexSize: 1
-                  count: 16
-                  byteOffset: 0
-                  byteStride: 1 * 4 // 1 index * sizeof(Uint32)
-                  buffer: indexBuffer
-              }
+                Attribute {
+                    attributeType: Attribute.VertexAttribute
+                    vertexBaseType: Attribute.Float
+                    vertexSize: 3
+                    count: 5
+                    byteOffset: 0
+                    byteStride: 3 * 4 // 1 vertex (=3 coordinates) * sizeof(float)
+                    name: defaultPositionAttributeName
+                    buffer: keyframeBuffer
+                }
+                Attribute {
+                      attributeType: Attribute.IndexAttribute
+                      vertexBaseType: Attribute.UnsignedInt
+                      vertexSize: 1
+                      count: 16
+                      byteOffset: 0
+                      byteStride: 1 * 4 // 1 index * sizeof(Uint32)
+                      buffer: indexBuffer
+                }
             }
             // This can be the point cloud
             Buffer {
@@ -292,5 +337,4 @@ Scene3D {
             components: [poseTransformation, keyframeRenderer, poseMaterial, pointLayer]
         }
     }
-
 }

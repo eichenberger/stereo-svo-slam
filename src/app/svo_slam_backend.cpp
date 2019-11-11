@@ -4,6 +4,7 @@
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonValue>
 #include <QtCore/QJsonDocument>
+#include <QtCore/QVector>
 
 #include "svo_slam_backend.hpp"
 
@@ -77,10 +78,27 @@ void SvoSlamBackend::text_message_received(QWebSocket &socket,
 
         json = new QJsonDocument(top_object);
     }
+    else if (url == "trajectory") {
+        vector<Pose> _trajectory;
+        slam->get_trajectory(_trajectory);
+        QJsonArray trajectory;
+        for (size_t i = 0; i < _trajectory.size(); i++) {
+            trajectory.append(_trajectory[i].x);
+            trajectory.append(_trajectory[i].y);
+            trajectory.append(_trajectory[i].z);
+            trajectory.append(_trajectory[i].pitch);
+            trajectory.append(_trajectory[i].yaw);
+            trajectory.append(_trajectory[i].roll);
+        }
+
+        QJsonObject top_object;
+        top_object["trajectory"] = trajectory;
+        json = new QJsonDocument(top_object);
+    }
 
     if (json != NULL) {
         QString json_string = json->toJson(QJsonDocument::Compact);
-        qDebug() << json_string;
+        //qDebug() << json_string;
         socket.sendTextMessage(json_string);
         delete json;
     }
