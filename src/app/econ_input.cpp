@@ -55,6 +55,6 @@ void EconInput::read(cv::Mat &left, cv::Mat &right)
     Mat image;
     cap->read(image);
 
-    extractChannel(image, left, 1);
-    extractChannel(image, right, 2);
+    extractChannel(image, right, 1);
+    extractChannel(image, left, 2);
 }
