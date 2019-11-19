@@ -73,13 +73,17 @@ static void draw_frame(KeyFrame &keyframe, Frame &frame)
 
         cv::drawMarker(left, kp, color, marker, marker_size);
 
-        KeyPoint3d &kp3d = frame.kps.kps3d[i];
+        //KeyPoint3d &kp3d = frame.kps.kps3d[i];
         stringstream text;
+
+        float x = info[i].seed.kf.statePost.at<float>(0);
+        float y = info[i].seed.kf.statePost.at<float>(1);
+        float z = info[i].seed.kf.statePost.at<float>(2);
         text << fixed << setprecision(1) <<
             info[i].keyframe_id << ":" <<
-            kp3d.x  << "," <<
-            kp3d.y << ","  <<
-            kp3d.z;
+            x  << "," <<
+            y << ","  <<
+            z;
         putText(left, text.str(), kp, FONT_HERSHEY_PLAIN, 0.8, Scalar(0,0,0));
     }
 

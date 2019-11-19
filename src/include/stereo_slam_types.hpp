@@ -69,11 +69,7 @@ struct Seed {
 //    static int batch_counter;
 //    int seed_counter;
 //    int id;                      //!< Seed ID, only used for visualization.
-    float a;                     //!< a of Beta distribution: When high, probability of inlier is large.
-    float b;                     //!< b of Beta distribution: When high, probability of outlier is large.
-    float mu;                    //!< Mean of normal distribution.
-    float z_range;               //!< Max range of the possible depth.
-    float sigma2;                //!< Variance of normal distribution.
+    cv::KalmanFilter kf;
     bool accepted;
 };
 

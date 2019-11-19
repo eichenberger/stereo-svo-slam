@@ -136,22 +136,14 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
         DepthFilter filter(keyframes, camera_settings);
         filter.update_depth(*frame);
 
-        float fx = camera_settings.fx;
-        float fy = camera_settings.fy;
-        float cx = camera_settings.cx;
-        float cy = camera_settings.cy;
-
         for (size_t i = 0; i < frame->kps.kps3d.size(); i++) {
             KeyPointInformation &info = frame->kps.info[i];
             KeyFrame &keyframe = keyframes[info.keyframe_id];
             KeyPoint3d &kp3d = keyframe.kps.kps3d[info.keypoint_index];
-            KeyPoint2d &kp2d = keyframe.kps.kps2d[info.keypoint_index];
 
-            if (info.seed.sigma2 < 1.0 && info.seed.a < info.seed.b)
-                info.seed.accepted = false;
-            kp3d.z = 1.0/info.seed.mu;
-            kp3d.x = (kp2d.x - cx)/fx*kp3d.z;
-            kp3d.y = (kp2d.y - cy)/fy*kp3d.z;
+            kp3d.x = info.seed.kf.statePost.at<float>(0);
+            kp3d.y = info.seed.kf.statePost.at<float>(1);
+            kp3d.z = info.seed.kf.statePost.at<float>(2);
             frame->kps.kps3d[i] = kp3d;
         }
     }

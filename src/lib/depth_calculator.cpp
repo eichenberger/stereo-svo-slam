@@ -230,10 +230,10 @@ void DepthCalculator::calculate_depth(Frame &frame,
         }
         minPos = minPos/matches;
 
-        float disparity = max<float>(0.5, minPos);
+        float disparity = minPos;
 
         // Calculate depth and transform kp3d into global coordinates
-        float _z = baseline/disparity;
+        float _z = baseline/max<float>(0.5, disparity);
         float _x = (keypoint.x - cx)/fx*_z;
         float _y = (keypoint.y - cy)/fy*_z;
 
@@ -280,14 +280,23 @@ void DepthCalculator::calculate_depth(Frame &frame,
         kp_info[i].confidence = _confidence;
         kp_info[i].keyframe_id = keyframe_count;
         kp_info[i].keypoint_index = i;
-        kp_info[i].seed.a = 10;
-        kp_info[i].seed.b = 10;
-        kp_info[i].seed.mu = 1.0/_z;
-        // Assumption that point is somewhere between 0-2*z
-        kp_info[i].seed.sigma2 = 0.1*_z*_z;
-        // Assumption that max depth is 50m TODO: make it configurable
-        kp_info[i].seed.z_range = _z*0.9;
         kp_info[i].seed.accepted = true;
+        KalmanFilter &kf = kp_info[i].seed.kf;
+        kf.init(3,3);
+        setIdentity(kf.transitionMatrix);
+        setIdentity(kf.measurementMatrix);
+        setIdentity(kf.processNoiseCov, Scalar::all(0.1));
+
+        setIdentity(kf.measurementMatrix);
+        setIdentity(kf.errorCovPost, Scalar::all(10));
+        float var = 1/(disparity+0.5)-1/(disparity-0.5);
+        float var2 = var*var;
+        kf.errorCovPost.at<float>(0,0) = 1000*var2/(fx*fx);
+        kf.errorCovPost.at<float>(1,1) = 1000*var2/(fy*fy);
+        kf.errorCovPost.at<float>(2,2) = 1000*var2;
+
+        kf.statePost = (Mat_<float>(3,1) <<
+                _x, _y, _z);
     }
     keyframe_count++;
 }
