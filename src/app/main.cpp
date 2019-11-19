@@ -62,6 +62,8 @@ static void draw_frame(KeyFrame &keyframe, Frame &frame)
     vector<KeyPoint2d> &kps = frame.kps.kps2d;
     info = frame.kps.info;
     for (size_t i = 0; i < kps.size(); i++) {
+        if (!info[i].seed.accepted)
+            continue;
         Point kp = Point(SCALE*kps[i].x, SCALE*kps[i].y);
         Scalar color (info[i].color.r, info[i].color.g, info[i].color.b);
 
@@ -71,7 +73,7 @@ static void draw_frame(KeyFrame &keyframe, Frame &frame)
 
         cv::drawMarker(left, kp, color, marker, marker_size);
 
-        KeyPoint3d &kp3d = keyframe.kps.kps3d[i];
+        KeyPoint3d &kp3d = frame.kps.kps3d[i];
         stringstream text;
         text << fixed << setprecision(1) <<
             info[i].keyframe_id << ":" <<

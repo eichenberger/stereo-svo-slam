@@ -214,8 +214,10 @@ double PoseRefinerCallback::calc(const double *x) const
 
     double tot_diff = 0;
     for (size_t i=0; i < keypoint_information.size(); i++) {
-        tot_diff += keypoint_information[i].confidence
-            *(diff.at<float>(0, i) + diff.at<float>(1, i));
+        if (keypoint_information[i].seed.accepted) {
+            tot_diff += keypoint_information[i].confidence
+                *(diff.at<float>(0, i) + diff.at<float>(1, i));
+        }
     }
 #ifdef SUPER_VERBOSE
     cout << "pose: " << pose.x << "," << pose.y << ","  << pose.z << "," << pose.pitch << ","  << pose.yaw << "," << pose.roll << endl;
@@ -247,6 +249,9 @@ void PoseRefinerCallback::getGradient(const double *x, double *grad)
         auto x = keypoints3d[i].x;
         auto y = keypoints3d[i].y;
         auto z = keypoints3d[i].z;
+
+        if (!keypoint_information[i].seed.accepted)
+            continue;
 
         Mat jacobian = -(Mat_<double>(2,6) <<
                 1.0/z, 0, -1.0*x/(z*z), -1.0*x*y/(z*z), 1.0*(1.0+(x*x)/(z*z)), -1.0*y/z,

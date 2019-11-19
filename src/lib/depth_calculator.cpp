@@ -3,29 +3,9 @@
 
 #include "depth_calculator.hpp"
 #include "corner_detector.hpp"
+#include "image_comparison.hpp"
 
 using namespace std;
-
-Match DepthCalculator::match(Mat &roi, Mat &templ)
-{
-    Match _match;
-    _match.err = UINT32_MAX;
-
-    for (int x = 0; x < roi.cols - templ.cols; x++) {
-        for (int y = 0; y < roi.rows - templ.rows; y++) {
-            Mat diff;
-            absdiff(templ, roi(Range(y, y+templ.rows),Range(x, x+templ.cols)), diff);
-            double err = sum(diff)[0];
-
-            if (err < _match.err) {
-                _match.err = err;
-                _match.x = x;
-                _match.y = y;
-            }
-        }
-    }
-    return _match;
-}
 
 static void detect_keypoints_on_each_level(
         const StereoImage &stereo_images,
@@ -153,6 +133,7 @@ static void merge_keypoints(Frame &frame,
 void DepthCalculator::calculate_depth(Frame &frame,
         const struct CameraSettings &camera_settings)
 {
+    static uint64_t keyframe_count = 0;
     auto &keypoints2d = frame.kps.kps2d;
     auto &keypoints3d = frame.kps.kps3d;
     auto &kp_info = frame.kps.info;
@@ -297,6 +278,16 @@ void DepthCalculator::calculate_depth(Frame &frame,
         kp_info[i].color.b = (color >> 16) & 0xFF;
 
         kp_info[i].confidence = _confidence;
-        kp_info[i].keyframe_id = frame.id;
+        kp_info[i].keyframe_id = keyframe_count;
+        kp_info[i].keypoint_index = i;
+        kp_info[i].seed.a = 10;
+        kp_info[i].seed.b = 10;
+        kp_info[i].seed.mu = 1.0/_z;
+        // Assumption that point is somewhere between 0-2*z
+        kp_info[i].seed.sigma2 = 0.1*_z*_z;
+        // Assumption that max depth is 50m TODO: make it configurable
+        kp_info[i].seed.z_range = _z*0.9;
+        kp_info[i].seed.accepted = true;
     }
+    keyframe_count++;
 }

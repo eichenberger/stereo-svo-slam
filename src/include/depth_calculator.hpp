@@ -19,8 +19,5 @@ public:
     void calculate_depth(Frame &frame,
             const struct CameraSettings &camera_settings);
 
-
-private:
-    Match match(cv::Mat &roi, cv::Mat &templ);
 };
 

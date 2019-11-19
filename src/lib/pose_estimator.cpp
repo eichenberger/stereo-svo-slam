@@ -214,7 +214,8 @@ double PoseEstimatorCallback::calc(const double *x) const
     //cout << endl;
     int i = 0;
     for (auto diff:diffs) {
-        diff_sum += diff * keypoints.info[i].confidence;
+        if (keypoints.info[i].seed.accepted)
+            diff_sum += diff * keypoints.info[i].confidence;
         i++;
     }
 

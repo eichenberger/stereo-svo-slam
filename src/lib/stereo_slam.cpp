@@ -5,6 +5,8 @@
 #include "pose_estimator.hpp"
 #include "optical_flow.hpp"
 #include "pose_refinement.hpp"
+#include "depth_filter.hpp"
+#include "image_comparison.hpp"
 
 #include "stereo_slam.hpp"
 
@@ -77,6 +79,21 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
         project_keypoints(estimated_pose, previous_frame->kps.kps3d, camera_settings,
                 estimated_kps);
 
+        frame->kps.info = previous_frame->kps.info;
+
+//        vector<float> diffs;
+//        get_total_intensity_diff(keyframe->stereo_image.left[0],
+//                frame->stereo_image.left[0], keyframe->kps.kps2d,
+//                estimated_kps, camera_settings.window_size_opt_flow, diffs);
+//        for (size_t i = 0; i < diffs.size(); i++) {
+//            if (diffs[i] > 1000 ||
+//                    (frame->kps.info[i].seed.a+5) < frame->kps.info[i].seed.b) {
+//                frame->kps.info[i].seed.accepted = false;
+//            }
+//            else {
+//                frame->kps.info[i].seed.accepted = true;
+//            }
+//        }
 
         OpticalFlow optical_flow;
         vector<float> err;
@@ -105,7 +122,6 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
                 frame->kps.kps2d);
 
         frame->kps.kps3d = previous_frame->kps.kps3d;
-        frame->kps.info = previous_frame->kps.info;
         frame->pose = refined_pose;
 
         if (keyframe_inserter.keyframe_needed(*frame)) {
@@ -115,6 +131,28 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
             keyframe_inserter.new_keyframe(*frame, *keyframe);
             frame->pose = keyframe->pose;
             frame->kps = keyframe->kps;
+        }
+
+        DepthFilter filter(keyframes, camera_settings);
+        filter.update_depth(*frame);
+
+        float fx = camera_settings.fx;
+        float fy = camera_settings.fy;
+        float cx = camera_settings.cx;
+        float cy = camera_settings.cy;
+
+        for (size_t i = 0; i < frame->kps.kps3d.size(); i++) {
+            KeyPointInformation &info = frame->kps.info[i];
+            KeyFrame &keyframe = keyframes[info.keyframe_id];
+            KeyPoint3d &kp3d = keyframe.kps.kps3d[info.keypoint_index];
+            KeyPoint2d &kp2d = keyframe.kps.kps2d[info.keypoint_index];
+
+            if (info.seed.sigma2 < 1.0 && info.seed.a < info.seed.b)
+                info.seed.accepted = false;
+            kp3d.z = 1.0/info.seed.mu;
+            kp3d.x = (kp2d.x - cx)/fx*kp3d.z;
+            kp3d.y = (kp2d.y - cy)/fy*kp3d.z;
+            frame->kps.kps3d[i] = kp3d;
         }
     }
 

@@ -11,7 +11,8 @@ SRC_FILES = corner_detector.cpp \
 			pose_refinement.cpp \
 			rotation_matrix.cpp \
 			stereo_slam.cpp \
-			transform_keypoints.cpp
+			transform_keypoints.cpp \
+			depth_filter.cpp
 
 
 OBJ_FILES = $(patsubst %.cpp, %.o, $(SRC_FILES))

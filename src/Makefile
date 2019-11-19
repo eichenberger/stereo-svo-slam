@@ -23,3 +23,4 @@ clean:
 	$(MAKE) -C lib clean
 	$(MAKE) -C python clean
 	$(MAKE) -C test clean
+	$(MAKE) -C app clean

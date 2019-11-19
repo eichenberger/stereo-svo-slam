@@ -14,16 +14,19 @@ bool KeyframeInserter::keyframe_needed(const Frame &frame)
     auto image_height = frame.stereo_image.left[0].rows;
     int inside_frame = 0;
 
-    for (auto kp: frame.kps.kps2d) {
+    for (size_t i = 0; i < frame.kps.kps2d.size(); i++) {
+        KeyPoint2d kp = frame.kps.kps2d[i];
+        KeyPointInformation info = frame.kps.info[i];
         if ((kp.x > 0) && (kp.y > 0) &&
                 (kp.x < image_width) &&
-                (kp.y < image_height)) {
+                (kp.y < image_height) &&
+                info.seed.accepted ) {
             inside_frame++;
         }
     }
 
-    if ((inside_frame < (frame.kps.kps3d.size()*0.7)) &&
-            (inside_frame < 200)) {
+    if ((inside_frame < (frame.kps.kps3d.size()*0.4)) ||
+            (inside_frame < 100)) {
         return true;
     }
 
