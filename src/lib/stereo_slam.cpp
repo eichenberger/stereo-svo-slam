@@ -37,6 +37,7 @@ void StereoSlam::estimate_pose(Frame *previous_frame)
             previous_frame->kps, camera_settings);
 
     Pose estimated_pose;
+    START_MEASUREMENT();
     float cost = estimator.estimate_pose(previous_frame->pose, estimated_pose);
     END_MEASUREMENT("estimator");
 
@@ -54,6 +55,7 @@ void StereoSlam::estimate_pose(Frame *previous_frame)
     frame->kps.kps3d = previous_frame->kps.kps3d;
     frame->kps.kps2d = estimated_kps;
 
+    START_MEASUREMENT();
     PoseRefiner refiner(camera_settings);
     refiner.refine_pose(keyframe_manager, *frame);
 
@@ -70,10 +72,15 @@ static void halfSample(const cv::Mat& in, cv::Mat& out)
     assert( in.rows/2==out.rows && in.cols/2==out.cols);
     assert( in.type()==CV_8U && out.type()==CV_8U);
 
-    for (int j = 0, y = 0; j < out.rows; j++, y+=2) {
+// OMP variant is slower...
+// #pragma omp parallel for
+    for (int j = 0; j < out.rows; j++) {
+        int y = j<<1;
+        const uint8_t* upper_in= in.ptr<uint8_t>(y);
+        const uint8_t* lower_in= in.ptr<uint8_t>(y+1);
+        uint8_t* current_out = out.ptr<uint8_t>(j);
         for (int i = 0, x = 0; i < out.cols; i++, x+=2) {
-            out.at<uint8_t>(j, i) = (in.at<uint8_t>(y, x) + in.at<uint8_t>(y+1,x) +
-                in.at<uint8_t>(y,x+1) + in.at<uint8_t>(y+1,x+1))/4;
+            current_out[i] = (upper_in[x] + upper_in[x+1] + lower_in[x] + lower_in[x+1])/4;
         }
     }
 }
@@ -126,10 +133,6 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
         frame->id = previous_frame->id + 1;
 
         estimate_pose(previous_frame);
-//        project_keypoints(refined_pose, keyframe->kps.kps3d, camera_settings,
-//                frame->kps.kps2d);
-//
-//        frame->pose = refined_pose;
 
         if (keyframe_manager.keyframe_needed(*frame)) {
             cout << "New keyframe is needed" << endl;

@@ -45,8 +45,8 @@ Camera.search_y: 6
 Camera.window_size: 4
 Camera.window_size_opt_flow: 31
 Camera.window_size_depth_calculator: 31
-Camera.max_pyramid_levels: 4
-Camera.min_pyramid_level_pose_estimation: 1
+Camera.max_pyramid_levels: 5
+Camera.min_pyramid_level_pose_estimation: 2
 
 Camera.dist_window_k0: 5.0
 Camera.dist_window_k1: 10.0
