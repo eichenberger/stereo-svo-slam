@@ -24,7 +24,7 @@ static void detect_keypoints_on_each_level(
     for (unsigned int i = 0; i < stereo_images.left.size()/2; i++) {
         vector<KeyPoint2d> _keypoints;
         vector<KeyPointInformation> _kp_info;
-        const Mat &left = stereo_images.left[2*i];
+        const Mat &left = stereo_images.left[i];
         // TODO: We can use the gradient image from the pyramid
         detector.detect_keypoints(left, grid_width, grid_height, _keypoints,
                 _kp_info, i);
@@ -141,6 +141,7 @@ void DepthCalculator::calculate_depth(Frame &frame,
     float fy = camera_settings.fy;
     float cx = camera_settings.cx;
     float cy = camera_settings.cy;
+#if 0
     float dist_window_k0 = camera_settings.dist_window_k0;
     float dist_window_k1 = camera_settings.dist_window_k1;
     float dist_window_k2 = camera_settings.dist_window_k2;
@@ -151,6 +152,7 @@ void DepthCalculator::calculate_depth(Frame &frame,
     float cost_k0 = camera_settings.cost_k0;
     float cost_k1 = camera_settings.cost_k1;
     float cost_fac0 = 1/(cost_k1-cost_k0);
+#endif
 
     float baseline = camera_settings.baseline;
     int search_x = camera_settings.search_x;
@@ -249,6 +251,7 @@ void DepthCalculator::calculate_depth(Frame &frame,
         keypoints3d[i].y = kp3d.at<float>(1);
         keypoints3d[i].z = kp3d.at<float>(2);
 
+#if 0
         // Reduce confidence if intensitiy difference is high
         // float _confidence = 100-_match.err;
         float _confidence;
@@ -272,12 +275,15 @@ void DepthCalculator::calculate_depth(Frame &frame,
          // Normally we only have one match
         _confidence *= 1.0/matches;
 
+        _confidence = 1.0;
+ #endif
+
         uint32_t color = rand();
         kp_info[i].color.r = (color >> 0) & 0xFF;
         kp_info[i].color.g = (color >> 8) & 0xFF;
         kp_info[i].color.b = (color >> 16) & 0xFF;
 
-        kp_info[i].confidence = _confidence;
+        kp_info[i].confidence = 1.0;
         kp_info[i].keyframe_id = keyframe_count;
         kp_info[i].keypoint_index = i;
         kp_info[i].seed.accepted = true;

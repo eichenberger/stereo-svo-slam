@@ -8,6 +8,7 @@
 #include "pose_refinement.hpp"
 #include "transform_keypoints.hpp"
 #include "image_comparison.hpp"
+#include "optical_flow.hpp"
 
 //#define SUPER_VERBOSE 1
 
@@ -64,13 +65,95 @@ static void exponential_map(const Mat &twist, Mat &pose)
     // solution written in robotics vision and control.
     translation = (_eye*_norm + (1-cos(_norm))*w_skew+(_norm-sin(_norm))*(w_skew*w_skew))*v;
 }
-#if 0
-float PoseRefiner::refine_pose(const KeyPoints &keypoints,
+
+float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
+            Frame &frame)
+{
+    OpticalFlow optical_flow(camera_settings);
+
+    map<int, vector<KeyPoint2d>> reference;
+    map<int, vector<KeyPoint2d>> active;
+    map<int, vector<float>> err;
+
+    // Split the keypoints acording to keyframe where it was first seen
+    for (size_t i = 0; i < frame.kps.info.size(); i++) {
+        KeyPointInformation &info = frame.kps.info[i];
+
+        KeyFrame *keyframe = keyframe_manager.get_keyframe(info.keyframe_id);
+
+        vector<KeyPoint2d> &ref_keypoints = reference[info.keyframe_id];
+        vector<KeyPoint2d> &active_keypoints= active[info.keyframe_id];
+
+        ref_keypoints.push_back(keyframe->kps.kps2d[info.keypoint_index]);
+        active_keypoints.push_back(frame.kps.kps2d[i]);
+    }
+
+    // Do optical flow with each ref image <-> frame set
+    for (auto itr : reference) {
+        KeyFrame *keyframe = keyframe_manager.get_keyframe(itr.first);
+        vector<KeyPoint2d> &active_keypoints = active[itr.first];
+        vector<float> &_err = err[itr.first];
+
+        optical_flow.calculate_optical_flow(keyframe->stereo_image,
+                itr.second, frame.stereo_image, active_keypoints, _err);
+    }
+
+    // Add refined keypoints back to the original array, start with last entry
+    // to allow pop_back
+    for (size_t i = frame.kps.kps2d.size(); i > 0; i--) {
+        size_t j = i-1;
+        KeyPointInformation &info = frame.kps.info[j];
+        KeyPoint2d &kp2d = frame.kps.kps2d[j];
+        KeyPoint2d &new_estimate = active[info.keyframe_id].back();
+
+        float _err = err[info.keyframe_id].back();
+        err[info.keyframe_id].pop_back();
+
+        float diff = (kp2d.x - new_estimate.x)*(kp2d.x - new_estimate.x) +
+            (kp2d.y - new_estimate.y)*(kp2d.y - new_estimate.y);
+        // don't move more than 9px!
+        if (diff > 81 || _err > 1000) {
+            info.ignore_during_refinement = true;
+        }
+        else {
+            info.ignore_during_refinement = false;
+        }
+        kp2d = new_estimate;
+        active[info.keyframe_id].pop_back();
+    }
+
+    Mat result;
+    frame.stereo_image.left[0].copyTo(result);
+    cvtColor(result, result,  COLOR_GRAY2RGB);
+    for (size_t i = 0; i < frame.kps.kps2d.size(); i++) {
+        KeyPointInformation &info = frame.kps.info[i];
+        KeyPoint2d &kp2d = frame.kps.kps2d[i];
+        Scalar color (info.color.r, info.color.g, info.color.b);
+        int msize = 10;
+        if (frame.kps.info[i].ignore_during_refinement) {
+            msize=5;
+        }
+        int marker = MARKER_CROSS;
+        Point kp = Point(kp2d.x, kp2d.y);
+        cv::drawMarker(result, kp, color, marker, msize);
+    }
+
+    imshow("bla", result);
+    Pose refined_pose;
+    float ret = update_pose(frame.kps, frame.pose, refined_pose);
+    frame.pose = refined_pose;
+
+    return ret;
+}
+
+#if 1
+float PoseRefiner::update_pose(const KeyPoints &keypoints,
         const Pose &estimated_pose,
         Pose &refined_pose)
 {
     const vector<KeyPoint2d> &keypoints2d = keypoints.kps2d;
     const vector<KeyPoint3d> &keypoints3d = keypoints.kps3d;
+    const vector<KeyPointInformation> &keypoint_information = keypoints.info;
 
     refined_pose = estimated_pose;
     Mat _pose = Mat::zeros(6, 1, CV_64FC1);
@@ -84,7 +167,7 @@ float PoseRefiner::refine_pose(const KeyPoints &keypoints,
     x0[5] = estimated_pose.roll;
 
     Ptr<MinProblemSolver::Function> callback = new PoseRefinerCallback(keypoints2d,
-            keypoints3d, camera_settings);
+            keypoints3d, keypoint_information, camera_settings);
     Ptr<DownhillSolver> solver = DownhillSolver::create(callback);
     Mat step = Mat::ones(6,1, CV_64F);
     step *= 0.01;
@@ -116,7 +199,7 @@ float PoseRefiner::refine_pose(const KeyPoints &keypoints,
 }
 
 #else
-float PoseRefiner::refine_pose(const KeyPoints &keypoints,
+float PoseRefiner::update_pose(const KeyPoints &keypoints,
         const Pose &estimated_pose,
         Pose &refined_pose)
 {
@@ -214,7 +297,7 @@ double PoseRefinerCallback::calc(const double *x) const
 
     double tot_diff = 0;
     for (size_t i=0; i < keypoint_information.size(); i++) {
-        if (keypoint_information[i].seed.accepted) {
+        if (!keypoint_information[i].ignore_during_refinement) {
             tot_diff += keypoint_information[i].confidence
                 *(diff.at<float>(0, i) + diff.at<float>(1, i));
         }
@@ -250,7 +333,7 @@ void PoseRefinerCallback::getGradient(const double *x, double *grad)
         auto y = keypoints3d[i].y;
         auto z = keypoints3d[i].z;
 
-        if (!keypoint_information[i].seed.accepted)
+        if (keypoint_information[i].ignore_during_refinement)
             continue;
 
         Mat jacobian = -(Mat_<double>(2,6) <<

@@ -81,6 +81,7 @@ struct KeyPointInformation {
     uint64_t keyframe_id;
     size_t keypoint_index;
     Color color;
+    bool ignore_during_refinement;
     Seed seed;
 };
 

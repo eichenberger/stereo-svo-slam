@@ -27,8 +27,8 @@ static TickMeter tick_meter;
 
 
 
-DepthFilter::DepthFilter(const vector<KeyFrame> &keyframes, const CameraSettings &camera_settings) :
-    keyframes(keyframes), camera_settings(camera_settings)
+DepthFilter::DepthFilter(KeyFrameManager &keyframe_manager, const CameraSettings &camera_settings) :
+    keyframe_manager(keyframe_manager), camera_settings(camera_settings)
 {
 }
 
@@ -90,9 +90,9 @@ void DepthFilter::update_depth(Frame &frame)
 
         float var = dist*((1/(disparity+0.5)-1/(disparity-0.5)));
         float var2 = var*var;
-        float x_var = 10*var2/(fx*fx);
-        float y_var = 10*var2/(fy*fy);
-        float z_var = 10*var2;
+        float x_var = 100*var2/(fx*fx);
+        float y_var = 100*var2/(fy*fy);
+        float z_var = 100*var2;
 
         Vec3f var_vect(x_var, y_var, z_var);
         Vec3f angles(pose.pitch, pose.yaw, pose.roll);

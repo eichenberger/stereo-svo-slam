@@ -49,7 +49,6 @@ void CornerDetector::detect_keypoints(const Mat &image,
                     info.type = KP_FAST;
                 }
             }
-
             // If not we try to find an edgelet
             if (info.score < 0) {
                 for (int k = left; k < right; k++) {

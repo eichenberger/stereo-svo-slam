@@ -9,8 +9,8 @@
 #include "transform_keypoints.hpp"
 #include "image_comparison.hpp"
 
-#define VERBOSE 1
-//#define SUPER_VERBOSE 1
+//#define VERBOSE 1
+#define SUPER_VERBOSE 1
 
 using namespace cv;
 using namespace std;
@@ -60,9 +60,11 @@ float PoseEstimator::estimate_pose(const Pose &pose_guess, Pose &pose)
 {
     float err = 0;
     Pose pose_estimate = pose_guess;
-    for (int i = min_level; i < max_levels; i++) {
+    for (int i = max_levels; i > min_level; i--) {
         Pose new_estimate;
-        int current_level = max_levels - i;
+        int current_level = i-1;
+
+        cout << "Current pyramid level: " << current_level << endl;
 
         err = estimate_pose_at_level(pose_estimate, new_estimate, current_level);
         pose_estimate = new_estimate;
@@ -111,7 +113,7 @@ float PoseEstimator::estimate_pose_at_level(const Pose &pose_guess, Pose &pose,
         pose_guess.x, pose_guess.y, pose_guess.z,
         pose_guess.pitch, pose_guess.yaw, pose_guess.roll);
 
-    size_t maxIter = 50;
+    size_t maxIter = 100;
     float k = 1.0;
     solver_callback->setLevel(level);
     double prev_cost = solver_callback->calc(x0.ptr<double>(0));
@@ -139,6 +141,7 @@ float PoseEstimator::estimate_pose_at_level(const Pose &pose_guess, Pose &pose,
                 break;
             }
             else if (fabs(new_cost - prev_cost) < 0.01) {
+                cout << "Drop out because of small change" << endl;
                 i = maxIter;
                 break;
             }
@@ -203,8 +206,8 @@ double PoseEstimatorCallback::calc(const double *x) const
 
     vector<float> diffs;
     // Difference will always be positive (absdiff)
-    get_total_intensity_diff(previous_stereo_image.left[2*level],
-            current_stereo_image.left[2*level],
+    get_total_intensity_diff(previous_stereo_image.left[level],
+            current_stereo_image.left[level],
             level_keypoints2d, kps2d, level_camera_settings.window_size, diffs);
 
     // Use float because maybe it is faster? TODO: Verify
@@ -262,10 +265,17 @@ static void exponential_map(const Mat &twist, Mat &pose)
 
 void PoseEstimatorCallback::getGradient(const double *x, double *grad)
 {
+    const int PATCH_SIZE=4;
     Pose pose = pose_from_x(x);
 
-    const Mat &current_image = current_stereo_image.left[2*level];
-    const Mat &previous_image = previous_stereo_image.left[2*level];
+    const Mat &current_image = current_stereo_image.left[level];
+    const Mat &previous_image = previous_stereo_image.left[level];
+
+    Vec3d angles(&x[3]);
+    Matx33d rot_mat;
+    Vec3d translation(&x[0]);
+
+    Rodrigues(-angles, rot_mat);
 
     // If we haven't calculated the hessian_inv yet we will do it now.
     // Because of compositional lucas kanade we only do it once
@@ -275,9 +285,18 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
         gradient_times_jacobians = new vector<Mat>;
         for (size_t i = 0; i < level_keypoints2d.size(); i++) {
             auto kp2d = level_keypoints2d[i];
-            auto x = keypoints.kps3d[i].x;
-            auto y = keypoints.kps3d[i].y;
-            auto z = keypoints.kps3d[i].z;
+            cout << "Keypoint position: " << kp2d.x << ", " << kp2d.y << endl;
+            kp2d.x -= PATCH_SIZE/2;
+            kp2d.y -= PATCH_SIZE/2;
+            Vec3f kp(&keypoints.kps3d[i].x);
+
+            // Neutralize angle
+            kp -= translation;
+            kp = rot_mat*kp;
+
+            auto x = kp(0);
+            auto y = kp(1);
+            auto z = kp(2);
 
             auto fx = level_camera_settings.fx;
             auto fy = level_camera_settings.fy;
@@ -288,32 +307,80 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
                 fx/z, 0, -fx*x/(z*z), -fx*x*y/(z*z), fx*(1+(x*x)/(z*z)), -fx*y/z,
                 0, fy/z, -fy*y/(z*z), -fy*(1+(y*y)/(z*z)), fy*x*y/(z*z), fy*x/z);
 
-            Mat int1, int2, int3, int4;
-            cv::getRectSubPix(previous_image,
-                    Size(2,2), Point2f(kp2d.x-1.0,kp2d.y), int1, CV_32F);
-            cv::getRectSubPix(previous_image,
-                    Size(2,2), Point2f(kp2d.x+1.0,kp2d.y), int2, CV_32F);
-            cv::getRectSubPix(previous_image,
-                    Size(2,2), Point2f(kp2d.x,kp2d.y-1.0), int3, CV_32F);
-            cv::getRectSubPix(previous_image,
-                    Size(2,2), Point2f(kp2d.x,kp2d.y+1.0), int4, CV_32F);
+            cout << "Jacobian: " << endl;
+            cout <<
+                jacobian.at<double>(0, 0) << "," <<
+                jacobian.at<double>(0, 1) << "," <<
+                jacobian.at<double>(0, 2) << "," <<
+                jacobian.at<double>(0, 3) << "," <<
+                jacobian.at<double>(0, 4) << "," <<
+                jacobian.at<double>(0, 5) << endl;
+            cout <<
+                jacobian.at<double>(1, 0) << "," <<
+                jacobian.at<double>(1, 1) << "," <<
+                jacobian.at<double>(1, 2) << "," <<
+                jacobian.at<double>(1, 3) << "," <<
+                jacobian.at<double>(1, 4) << "," <<
+                jacobian.at<double>(1, 5) << endl;
 
-            auto diff1 = cv::sum(int2-int1)[0];
-            auto diff2 = cv::sum(int4-int3)[0];
-            Mat _grad = -(Mat_<double>(1,2) <<
-                    diff1, diff2);
+            for (size_t r = 0; r < PATCH_SIZE; r++)
+            {
+                for (size_t c = 0; c < PATCH_SIZE; c++) {
+                    if (kp2d.x < 0 || kp2d.y < 0 || kp2d.x >= current_image.cols ||
+                            kp2d.y >= current_image.rows) {
+                        gradient_times_jacobians->push_back(Mat::zeros(1, 6, CV_64F));
+                        kp2d.x ++;
+                        continue;
+                    }
+                    Mat int1, int2, int3, int4;
 
-#ifdef SUPER_VERBOSE
-            cout << "Gradient at " << kp2d.x << ", " <<kp2d.y << ": ";
-            cout << "(" << diff1 << ", " << diff2 << ") " << endl;
+                    const Size patch_size(1,2);
+//                    getRectSubPix(previous_grad_x,
+//                            patch_size, Point2f(kp2d.x,kp2d.y), grad_x, CV_32F);
+//                    getRectSubPix(previous_grad_y,
+//                            patch_size, Point2f(kp2d.x,kp2d.y), grad_y, CV_32F);
+
+                    cv::getRectSubPix(previous_image,
+                            patch_size, Point2f(kp2d.x+1,kp2d.y), int1, CV_32F);
+                    cv::getRectSubPix(previous_image,
+                            patch_size, Point2f(kp2d.x-1,kp2d.y), int2, CV_32F);
+                    cv::getRectSubPix(previous_image,
+                            patch_size, Point2f(kp2d.x,kp2d.y+1), int3, CV_32F);
+                    cv::getRectSubPix(previous_image,
+                            patch_size, Point2f(kp2d.x,kp2d.y-1), int4, CV_32F);
+
+                    double diff1 = int1.at<float>(0)-int2.at<float>(0);
+                    double diff2 = int3.at<float>(0)-int4.at<float>(0);
+                    Mat _grad = (Mat_<double>(1,2) <<
+                            diff1, diff2);
+
+#if 1
+                    cout << "Gradient at " << kp2d.x << ", " <<kp2d.y << ": ";
+                    cout << "(" << _grad.at<double> (0) << ", " << _grad.at<double>(1)<< ") " << endl;
 #endif
 
-            Mat _grad_times_jac = _grad*jacobian*keypoints.info[i].confidence;
-            // Store the result of grad*jacobian for further usage
-            gradient_times_jacobians->push_back(_grad_times_jac);
+                    Mat _grad_times_jac = _grad*jacobian;
+                    // Store the result of grad*jacobian for further usage
+                    gradient_times_jacobians->push_back(_grad_times_jac);
 
-            // Calculate the gauss newton hessian_inv (~second derivate)
-            hessian += (_grad_times_jac.t()*_grad_times_jac);
+                    // Calculate the gauss newton hessian_inv (~second derivate)
+                    hessian += (_grad_times_jac.t()*_grad_times_jac);
+                    kp2d.x ++;
+                }
+                kp2d.x -= PATCH_SIZE;
+                kp2d.y ++;
+            }
+        }
+
+        cout << "Jacobian cache:" <<endl;
+        for (auto grad: *gradient_times_jacobians) {
+            cout << grad.at<double>(0) << "," <<
+                grad.at<double>(1) << "," <<
+                grad.at<double>(2) << "," <<
+                grad.at<double>(3) << "," <<
+                grad.at<double>(4) << "," <<
+                grad.at<double>(5) << endl;
+
         }
 
         *hessian_inv = hessian.inv();
@@ -321,12 +388,20 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
         std::cout << "Hessian matrix: " << std::endl;
         for (size_t i = 0; i < 6; i++) {
             for (size_t j = 0; j < 6; j++) {
-                std::cout << hessian_inv->at<double>(i, j) << ", ";
+                std::cout << hessian.at<double>(i, j) << ", ";
             }
             std::cout << std::endl;
         }
 #endif
     }
+
+//    namedWindow("previous", WINDOW_GUI_EXPANDED);
+//    namedWindow("current", WINDOW_GUI_EXPANDED);
+//
+//    imshow("previous", previous_image);
+//    imshow("current", current_image);
+//
+//    waitKey(0);
 
     // See ICRA Forster 14 for the whole algorithm
     vector<KeyPoint2d> kps2d;
@@ -334,33 +409,72 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
 
     Mat residual = Mat::zeros(6,1, CV_64F);
     for (size_t i = 0; i < kps2d.size(); i++) {
-        Mat int1, int2;
+        Point2f kp2d(kps2d[i].x-PATCH_SIZE/2, kps2d[i].y-PATCH_SIZE/2);
+        Point2f kp2d_ref(level_keypoints2d[i].x-PATCH_SIZE/2, level_keypoints2d[i].y-PATCH_SIZE/2);
 
-        cv::getRectSubPix(previous_image, Size(2,2),
-                Point2f(level_keypoints2d[i].x, level_keypoints2d[i].y), int1, CV_32F);
-        cv::getRectSubPix(current_image, Size(2,2),
-                Point2f(kps2d[i].x,kps2d[i].y), int2, CV_32F);
+        for (size_t r = 0; r < PATCH_SIZE; r++)
+        {
+            for (size_t c = 0; c < PATCH_SIZE; c++) {
+                Mat int1, int2;
 
-        const Mat &_grad_times_jac = (*gradient_times_jacobians)[i];
+//                if (!keypoints.info[i].seed.accepted)
+//                    continue;
 
-        auto diff = cv::sum(int2-int1)[0];
+                cv::getRectSubPix(previous_image, Size(2,2),
+                        kp2d_ref, int1, CV_32F);
+                cv::getRectSubPix(current_image, Size(2,2),
+                        kp2d, int2, CV_32F);
+
+//                int int_prev, int_cur;
+//                int_prev = previous_image.at<uint8_t>(kp2d_ref.y, kp2d_ref.x);
+//                int_cur = current_image.at<uint8_t>(kp2d.y, kp2d.x);
+
+                const Mat &_grad_times_jac = (*gradient_times_jacobians)[(i*PATCH_SIZE*PATCH_SIZE)+(r*PATCH_SIZE)+c];
+
+                auto diff = int2.at<float>(0) - int1.at<float>(0);
 
 #if SUPER_VERBOSE
-        cout << "Intensity difference template at " <<
-             level_keypoints2d[i].x << ", " << level_keypoints2d[i].y << " image at " <<
-             kps2d[i].x << ", " << kps2d[i].y << " diff: " << diff << endl;
+                cout << "Intensity difference template at " <<
+                     kp2d_ref.x << ", " << kp2d_ref.y << " image at " <<
+                     kp2d.x << ", " << kp2d.y << " diff: " << diff << endl;
 #endif
 
-        Mat residual_kp = _grad_times_jac*diff;
-        transpose(residual_kp, residual_kp);
-        residual += residual_kp;
+                Mat residual_kp = _grad_times_jac*diff;
+                transpose(residual_kp, residual_kp);
+                residual -= residual_kp;
+                kp2d.x++;
+                kp2d_ref.x++;
+            }
+            kp2d.y++;
+            kp2d_ref.y++;
+            kp2d.x -= PATCH_SIZE;
+            kp2d_ref.x -= PATCH_SIZE;
+        }
+
     }
 
+    cout << "Residual: " << residual.at<double>(0) << "," <<
+        residual.at<double>(1) << "," <<
+        residual.at<double>(2) << "," <<
+        residual.at<double>(3) << "," <<
+        residual.at<double>(4) << "," <<
+        residual.at<double>(5) << endl;
     Mat delta_pos = *hessian_inv * residual;
     Mat pose_gradient(6, 1, CV_64F);
     exponential_map(delta_pos, pose_gradient);
 
-    memcpy(grad, pose_gradient.ptr<double>(), 6*sizeof(double));
+    Vec3d translation_grad(pose_gradient.ptr<double>(0));
+    Rodrigues(angles, rot_mat);
+    translation_grad = rot_mat*translation_grad;
+
+    grad[0] = translation_grad(0);
+    grad[1] = translation_grad(1);
+    grad[2] = translation_grad(2);
+    grad[3] = pose_gradient.at<double>(3);
+    grad[4] = pose_gradient.at<double>(4);
+    grad[5] = pose_gradient.at<double>(5);
+
+//    memcpy(grad, pose_gradient.ptr<double>(), 6*sizeof(double));
 
 #ifdef SUPER_VERBOSE
     cout << "Delta Pos: " <<

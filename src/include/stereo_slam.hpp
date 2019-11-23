@@ -6,7 +6,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "stereo_slam_types.hpp"
-#include "keyframe_inserter.hpp"
+#include "keyframe_manager.hpp"
 
 class StereoSlam
 {
@@ -23,11 +23,12 @@ public:
 private:
     void new_keyframe();
 
+    void estimate_pose(Frame *previous_frame);
+
     const CameraSettings &camera_settings;
-    KeyframeInserter keyframe_inserter;
+    KeyFrameManager keyframe_manager;
     KeyFrame* keyframe;
     cv::Ptr<Frame> frame;
-    std::vector<KeyFrame> keyframes;
     std::vector<Pose> trajectory;
 };
 

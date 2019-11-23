@@ -8,13 +8,13 @@
 #
 #
 Camera1.fx: 587.5
-Camera1.fy: 375.0
+Camera1.fy: 587.5
 Camera1.cx: 376.0
 Camera1.cy: 240.0
 
 
 Camera2.fx: 587.5
-Camera2.fy: 375.0
+Camera2.fy: 587.5
 Camera2.cx: 376.0
 Camera2.cy: 240.0
 
@@ -43,10 +43,10 @@ Camera.grid_width: 40
 Camera.search_x: 30
 Camera.search_y: 6
 Camera.window_size: 4
-Camera.window_size_opt_flow: 8
+Camera.window_size_opt_flow: 31
 Camera.window_size_depth_calculator: 31
-Camera.max_pyramid_levels: 6
-Camera.min_pyramid_level_pose_estimation: 3
+Camera.max_pyramid_levels: 4
+Camera.min_pyramid_level_pose_estimation: 1
 
 Camera.dist_window_k0: 5.0
 Camera.dist_window_k1: 10.0

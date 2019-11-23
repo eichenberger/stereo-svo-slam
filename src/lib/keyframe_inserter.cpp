@@ -25,7 +25,7 @@ bool KeyframeInserter::keyframe_needed(const Frame &frame)
         }
     }
 
-    if ((inside_frame < (frame.kps.kps3d.size()*0.4)) ||
+    if ((inside_frame < (frame.kps.kps3d.size()*0.3)) ||
             (inside_frame < 100)) {
         return true;
     }

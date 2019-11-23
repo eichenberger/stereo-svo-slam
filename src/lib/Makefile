@@ -5,7 +5,7 @@ LDFLAGS ?= -O0
 SRC_FILES = corner_detector.cpp \
 			depth_calculator.cpp \
 			image_comparison.cpp \
-			keyframe_inserter.cpp \
+			keyframe_manager.cpp \
 			optical_flow.cpp \
 			pose_estimator.cpp \
 			pose_refinement.cpp \
