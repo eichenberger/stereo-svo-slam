@@ -20,10 +20,11 @@ void VideoInput::get_camera_settings(CameraSettings &camera_settings)
     camera_settings = this->camera_settings;
 }
 
-void VideoInput::read(cv::Mat &left, cv::Mat &right)
+bool VideoInput::read(cv::Mat &left, cv::Mat &right)
 {
     Mat image;
-    cap->read(image);
+    if (!cap->read(image))
+        return false;
 
     if (image.channels() == 3) {
         cvtColor(image, image, cv::COLOR_BGR2GRAY);
@@ -31,6 +32,8 @@ void VideoInput::read(cv::Mat &left, cv::Mat &right)
 
     right = image(Rect(0, 0, camera_settings.image_width, camera_settings.image_height));
     left = image(Rect(camera_settings.image_width, 0, camera_settings.image_width, camera_settings.image_height));
+
+    return true;
 }
 
 void VideoInput::jump_to(int frame_number)

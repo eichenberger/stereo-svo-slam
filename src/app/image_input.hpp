@@ -9,7 +9,7 @@ public:
     ImageInput();
     virtual ~ImageInput() = 0;
 
-    virtual void read(cv::Mat &left, cv::Mat &right) = 0;
+    virtual bool read(cv::Mat &left, cv::Mat &right) = 0;
     virtual void get_camera_settings(CameraSettings &camera_settings) = 0;
 
 protected:

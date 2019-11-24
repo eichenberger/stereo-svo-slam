@@ -13,7 +13,7 @@ public:
             const std::string &settings, int exposure);
 
 
-    virtual void read(cv::Mat &left, cv::Mat &right);
+    virtual bool read(cv::Mat &left, cv::Mat &right);
     virtual void get_camera_settings(CameraSettings &camera_settings);
 
 private:

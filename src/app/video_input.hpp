@@ -12,7 +12,7 @@ public:
     VideoInput(const std::string &video_path, const std::string &settings);
 
 
-    virtual void read(cv::Mat &left, cv::Mat &right);
+    virtual bool read(cv::Mat &left, cv::Mat &right);
     virtual void get_camera_settings(CameraSettings &camera_settings);
     void jump_to(int frame_number);
 

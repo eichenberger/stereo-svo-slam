@@ -50,11 +50,14 @@ void EconInput::get_camera_settings(CameraSettings &camera_settings)
     camera_settings = this->camera_settings;
 }
 
-void EconInput::read(cv::Mat &left, cv::Mat &right)
+bool EconInput::read(cv::Mat &left, cv::Mat &right)
 {
     Mat image;
-    cap->read(image);
+    if (!cap->read(image))
+        return false;
 
     extractChannel(image, right, 1);
     extractChannel(image, left, 2);
+
+    return true;
 }

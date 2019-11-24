@@ -111,9 +111,13 @@ static void read_image(ImageInput *input, StereoSlam *slam)
     Mat image;
 
     Mat gray_r, gray_l;
-    input->read(gray_l, gray_r);
+    if (!input->read(gray_l, gray_r)) {
+        QApplication::quit();
+        return;
+    }
 
     slam->new_image(gray_l, gray_r);
+
     Frame frame;
     slam->get_frame(frame);
     KeyFrame keyframe;
