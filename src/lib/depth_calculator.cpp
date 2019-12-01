@@ -16,7 +16,7 @@ static void detect_keypoints_on_each_level(
     auto detector = CornerDetector();
 
     auto grid_width = camera_settings.grid_width;
-    auto grid_height = camera_settings.grid_width;
+    auto grid_height = camera_settings.grid_height;
 
     keypoints_pyr.resize(stereo_images.left.size()/2);
     kp_info_pyr.resize(stereo_images.left.size()/2);
@@ -76,7 +76,8 @@ static void find_bad_keypoints(Frame &frame) {
         auto &kp2d = kps2d[i];
         if ((kp2d.x < 0) || (kp2d.y < 0) ||
                 (kp2d.x > width) || (kp2d.y > height) ||
-                (info[i].confidence < 0.2)) {
+                info[i].ignore_completely ||
+                info[i].ignore_during_refinement) {
             kps2d.erase(kps2d.begin() + i);
             kps3d.erase(kps3d.begin() + i);
             info.erase(info.begin() +i);
@@ -187,13 +188,13 @@ void DepthCalculator::calculate_depth(Frame &frame,
     const Mat &right= frame.stereo_image.right[0];
 
     // Prepare rotation matrix for inverse transformation
-    Mat angles(1, 3, CV_32F, (void*)&frame.pose.pitch);
-    Mat rot_mat(3, 3, CV_32F);
+    Vec3f angles(&frame.pose.pitch);
+    Matx33f rot_mat;
     Rodrigues(angles, rot_mat);
 
-    Mat translation(3, 1, CV_32F, &frame.pose.x);
+    Vec3f translation(&frame.pose.x);
     // Estimate the depth now
-#pragma omp parallel for
+//#pragma omp parallel for
     for (uint32_t i = old_keypoint_count; i < keypoints2d.size(); i++) {
         auto keypoint = keypoints2d[i];
         int x = static_cast<int>(keypoint.x);
@@ -239,17 +240,16 @@ void DepthCalculator::calculate_depth(Frame &frame,
         float _x = (keypoint.x - cx)/fx*_z;
         float _y = (keypoint.y - cy)/fy*_z;
 
-        Mat kp3d = (Mat_<float>(3, 1) <<
-                _x, _y, _z);
+        Vec3f kp3d(_x, _y, _z);
 
         // The position is fucked up therefore rot_mat and tranlation
         // are already the inverse and we can use it directly
         kp3d = rot_mat*kp3d;
         kp3d += translation;
 
-        keypoints3d[i].x = kp3d.at<float>(0);
-        keypoints3d[i].y = kp3d.at<float>(1);
-        keypoints3d[i].z = kp3d.at<float>(2);
+        keypoints3d[i].x = kp3d(0);
+        keypoints3d[i].y = kp3d(1);
+        keypoints3d[i].z = kp3d(2);
 
 #if 0
         // Reduce confidence if intensitiy difference is high
@@ -286,8 +286,12 @@ void DepthCalculator::calculate_depth(Frame &frame,
         kp_info[i].confidence = 1.0;
         kp_info[i].keyframe_id = keyframe_count;
         kp_info[i].keypoint_index = i;
-        kp_info[i].seed.accepted = true;
-        KalmanFilter &kf = kp_info[i].seed.kf;
+        kp_info[i].ignore_completely = false;
+        kp_info[i].ignore_during_refinement = false;
+        kp_info[i].inlier_count = 1;
+        kp_info[i].outlier_count = 0;
+
+        KalmanFilter &kf = kp_info[i].kf;
         kf.init(3,3);
         setIdentity(kf.transitionMatrix);
         setIdentity(kf.measurementMatrix);
@@ -302,7 +306,7 @@ void DepthCalculator::calculate_depth(Frame &frame,
         kf.errorCovPost.at<float>(2,2) = 1000*var2;
 
         kf.statePost = (Mat_<float>(3,1) <<
-                _x, _y, _z);
+                kp3d(0), kp3d(1), kp3d(2));
     }
     keyframe_count++;
 }

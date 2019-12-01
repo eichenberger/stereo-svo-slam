@@ -10,7 +10,7 @@
 #include "image_comparison.hpp"
 #include "optical_flow.hpp"
 
-//#define SUPER_VERBOSE 1
+#define SUPER_VERBOSE 1
 
 using namespace cv;
 using namespace std;
@@ -44,17 +44,18 @@ PoseRefiner::PoseRefiner(const CameraSettings &camera_settings) :
 
 static void exponential_map(const Mat &twist, Mat &pose)
 {
-    Mat v(3, 1, CV_64F, (void*)twist.ptr(0));
-    Mat w(3, 1, CV_64F, (void*)twist.ptr(3));
+    Vec3d v(twist.ptr<double>(0));
+    Vec3d w(twist.ptr<double>(3));
 
     twist.copyTo(pose);
     // The angles don't change. See robotics vision and control
     // page 53 for more details
     Mat w_skew = (Mat_<double>(3,3) <<
-            0, -w.at<double>(2), w.at<double>(1),
-            w.at<double>(2), 0, -w.at<double>(0),
-            -w.at<double>(1), w.at<double>(0), 0);
+            0, -w(2), w(1),
+            w(2), 0, -w(0),
+            -w(1), w(0), 0);
     float _norm = 1.0;
+    //float _norm = norm(w);
     Mat _eye = Mat::eye(3,3, CV_64F);
     Mat translation = Mat(3,1, CV_64F, pose.ptr<double>(0));
 
@@ -111,8 +112,13 @@ float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
 
         float diff = (kp2d.x - new_estimate.x)*(kp2d.x - new_estimate.x) +
             (kp2d.y - new_estimate.y)*(kp2d.y - new_estimate.y);
+        // Maybe it is occluded now -> ignore it
+        if (_err > 800) {
+            cout << "Refine: ignore kp " << kp2d.x << ", " << kp2d.y << endl;
+            info.ignore_completely = true;
+        }
         // don't move more than 9px!
-        if (diff > 81 || _err > 1000) {
+        else if (diff > 81) {
             info.ignore_during_refinement = true;
         }
         else {
@@ -122,6 +128,7 @@ float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
         active[info.keyframe_id].pop_back();
     }
 
+#if 0
     Mat result;
     frame.stereo_image.left[0].copyTo(result);
     cvtColor(result, result,  COLOR_GRAY2RGB);
@@ -130,7 +137,7 @@ float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
         KeyPoint2d &kp2d = frame.kps.kps2d[i];
         Scalar color (info.color.r, info.color.g, info.color.b);
         int msize = 10;
-        if (frame.kps.info[i].ignore_during_refinement) {
+        if (frame.kps.info[i].ignore_during_refinement || frame.kps.info[i].ignore_during_refinement) {
             msize=5;
         }
         int marker = MARKER_CROSS;
@@ -139,6 +146,7 @@ float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
     }
 
     imshow("bla", result);
+#endif
     Pose refined_pose;
     float ret = update_pose(frame.kps, frame.pose, refined_pose);
     frame.pose = refined_pose;
@@ -146,7 +154,7 @@ float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
     return ret;
 }
 
-#if 1
+#if 0
 float PoseRefiner::update_pose(const KeyPoints &keypoints,
         const Pose &estimated_pose,
         Pose &refined_pose)
@@ -187,8 +195,8 @@ float PoseRefiner::update_pose(const KeyPoints &keypoints,
 
     vector<KeyPoint2d> projected_keypoints2d;
     project_keypoints(refined_pose, keypoints3d, camera_settings, projected_keypoints2d);
-    Mat _projected_keypoints2d(2, projected_keypoints2d.size(), CV_32F, &projected_keypoints2d[0].x);
-    Mat _keypoints2d(2, keypoints2d.size(), CV_32F, (void*)&keypoints2d[0].x);
+    Mat _projected_keypoints2d(projected_keypoints2d.size(), 2, CV_32F, &projected_keypoints2d[0].x);
+    Mat _keypoints2d(keypoints2d.size(), 2, CV_32F, (void*)&keypoints2d[0].x);
 
     Mat err;
     absdiff(_projected_keypoints2d, _keypoints2d, err);
@@ -249,8 +257,8 @@ float PoseRefiner::update_pose(const KeyPoints &keypoints,
 
     vector<KeyPoint2d> projected_keypoints2d;
     project_keypoints(refined_pose, keypoints3d, camera_settings, projected_keypoints2d);
-    Mat _projected_keypoints2d(2, projected_keypoints2d.size(), CV_32F, &projected_keypoints2d[0].x);
-    Mat _keypoints2d(2, keypoints2d.size(), CV_32F, (void*)&keypoints2d[0].x);
+    Mat _projected_keypoints2d(projected_keypoints2d.size(), 2, CV_32F, &projected_keypoints2d[0].x);
+    Mat _keypoints2d(keypoints2d.size(), 2, CV_32F, (void*)&keypoints2d[0].x);
 
     Mat err;
     absdiff(_projected_keypoints2d, _keypoints2d, err);
@@ -289,17 +297,16 @@ double PoseRefinerCallback::calc(const double *x) const
 
     vector<KeyPoint2d> projected_keypoints2d;
     project_keypoints(pose, keypoints3d, camera_settings, projected_keypoints2d);
-    Mat _projected_keypoints2d(2, projected_keypoints2d.size(), CV_32F, &projected_keypoints2d[0].x);
-    Mat _keypoints2d(2, keypoints2d.size(), CV_32F, (void*)&keypoints2d[0].x);
+    Mat _projected_keypoints2d(projected_keypoints2d.size(), 2, CV_32F, &projected_keypoints2d[0].x);
+    Mat _keypoints2d(keypoints2d.size(), 2, CV_32F, (void*)&keypoints2d[0].x);
 
     Mat diff;
     absdiff(_projected_keypoints2d, _keypoints2d, diff);
 
     double tot_diff = 0;
     for (size_t i=0; i < keypoint_information.size(); i++) {
-        if (!keypoint_information[i].ignore_during_refinement) {
-            tot_diff += keypoint_information[i].confidence
-                *(diff.at<float>(0, i) + diff.at<float>(1, i));
+        if (!keypoint_information[i].ignore_during_refinement && !keypoint_information[i].ignore_completely) {
+            tot_diff += diff.at<float>(i, 1) + diff.at<float>(i, 0);
         }
     }
 #ifdef SUPER_VERBOSE

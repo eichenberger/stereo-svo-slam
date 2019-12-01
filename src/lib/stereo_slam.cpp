@@ -112,7 +112,7 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
         frame->pose.y = 0;
         frame->pose.z = 0;
         frame->pose.pitch = 0;
-        frame->pose.yaw = 0; // -0.5*M_PI;
+        frame->pose.yaw = 0; // M_PI; //0;
         frame->pose.roll = 0;
 
         keyframe = keyframe_manager.create_keyframe(*frame);
@@ -148,17 +148,21 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
             KeyPoint3d &kp3d = keyframe->kps.kps3d[info.keypoint_index];
 
 
-            Mat &covariance = info.seed.kf.errorCovPost;
+            Mat &covariance = info.kf.errorCovPost;
             float confidence = covariance.at<float>(0,0)*covariance.at<float>(0,0) +
                 covariance.at<float>(1,1)*covariance.at<float>(1,1) +
                 covariance.at<float>(2,2)*covariance.at<float>(2,2);
 
-            if (confidence < 0.001) {
-                kp3d.x = info.seed.kf.statePost.at<float>(0);
-                kp3d.y = info.seed.kf.statePost.at<float>(1);
-                kp3d.z = info.seed.kf.statePost.at<float>(2);
-                frame->kps.kps3d[i] = kp3d;
-            }
+            if (info.outlier_count > info.inlier_count)
+                info.ignore_completely = true;
+
+            cout << "Confidence of inliers: " << confidence << endl;
+
+            kp3d.x = info.kf.statePost.at<float>(0);
+            kp3d.y = info.kf.statePost.at<float>(1);
+            kp3d.z = info.kf.statePost.at<float>(2);
+            frame->kps.kps3d[i] = kp3d;
+
         }
     }
 

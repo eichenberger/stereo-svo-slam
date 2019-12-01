@@ -39,7 +39,7 @@ void project_keypoints(const struct Pose &pose,
     Vec3f rvec(pose.pitch, pose.yaw, pose.roll);
     Vec3f tvec(0, 0, 0);
 
-    Mat _out(2, out.size(), CV_32F);
+    Mat _out;
     // The pose calculated by the algorithm is inverted compared to what
     // would be normal therefore, -
     projectPoints(_in, -rvec, tvec, cameraMatrix, distCoeffs, _out);

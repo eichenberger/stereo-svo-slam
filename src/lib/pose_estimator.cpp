@@ -73,7 +73,7 @@ float PoseEstimator::estimate_pose(const Pose &pose_guess, Pose &pose)
     return err;
 }
 
-#if 0
+#if 1
 
 float PoseEstimator::estimate_pose_at_level(const Pose &pose_guess, Pose &pose,
         int level)
@@ -112,7 +112,7 @@ float PoseEstimator::estimate_pose_at_level(const Pose &pose_guess, Pose &pose,
         pose_guess.pitch, pose_guess.yaw, pose_guess.roll);
 
     size_t maxIter = 50;
-    float k = 10.0;
+    float k = 0.5;
     solver_callback->setLevel(level);
     double prev_cost = solver_callback->calc(x0.ptr<double>(0));
     for (size_t i = 0; i < maxIter; i++) {
@@ -213,11 +213,12 @@ double PoseEstimatorCallback::calc(const double *x) const
     //cout << "Diffs: ";
     //    cout << diff << ", ";
     //cout << endl;
-    int i = 0;
+    int i = -1;
     for (auto diff:diffs) {
-        if (keypoints.info[i].seed.accepted)
-            diff_sum += diff * keypoints.info[i].confidence;
         i++;
+        if (keypoints.info[i].ignore_completely)
+            continue;
+        diff_sum += diff;
     }
 
 #ifdef SUPER_VERBOSE
@@ -282,7 +283,12 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
         Mat hessian = Mat::zeros(6,6, CV_64F);
         gradient_times_jacobians = new vector<Mat>;
         for (size_t i = 0; i < level_keypoints2d.size(); i++) {
-            auto kp2d = level_keypoints2d[i];
+            auto &kp2d = level_keypoints2d[i];
+            auto &info = keypoints.info[i];
+
+            if (info.ignore_completely)
+                continue;
+
             cout << "Keypoint position: " << kp2d.x << ", " << kp2d.y << endl;
             kp2d.x -= PATCH_SIZE/2;
             kp2d.y -= PATCH_SIZE/2;
@@ -361,10 +367,28 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
     vector<KeyPoint2d> kps2d;
     project_keypoints(pose, keypoints.kps3d, level_camera_settings, kps2d);
 
+    cout << "pose: " <<
+        x[0] << "," <<
+        x[1] << "," <<
+        x[2] << "," <<
+        x[3] << "," <<
+        x[4] << "," <<
+        x[5] << "," <<
+        std::endl;
+
     Mat residual = Mat::zeros(6,1, CV_64F);
+    vector<Mat>::iterator _grad_times_jac = gradient_times_jacobians->begin();
     for (size_t i = 0; i < kps2d.size(); i++) {
+        auto &info = keypoints.info[i];
+        if (info.ignore_completely)
+            continue;
+
         Point2f kp2d(kps2d[i].x-PATCH_SIZE/2, kps2d[i].y-PATCH_SIZE/2);
         Point2f kp2d_ref(level_keypoints2d[i].x-PATCH_SIZE/2, level_keypoints2d[i].y-PATCH_SIZE/2);
+
+        cout << "Keypoint 2D at: " << kps2d[i].x << ", " << kps2d[i].y << endl;
+        const KeyPoint3d &kp3d = keypoints.kps3d[i];
+        cout << "Keypoint 3D at: " << kp3d.x << ", " << kp3d.y << ", " << kp3d.z << endl;
 
         for (size_t r = 0; r < PATCH_SIZE; r++)
         {
@@ -376,8 +400,6 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
                 cv::getRectSubPix(current_image, Size(2,2),
                         kp2d, int2, CV_32F);
 
-                const Mat &_grad_times_jac = (*gradient_times_jacobians)[(i*PATCH_SIZE*PATCH_SIZE)+(r*PATCH_SIZE)+c];
-
                 auto diff = int2.at<float>(0) - int1.at<float>(0);
 
 #if SUPER_VERBOSE
@@ -386,11 +408,12 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
                      kp2d.x << ", " << kp2d.y << " diff: " << diff << endl;
 #endif
 
-                Mat residual_kp = _grad_times_jac*diff;
+                Mat residual_kp = (*_grad_times_jac)*diff;
                 transpose(residual_kp, residual_kp);
                 residual -= residual_kp;
                 kp2d.x++;
                 kp2d_ref.x++;
+                _grad_times_jac++;
             }
             kp2d.y++;
             kp2d_ref.y++;
@@ -405,17 +428,30 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
     exponential_map(delta_pos, pose_gradient);
 
     Vec3d translation_grad(pose_gradient.ptr<double>(0));
+    Vec3d rotation_gradient(pose_gradient.ptr<double>(3));
     Rodrigues(angles, rot_mat);
     translation_grad = rot_mat*translation_grad;
+    rotation_gradient = rot_mat*rotation_gradient;
 
     grad[0] = translation_grad(0);
     grad[1] = translation_grad(1);
     grad[2] = translation_grad(2);
-    grad[3] = pose_gradient.at<double>(3);
-    grad[4] = pose_gradient.at<double>(4);
-    grad[5] = pose_gradient.at<double>(5);
+    grad[3] = rotation_gradient(0);
+    grad[4] = rotation_gradient(1);
+    grad[5] = rotation_gradient(2);
 
 //    memcpy(grad, pose_gradient.ptr<double>(), 6*sizeof(double));
+
+
+    cout << "Gradient: " <<
+        grad[0] << "," <<
+        grad[1] << "," <<
+        grad[2] << "," <<
+        grad[3] << "," <<
+        grad[4] << "," <<
+        grad[5] << "," <<
+        std::endl;
+    cout << endl;
 
 #ifdef SUPER_VERBOSE
     cout << "Delta Pos: " <<

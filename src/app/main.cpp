@@ -62,7 +62,7 @@ static void draw_frame(KeyFrame &keyframe, Frame &frame)
     vector<KeyPoint2d> &kps = frame.kps.kps2d;
     info = frame.kps.info;
     for (size_t i = 0; i < kps.size(); i++) {
-        if (!info[i].seed.accepted)
+        if (info[i].ignore_completely)
             continue;
         Point kp = Point(SCALE*kps[i].x, SCALE*kps[i].y);
         Scalar color (info[i].color.r, info[i].color.g, info[i].color.b);
@@ -76,14 +76,15 @@ static void draw_frame(KeyFrame &keyframe, Frame &frame)
         //KeyPoint3d &kp3d = frame.kps.kps3d[i];
         stringstream text;
 
-        float x = info[i].seed.kf.statePost.at<float>(0);
-        float y = info[i].seed.kf.statePost.at<float>(1);
-        float z = info[i].seed.kf.statePost.at<float>(2);
+        float x = info[i].kf.statePost.at<float>(0);
+        float y = info[i].kf.statePost.at<float>(1);
+        float z = info[i].kf.statePost.at<float>(2);
+        char ignore = info[i].ignore_completely ? '-' : '+';
         text << fixed << setprecision(1) <<
-            info[i].keyframe_id << ":" <<
+            info[i].keyframe_id << ignore << ":" <<
             x  << "," <<
             y << ","  <<
-            z;
+            z << "; " << info[i].inlier_count << ", " << info[i].outlier_count;
         putText(left, text.str(), kp, FONT_HERSHEY_PLAIN, 0.8, Scalar(0,0,0));
     }
 

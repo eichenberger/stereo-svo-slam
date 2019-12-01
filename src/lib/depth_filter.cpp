@@ -49,11 +49,11 @@ void DepthFilter::update_depth(Frame &frame)
     vector<KeyPoint3d> kps3d;
     kps3d.resize(kps2d.size());
 
-    Mat angles(1, 3, CV_32F, (void*)&frame.pose.pitch);
-    Mat rot_mat(3, 3, CV_32F);
+    Vec3f angles(&frame.pose.pitch);
+    Matx33f rot_mat;
     Rodrigues(angles, rot_mat);
 
-    Mat translation(3, 1, CV_32F, &frame.pose.x);
+    Vec3f translation(&frame.pose.x);
     for (size_t i = 0; i < disparities.size(); i++) {
         float disparity = disparities[i];
         if (disparity < 0)
@@ -82,29 +82,50 @@ void DepthFilter::update_depth(Frame &frame)
         float &disparity = disparities[i];
         if (disparity < 0)
             continue;
-        KalmanFilter &kf = info[i].seed.kf;
+        KalmanFilter &kf = info[i].kf;
 
-        float dist = abs(kps3d[i].x-kps3d_orig[i].x) +
-                    abs(kps3d[i].y-kps3d_orig[i].y) +
-                    abs(kps3d[i].z-kps3d_orig[i].z);
+        float dist_x = kps3d[i].x-kps3d_orig[i].x;
+        float dist_y = kps3d[i].y-kps3d_orig[i].y;
+        float dist_z = kps3d[i].z-kps3d_orig[i].z;
 
-        float var = dist*((1/(disparity+0.5)-1/(disparity-0.5)));
-        float var2 = var*var;
-        float x_var = 100*var2/(fx*fx);
-        float y_var = 100*var2/(fy*fy);
-        float z_var = 100*var2;
+        // Variance can be +- 0.5 pixel
+        float deviation = abs((baseline/(disparity+0.5)-baseline/(disparity-0.5)));
 
-        Vec3f var_vect(x_var, y_var, z_var);
-        Vec3f angles(pose.pitch, pose.yaw, pose.roll);
+        // disparity can't be negaritve
+        if (disparity < 0.5)
+            deviation = abs((1/(disparity+0.5)));
+        // This should probably be dependent on where it is in 2d
+        float x_deviation = abs((deviation*kps2d[i].x-camera_settings.cx)/camera_settings.fx);
+        float y_deviation = abs((deviation*kps2d[i].y-camera_settings.cy)/camera_settings.fy);
+        float z_deviation = deviation;
+
+        Vec3f deviation_vec(x_deviation, y_deviation, z_deviation);
+        Vec3f angles(&pose.pitch);
         Matx33f rotation;
 
         Rodrigues(angles, rotation);
 
-        var_vect = rotation * var_vect;
+        deviation_vec = rotation * deviation_vec;
 
-        kf.measurementNoiseCov.at<float>(0,0) = abs(var_vect(0));
-        kf.measurementNoiseCov.at<float>(1,1) = abs(var_vect(1));
-        kf.measurementNoiseCov.at<float>(2,2) = abs(var_vect(2));
+        cout << "Deviation: " << deviation_vec(0) << ", " <<
+            deviation_vec(1) << ", " << deviation_vec(2) << endl;
+        cout << "Dist: " << dist_x << ", " << dist_y << ", " << dist_z << endl;
+
+        // Let's define a point as inliner if it is within 2*deviation which should
+        // match for 95% of all points
+        // rotation can introduce a negative sign for deviation again therfore abs
+        if (abs(dist_x) > 2*abs(deviation_vec(0)) ||
+                abs(dist_y) > 2*abs(deviation_vec(1)) ||
+                abs(dist_z) > 2*abs(deviation_vec(2))) {
+            info[i].outlier_count++;
+            continue;
+        }
+        else
+            info[i].inlier_count++;
+
+        kf.measurementNoiseCov.at<float>(0,0) = deviation_vec(0)*deviation_vec(0);
+        kf.measurementNoiseCov.at<float>(1,1) = deviation_vec(1)*deviation_vec(1);
+        kf.measurementNoiseCov.at<float>(2,2) = deviation_vec(2)*deviation_vec(2);
 
         kf.predict();
         kf.correct((Mat_<float>(3,1) << kps3d[i].x, kps3d[i].y, kps3d[i].z));
@@ -116,16 +137,16 @@ void DepthFilter::update_depth(Frame &frame)
         cout << " Old measurement: " << kps3d_orig[i].x << ","
             << kps3d_orig[i].y << "," << kps3d_orig[i].z << endl;
 
-        cout << "Error: " << endl <<
-            kf.errorCovPost.at<float>(0,0) << ", " <<
-            kf.errorCovPost.at<float>(0,1) << ", " <<
-            kf.errorCovPost.at<float>(0,2) << ", " << endl <<
-            kf.errorCovPost.at<float>(1,0) << ", " <<
-            kf.errorCovPost.at<float>(1,1) << ", " <<
-            kf.errorCovPost.at<float>(1,2) << ", " << endl <<
-            kf.errorCovPost.at<float>(2,0) << ", " <<
-            kf.errorCovPost.at<float>(2,1) << ", " <<
-            kf.errorCovPost.at<float>(2,2) << endl;
+//        cout << "Error: " << endl <<
+//            kf.errorCovPost.at<float>(0,0) << ", " <<
+//            kf.errorCovPost.at<float>(0,1) << ", " <<
+//            kf.errorCovPost.at<float>(0,2) << ", " << endl <<
+//            kf.errorCovPost.at<float>(1,0) << ", " <<
+//            kf.errorCovPost.at<float>(1,1) << ", " <<
+//            kf.errorCovPost.at<float>(1,2) << ", " << endl <<
+//            kf.errorCovPost.at<float>(2,0) << ", " <<
+//            kf.errorCovPost.at<float>(2,1) << ", " <<
+//            kf.errorCovPost.at<float>(2,2) << endl;
     }
 
 }

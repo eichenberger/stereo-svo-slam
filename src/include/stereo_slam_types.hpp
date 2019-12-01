@@ -65,14 +65,6 @@ struct Color {
     uint8_t b;
 };
 
-struct Seed {
-//    static int batch_counter;
-//    int seed_counter;
-//    int id;                      //!< Seed ID, only used for visualization.
-    cv::KalmanFilter kf;
-    bool accepted;
-};
-
 struct KeyPointInformation {
     float score;
     int level;
@@ -82,7 +74,10 @@ struct KeyPointInformation {
     size_t keypoint_index;
     Color color;
     bool ignore_during_refinement;
-    Seed seed;
+    bool ignore_completely;
+    int outlier_count;
+    int inlier_count;
+    cv::KalmanFilter kf;
 };
 
 // KeyPoints, each entry has the same index. We try to avaoid mixing

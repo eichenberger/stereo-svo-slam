@@ -56,12 +56,17 @@ bool KeyFrameManager::keyframe_needed(const Frame &frame)
         if ((kp.x > 0) && (kp.y > 0) &&
                 (kp.x < image_width) &&
                 (kp.y < image_height) &&
-                info.seed.accepted ) {
+                !info.ignore_completely) {
             inside_frame++;
         }
     }
 
-    if (inside_frame < 150) {
+    int cols = frame.stereo_image.left[0].cols;
+    int rows= frame.stereo_image.left[0].rows;
+
+    int max_keypoints = (cols/camera_settings.grid_width)*(rows/camera_settings.grid_height);
+
+    if (inside_frame < 3*(max_keypoints/4)) {
         return true;
     }
 
