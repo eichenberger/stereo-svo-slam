@@ -188,11 +188,9 @@ void DepthCalculator::calculate_depth(Frame &frame,
     const Mat &right= frame.stereo_image.right[0];
 
     // Prepare rotation matrix for inverse transformation
-    Vec3f angles(&frame.pose.pitch);
-    Matx33f rot_mat;
-    Rodrigues(angles, rot_mat);
+    Matx33f rot_mat(frame.pose.get_rotation_matrix());
+    Vec3f translation(frame.pose.get_translation());
 
-    Vec3f translation(&frame.pose.x);
     // Estimate the depth now
 //#pragma omp parallel for
     for (uint32_t i = old_keypoint_count; i < keypoints2d.size(); i++) {
@@ -292,21 +290,32 @@ void DepthCalculator::calculate_depth(Frame &frame,
         kp_info[i].outlier_count = 0;
 
         KalmanFilter &kf = kp_info[i].kf;
-        kf.init(3,3);
+        kf.init(1,1);
         setIdentity(kf.transitionMatrix);
         setIdentity(kf.measurementMatrix);
-        setIdentity(kf.processNoiseCov, Scalar::all(0.1));
+        setIdentity(kf.processNoiseCov, Scalar::all(0.001));
+        setIdentity(kf.errorCovPost, Scalar::all(1.0));
 
-        setIdentity(kf.measurementMatrix);
-        setIdentity(kf.errorCovPost, Scalar::all(10));
-        float var = 1/(disparity+0.5)-1/(disparity-0.5);
-        float var2 = var*var;
-        kf.errorCovPost.at<float>(0,0) = 1000*var2/(fx*fx);
-        kf.errorCovPost.at<float>(1,1) = 1000*var2/(fy*fy);
-        kf.errorCovPost.at<float>(2,2) = 1000*var2;
+        // Variance can be +- 0.5 pixel
+        float deviation = abs((baseline/(disparity+0.5)-baseline/(disparity-0.5)));
 
-        kf.statePost = (Mat_<float>(3,1) <<
-                kp3d(0), kp3d(1), kp3d(2));
+        // disparity can't be negaritve
+        if (disparity < 0.5)
+            deviation = abs((1/(disparity+0.5)));
+
+        // This should probably be dependent on where it is in 2d
+        float x_deviation = abs((deviation*keypoint.x-cx)/camera_settings.fx);
+        float y_deviation = abs((deviation*keypoint.y-cy)/camera_settings.fy);
+        float z_deviation = deviation;
+
+        Vec3f deviation_vec(x_deviation, y_deviation, z_deviation);
+        deviation_vec = rot_mat * deviation_vec;
+
+        Matx<float, 1, 1> directed_deviation= deviation_vec.t() * deviation_vec;
+
+        kf.errorCovPost.at<float>(0,0) = directed_deviation(0);
+
+        kf.statePost = (Mat_<float>(1,1) << 1.0);
     }
     keyframe_count++;
 }

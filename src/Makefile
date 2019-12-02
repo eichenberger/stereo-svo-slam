@@ -1,19 +1,23 @@
 CXX      ?= gcc
-CXXFLAGS  ?= -std=c++11 -pedantic -Wall
-LDFLAGS ?=
+CXXFLAGS  ?= -O3
+LDFLAGS ?= -O3
+
+#CXXFLAGS  ?= -O0 -ggdb
+#LDFLAGS ?= -O0 -ggdb
 
 .PHONY: test clean lib python
 
-all: lib python app
+export
 
+all: lib app
 
-lib: 
+lib:
 	$(MAKE) -C lib lib
 
 python: lib
 	$(MAKE) -C python all
 
-app: lib
+app: lib 
 	$(MAKE) -C app
 
 test:

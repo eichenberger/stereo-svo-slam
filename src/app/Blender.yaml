@@ -40,7 +40,7 @@ Camera2.p2: 0.0
 
 Camera.grid_width: 60
 Camera.grid_height: 40
-Camera.search_x: 30
+Camera.search_x: 50
 Camera.search_y: 6
 Camera.window_size: 4
 Camera.window_size_opt_flow: 31

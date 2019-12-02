@@ -46,13 +46,8 @@ static void draw_frame(KeyFrame &keyframe, Frame &frame)
 
         cv::drawMarker(left_kf, kp, color, marker, 10);
 
-        KeyPoint3d &kp3d = keyframe.kps.kps3d[i];
         stringstream text;
-        text << fixed << setprecision(1) <<
-            info[i].keyframe_id << ":" <<
-            kp3d.x  << "," <<
-            kp3d.y << ","  <<
-            kp3d.z;
+        text << fixed << setprecision(1) << info[i].keyframe_id << ":" << i;
         putText(left_kf, text.str(), kp, FONT_HERSHEY_PLAIN, 0.8, Scalar(0,0,0));
     }
 
@@ -60,6 +55,7 @@ static void draw_frame(KeyFrame &keyframe, Frame &frame)
     putText(left_kf, text, Point(20,20), FONT_HERSHEY_PLAIN, 1, Scalar(255,0,0));
 
     vector<KeyPoint2d> &kps = frame.kps.kps2d;
+    vector<KeyPoint3d> &kps3d = frame.kps.kps3d;
     info = frame.kps.info;
     for (size_t i = 0; i < kps.size(); i++) {
         if (info[i].ignore_completely)
@@ -76,12 +72,12 @@ static void draw_frame(KeyFrame &keyframe, Frame &frame)
         //KeyPoint3d &kp3d = frame.kps.kps3d[i];
         stringstream text;
 
-        float x = info[i].kf.statePost.at<float>(0);
-        float y = info[i].kf.statePost.at<float>(1);
-        float z = info[i].kf.statePost.at<float>(2);
+        float x = kps3d[i].x;
+        float y = kps3d[i].y;
+        float z = kps3d[i].z;
         char ignore = info[i].ignore_completely ? '-' : '+';
         text << fixed << setprecision(1) <<
-            info[i].keyframe_id << ignore << ":" <<
+            info[i].keyframe_id << ":" << i << ignore << ":" <<
             x  << "," <<
             y << ","  <<
             z << "; " << info[i].inlier_count << ", " << info[i].outlier_count;
@@ -124,13 +120,7 @@ static void read_image(ImageInput *input, StereoSlam *slam)
     KeyFrame keyframe;
     slam->get_keyframe(keyframe);
     draw_frame(keyframe, frame);
-    cout << "Current pose: " << frame.pose.x << "," <<
-        frame.pose.y << "," <<
-        frame.pose.z << "," <<
-        frame.pose.pitch << "," <<
-        frame.pose.yaw << "," <<
-        frame.pose.roll << "," <<
-        endl;
+    cout << "Current pose: " << frame.pose << endl;
 
 }
 

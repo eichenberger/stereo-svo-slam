@@ -29,13 +29,14 @@ void SvoSlamBackend::text_message_received(QWebSocket &socket,
             vector<KeyFrame> keyframes;
             slam->get_keyframes(keyframes);
             for (auto keyframe:keyframes) {
+                Pose _pose = keyframe.pose.get_pose();
                 QJsonObject pose;
-                pose["x"] = keyframe.pose.x;
-                pose["y"] = keyframe.pose.y;
-                pose["z"] = keyframe.pose.z;
-                pose["pitch"] = keyframe.pose.pitch;
-                pose["yaw"] = keyframe.pose.yaw;
-                pose["roll"] = keyframe.pose.roll;
+                pose["x"] = _pose.x;
+                pose["y"] = _pose.y;
+                pose["z"] = _pose.z;
+                pose["pitch"] = _pose.pitch;
+                pose["yaw"] = _pose.yaw;
+                pose["roll"] = _pose.roll;
                 QJsonArray kps;
                 for (auto kp:keyframe.kps.kps3d) {
                     QJsonObject _kp;
@@ -66,12 +67,13 @@ void SvoSlamBackend::text_message_received(QWebSocket &socket,
         Frame frame;
         slam->get_frame(frame);
         QJsonObject pose;
-        pose["x"]  = frame.pose.x;
-        pose["y"]  = frame.pose.y;
-        pose["z"]  = frame.pose.z;
-        pose["pitch"]  = frame.pose.pitch;
-        pose["yaw"]  = frame.pose.yaw;
-        pose["roll"]  = frame.pose.roll;
+        Pose _pose = frame.pose.get_pose();
+        pose["x"]  = _pose.x;
+        pose["y"]  = _pose.y;
+        pose["z"]  = _pose.z;
+        pose["pitch"]  = _pose.pitch;
+        pose["yaw"]  = _pose.yaw;
+        pose["roll"]  = _pose.roll;
 
         QJsonObject top_object;
         top_object["pose"] = pose;

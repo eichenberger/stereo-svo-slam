@@ -9,6 +9,7 @@ SRC_FILES = corner_detector.cpp \
 			optical_flow.cpp \
 			pose_estimator.cpp \
 			pose_refinement.cpp \
+			pose_manager.cpp \
 			rotation_matrix.cpp \
 			stereo_slam.cpp \
 			transform_keypoints.cpp \

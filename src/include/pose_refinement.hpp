@@ -21,8 +21,8 @@ public:
 
 private:
     float update_pose(const KeyPoints &keypoints,
-            const Pose &estimated_pose,
-            Pose &refined_pose);
+            const PoseManager &estimated_pose,
+            PoseManager &refined_pose);
 
     const CameraSettings &camera_settings;
     cv::Ptr<PoseRefinerCallback> solver_callback;

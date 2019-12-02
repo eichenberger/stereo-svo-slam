@@ -8,7 +8,7 @@
 using namespace cv;
 using namespace std;
 
-void project_keypoints(const struct Pose &pose,
+void project_keypoints(const PoseManager &pose,
         const vector<KeyPoint3d> &in, const CameraSettings &camera_settings,
         vector<KeyPoint2d> &out)
 {
@@ -20,6 +20,7 @@ void project_keypoints(const struct Pose &pose,
     out.clear();
     out.resize(in.size());
 
+    Pose _pose = pose.get_pose();
 
     // We use the form translate firts rotate later
     // However, projectPoints first translates and then rotates which
@@ -27,16 +28,16 @@ void project_keypoints(const struct Pose &pose,
     Mat _in(in.size(), 3, CV_32F);
     for (size_t i = 0; i < in.size(); i++) {
         float *ptr = _in.ptr<float>(i);
-        ptr[0] = in[i].x - pose.x;
-        ptr[1] = in[i].y - pose.y;
-        ptr[2] = in[i].z - pose.z;
+        ptr[0] = in[i].x - _pose.x;
+        ptr[1] = in[i].y - _pose.y;
+        ptr[2] = in[i].z - _pose.z;
     }
 
     Mat distCoeffs = (Mat_<float>(5, 1) <<
             camera_settings.k1, camera_settings.k2,
             camera_settings.p1, camera_settings.p2, camera_settings.k3);
 
-    Vec3f rvec(pose.pitch, pose.yaw, pose.roll);
+    Vec3f rvec(pose.get_angles());
     Vec3f tvec(0, 0, 0);
 
     Mat _out;

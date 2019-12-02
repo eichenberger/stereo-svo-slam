@@ -32,7 +32,13 @@ DepthFilter::DepthFilter(KeyFrameManager &keyframe_manager, const CameraSettings
 {
 }
 
-void DepthFilter::update_depth(Frame &frame)
+std::ostream& operator<<(std::ostream& os, const Vec3f& vector)
+{
+    os << vector(0) << "," << vector(1) << "," << vector(2);
+    return os;
+}
+
+void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
 {
     float fx = camera_settings.fx;
     float fy = camera_settings.fy;
@@ -49,11 +55,9 @@ void DepthFilter::update_depth(Frame &frame)
     vector<KeyPoint3d> kps3d;
     kps3d.resize(kps2d.size());
 
-    Vec3f angles(&frame.pose.pitch);
-    Matx33f rot_mat;
-    Rodrigues(angles, rot_mat);
+    Matx33f rot_mat(frame.pose.get_rotation_matrix());
 
-    Vec3f translation(&frame.pose.x);
+    Vec3f translation(frame.pose.get_translation());
     for (size_t i = 0; i < disparities.size(); i++) {
         float disparity = disparities[i];
         if (disparity < 0)
@@ -77,12 +81,12 @@ void DepthFilter::update_depth(Frame &frame)
 
     vector<KeyPointInformation> &info = frame.kps.info;
     vector<KeyPoint3d> &kps3d_orig = frame.kps.kps3d;
-    const Pose &pose = frame.pose;
+    const PoseManager &pose = frame.pose;
+    Matx33f rotation(pose.get_rotation_matrix());
     for (size_t i = 0; i < kps3d.size(); i++) {
         float &disparity = disparities[i];
         if (disparity < 0)
             continue;
-        KalmanFilter &kf = info[i].kf;
 
         float dist_x = kps3d[i].x-kps3d_orig[i].x;
         float dist_y = kps3d[i].y-kps3d_orig[i].y;
@@ -99,12 +103,8 @@ void DepthFilter::update_depth(Frame &frame)
         float y_deviation = abs((deviation*kps2d[i].y-camera_settings.cy)/camera_settings.fy);
         float z_deviation = deviation;
 
+        // We rotation the standard deviation to the global coordinate system
         Vec3f deviation_vec(x_deviation, y_deviation, z_deviation);
-        Vec3f angles(&pose.pitch);
-        Matx33f rotation;
-
-        Rodrigues(angles, rotation);
-
         deviation_vec = rotation * deviation_vec;
 
         cout << "Deviation: " << deviation_vec(0) << ", " <<
@@ -123,31 +123,93 @@ void DepthFilter::update_depth(Frame &frame)
         else
             info[i].inlier_count++;
 
-        kf.measurementNoiseCov.at<float>(0,0) = deviation_vec(0)*deviation_vec(0);
-        kf.measurementNoiseCov.at<float>(1,1) = deviation_vec(1)*deviation_vec(1);
-        kf.measurementNoiseCov.at<float>(2,2) = deviation_vec(2)*deviation_vec(2);
+        KeyFrame *keyframe = keyframe_manager.get_keyframe(info[i].keyframe_id);
+
+        Vec3f p1(&kps3d_orig[i].x);
+        Vec3f p2(&kps3d[i].x);
+        Vec3f c1(keyframe->pose.get_translation());
+        Vec3f c2(pose.get_translation());
+
+        Vec3f line = p1-c1;
+        Vec3f rot;
+        rot[0] = -atan(line(0)/line(2));
+        rot[1] = -atan(line(1)/line(2));
+        rot[2] = 0;
+
+
+        cout << "u/v: " << keyframe->kps.kps2d[info[i].keypoint_index].x <<
+            ", " << keyframe->kps.kps2d[info[i].keypoint_index].y << endl;
+        cout << "rot: " << rot(0) <<", " << rot(1) << "," << rot(2) << endl;
+
+        // Now we rotate the standard deviation so that the z value will be
+        // our deviation along the line from Cref to P
+        Rodrigues(rot, rotation);
+        deviation_vec = rotation*deviation_vec;
+
+        Mat res = (Mat_<float>(3, 2) << p1(0)-c1(0), -(p2(0)-c2(0)),
+                    p1(1)-c1(1), -(p2(1)-c2(1)),
+                        p1(2)-c1(2), -(p2(2)-c2(2)));
+        Vec3f y=c2-c1;
+        Vec2f l;
+
+        solve(res, y, l, DECOMP_SVD);
+
+        Vec3f p1_stroke = c1+(l(0)*(p1-c1));
+
+        cout << "p1: " << p1 << " p1': " << p1_stroke << " l0: " << l(0) << " l1: " << l(1) <<endl;
+        cout << "deviation: " << deviation_vec(2) << endl;
+
+        KalmanFilter &kf = info[i].kf;
+
+        // We take the deviation along the line which is now the z part
+        // and calculate the variance (deviation squared)
+        kf.measurementNoiseCov.at<float>(0,0) = deviation_vec(2)*deviation_vec(2);
+
+        cout << "Pre Error: " << endl <<
+            kf.errorCovPre.at<float>(0,0) << ", " << endl;
+
+        cout << "Post Error: " << endl <<
+            kf.errorCovPost.at<float>(0,0) << ", " << endl;
+
+        Mat old_l;
+        old_l = kf.statePost;
 
         kf.predict();
-        kf.correct((Mat_<float>(3,1) << kps3d[i].x, kps3d[i].y, kps3d[i].z));
+
+        cout << "Pre Error after prediction: " << endl <<
+            kf.errorCovPre.at<float>(0,0) << ", " << endl;
+
+        cout << "Post Error after prediction: " << endl <<
+            kf.errorCovPost.at<float>(0,0) << ", " << endl;
+
+        Vec3f measurement(&kps3d[i].x);
+        Mat new_l(1, 1, CV_32F, l(0));
+        new_l = kf.correct(new_l);
+
+        // Correct point. The old_l is the reference.
+        Vec3f p1_corrected = c1+((new_l.at<float>(0)/old_l.at<float>(0))*(p1-c1));
+
         cout << "New measurement: " << kps3d[i].x << ","
             << kps3d[i].y << ","  << kps3d[i].z;
-        cout << " New estimate: " << kf.statePost.at<float>(0) << "," <<
-            kf.statePost.at<float>(1) << "," <<
-            kf.statePost.at<float>(2);
+
+        kps3d[i].x = p1_corrected(0);
+        kps3d[i].y = p1_corrected(1);
+        kps3d[i].z = p1_corrected(2);
+
+        cout << "New estimate: " << kps3d[i].x << ","
+            << kps3d[i].y << ","  << kps3d[i].z;
         cout << " Old measurement: " << kps3d_orig[i].x << ","
             << kps3d_orig[i].y << "," << kps3d_orig[i].z << endl;
 
-//        cout << "Error: " << endl <<
-//            kf.errorCovPost.at<float>(0,0) << ", " <<
-//            kf.errorCovPost.at<float>(0,1) << ", " <<
-//            kf.errorCovPost.at<float>(0,2) << ", " << endl <<
-//            kf.errorCovPost.at<float>(1,0) << ", " <<
-//            kf.errorCovPost.at<float>(1,1) << ", " <<
-//            kf.errorCovPost.at<float>(1,2) << ", " << endl <<
-//            kf.errorCovPost.at<float>(2,0) << ", " <<
-//            kf.errorCovPost.at<float>(2,1) << ", " <<
-//            kf.errorCovPost.at<float>(2,2) << endl;
+        cout << "Pre Error after correction: " << endl <<
+            kf.errorCovPre.at<float>(0,0) << ", " << endl;
+
+        cout << "Error after correction: " << endl <<
+            kf.errorCovPost.at<float>(0,0) << ", " << endl;
+        cout << endl;
     }
+
+    updated_kps3d = kps3d;
 
 }
 

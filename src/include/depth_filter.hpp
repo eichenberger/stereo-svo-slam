@@ -11,7 +11,7 @@ public:
     DepthFilter(KeyFrameManager &keyframe_manager,
             const CameraSettings &camera_settings);
 
-    void update_depth(Frame &frame);
+    void update_depth(Frame &frame, std::vector<KeyPoint3d> &updated_kps3d);
 
 private:
     void calculate_disparities(Frame &frame, std::vector<float> &disparity);

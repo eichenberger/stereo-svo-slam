@@ -1,4 +1,3 @@
-CXX      ?= gcc
 CXXFLAGS  ?= -O0 -ggdb
 LDFLAGS ?= -O0
 

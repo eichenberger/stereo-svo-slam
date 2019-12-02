@@ -8,6 +8,7 @@
 #include "pose_estimator.hpp"
 #include "transform_keypoints.hpp"
 #include "image_comparison.hpp"
+#include "exponential_map.hpp"
 
 //#define VERBOSE 1
 //#define SUPER_VERBOSE 1
@@ -25,8 +26,9 @@ public:
                           const KeyPoints &previous_keypoints,
                           const CameraSettings &camera_settings);
     double calc(const double *x) const;
+    float do_calc(const PoseManager &pose_manager) const;
     int getDims() const { return 6; };
-    void getGradient(const double *x, double *grad);
+    void get_gradient(const PoseManager pose, Vec6f &grad);
     void setLevel(int level);
 
 private:
@@ -56,28 +58,28 @@ PoseEstimator::PoseEstimator(const StereoImage &current_stereo_image,
 }
 
 
-float PoseEstimator::estimate_pose(const Pose &pose_guess, Pose &pose)
+float PoseEstimator::estimate_pose(const PoseManager &pose_manager_guess, PoseManager &pose)
 {
     float err = 0;
-    Pose pose_estimate = pose_guess;
+    PoseManager pose_manager_estimate = pose_manager_guess;
     for (int i = max_levels; i > min_level; i--) {
-        Pose new_estimate;
+        PoseManager new_estimate;
         int current_level = i-1;
 
-        err = estimate_pose_at_level(pose_estimate, new_estimate, current_level);
-        pose_estimate = new_estimate;
+        err = estimate_pose_at_level(pose_manager_estimate, new_estimate, current_level);
+        pose_manager_estimate = new_estimate;
     }
 
-    pose = pose_estimate;
+    pose = pose_manager_estimate;
 
     return err;
 }
 
-#if 1
-
-float PoseEstimator::estimate_pose_at_level(const Pose &pose_guess, Pose &pose,
+#if 0
+float PoseEstimator::estimate_pose_at_level(const PoseManager &pose_manager_guess, PoseManager &pose,
         int level)
 {
+    const Pose &pose_guess = pose_manager_guess.get_pose();
 
     Mat x0 = (Mat_<double>(6,1) <<
         pose_guess.x, pose_guess.y, pose_guess.z,
@@ -91,50 +93,46 @@ float PoseEstimator::estimate_pose_at_level(const Pose &pose_guess, Pose &pose,
 
     solver->minimize(x0);
 
-    pose.x = x0.at<double>(0);
-    pose.y = x0.at<double>(1);
-    pose.z = x0.at<double>(2);
-    pose.pitch = x0.at<double>(3);
-    pose.yaw = x0.at<double>(4);
-    pose.roll = x0.at<double>(5);
+    Pose _pose;
+    _pose.x = x0.at<double>(0);
+    _pose.y = x0.at<double>(1);
+    _pose.z = x0.at<double>(2);
+    _pose.pitch = x0.at<double>(3);
+    _pose.yaw = x0.at<double>(4);
+    _pose.roll = x0.at<double>(5);
 
-    double err = solver_callback->calc(x0.ptr<double>());
+    pose.set_pose(_pose);
+
+    float err = solver_callback->do_calc(pose);
 
     return err;
 }
 
 #else
-float PoseEstimator::estimate_pose_at_level(const Pose &pose_guess, Pose &pose,
+float PoseEstimator::estimate_pose_at_level(const PoseManager &pose_manager_guess, PoseManager &pose,
         int level)
 {
-    Mat x0 = (Mat_<double>(6,1) <<
-        pose_guess.x, pose_guess.y, pose_guess.z,
-        pose_guess.pitch, pose_guess.yaw, pose_guess.roll);
-
     size_t maxIter = 50;
-    float k = 0.5;
     solver_callback->setLevel(level);
-    double prev_cost = solver_callback->calc(x0.ptr<double>(0));
+    PoseManager x0 = pose_manager_guess;
+    float prev_cost = solver_callback->do_calc(x0);
+//    cout << "Estimate at level: " << level << " x0: " << pose_manager_guess << endl;
     for (size_t i = 0; i < maxIter; i++) {
-        Mat gradient(6,1,CV_64F);
-        solver_callback->getGradient(x0.ptr<double>(0),
-                gradient.ptr<double>(0));
+        Vec6f gradient;
+        solver_callback->get_gradient(x0, gradient);
+        float k = 1.0;
         for (;i < maxIter; i++) {
-            Mat x = x0 + (k*gradient);
-            double new_cost = solver_callback->calc(x.ptr<double>(0));
+            Vec6f x = x0.get_vector() + (k*gradient);
+            PoseManager _x;
+            _x.set_vector(x);
+            // cout << "Calc at x: " << _x << endl;
+            float new_cost = solver_callback->do_calc(_x);
             if (new_cost < prev_cost) {
 #ifdef VERBOSE
-                cout << "Better value pev cost: " << prev_cost << " new cost: " << new_cost << endl;
-                cout << "x: " <<
-                    x.at<double>(0) << "," <<
-                    x.at<double>(1) << "," <<
-                    x.at<double>(2) << "," <<
-                    x.at<double>(3) << "," <<
-                    x.at<double>(4) << "," <<
-                    x.at<double>(5) << "," <<
-                    std::endl;
+                cout << "Better value prev cost: " << prev_cost << " new cost: " << new_cost << endl;
+                cout << "x: " << _x << endl;
 #endif
-                x0 = x;
+                x0 = _x;
                 prev_cost = new_cost;
                 break;
             }
@@ -149,12 +147,8 @@ float PoseEstimator::estimate_pose_at_level(const Pose &pose_guess, Pose &pose,
         }
     }
 
-    pose.x = x0.at<double>(0);
-    pose.y = x0.at<double>(1);
-    pose.z = x0.at<double>(2);
-    pose.pitch = x0.at<double>(3);
-    pose.yaw = x0.at<double>(4);
-    pose.roll = x0.at<double>(5);
+    pose = x0;
+
 
     return prev_cost;
 }
@@ -187,12 +181,10 @@ static inline Pose pose_from_x(const double *x){
     return pose;
 }
 
-double PoseEstimatorCallback::calc(const double *x) const
+float PoseEstimatorCallback::do_calc(const PoseManager &pose_manager) const
 {
-    Pose pose = pose_from_x(x);
-
     vector<KeyPoint2d> kps2d;
-    project_keypoints(pose, keypoints.kps3d, level_camera_settings, kps2d);
+    project_keypoints(pose_manager, keypoints.kps3d, level_camera_settings, kps2d);
 
 #ifdef SUPER_VERBOSE
     cout << "keypoints 2d: ";
@@ -233,54 +225,37 @@ double PoseEstimatorCallback::calc(const double *x) const
 #endif
 
     return diff_sum;
+
+
 }
 
-static void exponential_map(const Mat &twist, Mat &pose)
+double PoseEstimatorCallback::calc(const double *x) const
 {
-    Mat v(3, 1, CV_64F, (void*)twist.ptr(0));
-    Mat w(3, 1, CV_64F, (void*)twist.ptr(3));
+    Pose pose = pose_from_x(x);
 
-    twist.copyTo(pose);
-    // The angles don't change. See robotics vision and control
-    // page 53 for more details
-    Mat w_skew = (Mat_<double>(3,3) <<
-            0, -w.at<double>(2), w.at<double>(1),
-            w.at<double>(2), 0, -w.at<double>(0),
-            -w.at<double>(1), w.at<double>(0), 0);
-    float _norm = 1.0;
-    Mat _eye = Mat::eye(3,3, CV_64F);
-    Mat translation = Mat(3,1, CV_64F);
+    PoseManager manager;
+    manager.set_pose(pose);
 
-    // Take closed form solution from robotics vision and control page 53
-    // Note: This exponential map doesn't give the exact same value as expm
-    // from Matlab or Numpy. It is different up to a scaling. It seems that
-    // expm uses norm set to 1.0. However, this differs from the closed form
-    // solution written in robotics vision and control.
-    translation = (_eye*_norm + (1-cos(_norm))*w_skew+(_norm-sin(_norm))*(w_skew*w_skew))*v;
-
-    memcpy(pose.ptr<double>(), translation.ptr<double>(), 3*sizeof(double));
-
+    return do_calc(manager);
 }
 
-void PoseEstimatorCallback::getGradient(const double *x, double *grad)
+
+
+void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
 {
     const int PATCH_SIZE=4;
-    Pose pose = pose_from_x(x);
 
     const Mat &current_image = current_stereo_image.left[level];
     const Mat &previous_image = previous_stereo_image.left[level];
 
-    Vec3d angles(&x[3]);
-    Matx33d rot_mat;
-    Vec3d translation(&x[0]);
-
-    Rodrigues(-angles, rot_mat);
+    Matx33f rot_mat(pose.get_inv_rotation_matrix());
+    Vec3f translation(pose.get_translation());
 
     // If we haven't calculated the hessian_inv yet we will do it now.
     // Because of compositional lucas kanade we only do it once
     if (hessian_inv.empty()) {
-        hessian_inv = new Mat(6,6, CV_64F);
-        Mat hessian = Mat::zeros(6,6, CV_64F);
+        hessian_inv = new Mat(6,6, CV_32F);
+        Mat hessian = Mat::zeros(6,6, CV_32F);
         gradient_times_jacobians = new vector<Mat>;
         for (size_t i = 0; i < level_keypoints2d.size(); i++) {
             auto &kp2d = level_keypoints2d[i];
@@ -289,7 +264,7 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
             if (info.ignore_completely)
                 continue;
 
-            cout << "Keypoint position: " << kp2d.x << ", " << kp2d.y << endl;
+            // cout << "Keypoint position: " << kp2d.x << ", " << kp2d.y << endl;
             kp2d.x -= PATCH_SIZE/2;
             kp2d.y -= PATCH_SIZE/2;
             Vec3f kp(&keypoints.kps3d[i].x);
@@ -307,7 +282,7 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
 
             // See A tutorial on SE(3) transformation parameterizations and on-manifold optimization page 58
             // for the jaccobian. Take - because we want to minimize
-            Mat jacobian = -(Mat_<double>(2,6) <<
+            Mat jacobian = -(Mat_<float>(2,6) <<
                 fx/z, 0, -fx*x/(z*z), -fx*x*y/(z*z), fx*(1+(x*x)/(z*z)), -fx*y/z,
                 0, fy/z, -fy*y/(z*z), -fy*(1+(y*y)/(z*z)), fy*x*y/(z*z), fy*x/z);
 
@@ -316,7 +291,7 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
                 for (size_t c = 0; c < PATCH_SIZE; c++) {
                     if (kp2d.x < 0 || kp2d.y < 0 || kp2d.x >= current_image.cols ||
                             kp2d.y >= current_image.rows) {
-                        gradient_times_jacobians->push_back(Mat::zeros(1, 6, CV_64F));
+                        gradient_times_jacobians->push_back(Mat::zeros(1, 6, CV_32F));
                         kp2d.x ++;
                         continue;
                     }
@@ -333,9 +308,9 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
                     cv::getRectSubPix(previous_image,
                             patch_size, Point2f(kp2d.x,kp2d.y-1), int4, CV_32F);
 
-                    double diff1 = int1.at<float>(0)-int2.at<float>(0);
-                    double diff2 = int3.at<float>(0)-int4.at<float>(0);
-                    Mat _grad = (Mat_<double>(1,2) <<
+                    float diff1 = int1.at<float>(0)-int2.at<float>(0);
+                    float diff2 = int3.at<float>(0)-int4.at<float>(0);
+                    Mat _grad = (Mat_<float>(1,2) <<
                             diff1, diff2);
 
                     Mat _grad_times_jac = _grad*jacobian;
@@ -356,7 +331,7 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
         std::cout << "Hessian matrix: " << std::endl;
         for (size_t i = 0; i < 6; i++) {
             for (size_t j = 0; j < 6; j++) {
-                std::cout << hessian.at<double>(i, j) << ", ";
+                std::cout << hessian.at<float>(i, j) << ", ";
             }
             std::cout << std::endl;
         }
@@ -367,16 +342,9 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
     vector<KeyPoint2d> kps2d;
     project_keypoints(pose, keypoints.kps3d, level_camera_settings, kps2d);
 
-    cout << "pose: " <<
-        x[0] << "," <<
-        x[1] << "," <<
-        x[2] << "," <<
-        x[3] << "," <<
-        x[4] << "," <<
-        x[5] << "," <<
-        std::endl;
+    // cout << "pose: " << pose << endl;
 
-    Mat residual = Mat::zeros(6,1, CV_64F);
+    Mat residual = Mat::zeros(6,1, CV_32F);
     vector<Mat>::iterator _grad_times_jac = gradient_times_jacobians->begin();
     for (size_t i = 0; i < kps2d.size(); i++) {
         auto &info = keypoints.info[i];
@@ -386,9 +354,9 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
         Point2f kp2d(kps2d[i].x-PATCH_SIZE/2, kps2d[i].y-PATCH_SIZE/2);
         Point2f kp2d_ref(level_keypoints2d[i].x-PATCH_SIZE/2, level_keypoints2d[i].y-PATCH_SIZE/2);
 
-        cout << "Keypoint 2D at: " << kps2d[i].x << ", " << kps2d[i].y << endl;
-        const KeyPoint3d &kp3d = keypoints.kps3d[i];
-        cout << "Keypoint 3D at: " << kp3d.x << ", " << kp3d.y << ", " << kp3d.z << endl;
+        // cout << "Keypoint 2D at: " << kps2d[i].x << ", " << kps2d[i].y << endl;
+        // const KeyPoint3d &kp3d = keypoints.kps3d[i];
+        // cout << "Keypoint 3D at: " << kp3d.x << ", " << kp3d.y << ", " << kp3d.z << endl;
 
         for (size_t r = 0; r < PATCH_SIZE; r++)
         {
@@ -424,12 +392,12 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
     }
 
     Mat delta_pos = *hessian_inv * residual;
-    Mat pose_gradient(6, 1, CV_64F);
+    Mat pose_gradient(6, 1, CV_32F);
     exponential_map(delta_pos, pose_gradient);
 
-    Vec3d translation_grad(pose_gradient.ptr<double>(0));
-    Vec3d rotation_gradient(pose_gradient.ptr<double>(3));
-    Rodrigues(angles, rot_mat);
+    Vec3f translation_grad(pose_gradient.ptr<float>(0));
+    Vec3f rotation_gradient(pose_gradient.ptr<float>(3));
+    rot_mat = pose.get_rotation_matrix();
     translation_grad = rot_mat*translation_grad;
     rotation_gradient = rot_mat*rotation_gradient;
 
@@ -442,25 +410,14 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
 
 //    memcpy(grad, pose_gradient.ptr<double>(), 6*sizeof(double));
 
-
-    cout << "Gradient: " <<
-        grad[0] << "," <<
-        grad[1] << "," <<
-        grad[2] << "," <<
-        grad[3] << "," <<
-        grad[4] << "," <<
-        grad[5] << "," <<
-        std::endl;
-    cout << endl;
-
 #ifdef SUPER_VERBOSE
     cout << "Delta Pos: " <<
-        delta_pos.at<double>(0) << "," <<
-        delta_pos.at<double>(1) << "," <<
-        delta_pos.at<double>(2) << "," <<
-        delta_pos.at<double>(3) << "," <<
-        delta_pos.at<double>(4) << "," <<
-        delta_pos.at<double>(5) << "," <<
+        delta_pos.at<float>(0) << "," <<
+        delta_pos.at<float>(1) << "," <<
+        delta_pos.at<float>(2) << "," <<
+        delta_pos.at<float>(3) << "," <<
+        delta_pos.at<float>(4) << "," <<
+        delta_pos.at<float>(5) << "," <<
         std::endl;
 
     cout << "Current Pose: " <<
@@ -481,16 +438,16 @@ void PoseEstimatorCallback::getGradient(const double *x, double *grad)
         grad[5] << "," <<
         std::endl;
 
-    double _norm = cv::norm(pose_gradient);
+    float _norm = cv::norm(pose_gradient);
     cout << "Norm: " << _norm << std::endl;
     pose_gradient = pose_gradient/_norm;
     cout << "Gradient normalized: " <<
-        pose_gradient.at<double>(0) << "," <<
-        pose_gradient.at<double>(1) << "," <<
-        pose_gradient.at<double>(2) << "," <<
-        pose_gradient.at<double>(3) << "," <<
-        pose_gradient.at<double>(4) << "," <<
-        pose_gradient.at<double>(5) << "," <<
+        pose_gradient.at<float>(0) << "," <<
+        pose_gradient.at<float>(1) << "," <<
+        pose_gradient.at<float>(2) << "," <<
+        pose_gradient.at<float>(3) << "," <<
+        pose_gradient.at<float>(4) << "," <<
+        pose_gradient.at<float>(5) << "," <<
         std::endl;
 #endif
 }

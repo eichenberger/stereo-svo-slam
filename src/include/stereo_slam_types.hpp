@@ -4,6 +4,8 @@
 #include <vector>
 #include <opencv2/opencv.hpp>
 
+#include "pose_manager.hpp"
+
 struct CameraSettings {
     float baseline;
     float fx;
@@ -88,18 +90,9 @@ struct KeyPoints {
     std::vector<KeyPointInformation> info;
 };
 
-struct Pose {
-    float x;
-    float y;
-    float z;
-    float pitch;    // around x
-    float yaw;      // around y
-    float roll;     // around z
-};
-
 struct Frame {
     uint64_t id;
-    struct Pose pose;
+    PoseManager pose;
     struct StereoImage stereo_image;
     struct KeyPoints kps;
 };

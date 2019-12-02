@@ -36,15 +36,13 @@ void StereoSlam::estimate_pose(Frame *previous_frame)
     PoseEstimator estimator(frame->stereo_image, previous_frame->stereo_image,
             previous_frame->kps, camera_settings);
 
-    Pose estimated_pose;
+    PoseManager estimated_pose;
     START_MEASUREMENT();
     float cost = estimator.estimate_pose(previous_frame->pose, estimated_pose);
     END_MEASUREMENT("estimator");
 
     cout << "Cost after estimation: " << cost << endl;
-    cout << "Pose after estimation: " <<
-        estimated_pose.x << ", " << estimated_pose.y << ", " << estimated_pose.z << ", " <<
-        estimated_pose.pitch << ", " << estimated_pose.yaw << ", " << estimated_pose.roll << endl;
+    cout << "Pose after estimation: " << estimated_pose << endl;
 
     vector<KeyPoint2d> estimated_kps;
     project_keypoints(estimated_pose, previous_frame->kps.kps3d, camera_settings,
@@ -107,13 +105,16 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
 
     // Check if this is the first frame
     if (previous_frame.empty()) {
+        Pose pose;
+
         frame->id = 0;
-        frame->pose.x = 0;
-        frame->pose.y = 0;
-        frame->pose.z = 0;
-        frame->pose.pitch = 0;
-        frame->pose.yaw = 0; // M_PI; //0;
-        frame->pose.roll = 0;
+        pose.x = 0;
+        pose.y = 0;
+        pose.z = 0;
+        pose.pitch = 0;
+        pose.yaw = 0; // M_PI; //0;
+        pose.roll = 0;
+        frame->pose.set_pose(pose);
 
         keyframe = keyframe_manager.create_keyframe(*frame);
 #if 0
@@ -134,13 +135,11 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
 
         estimate_pose(previous_frame);
 
-        if (keyframe_manager.keyframe_needed(*frame)) {
-            cout << "New keyframe is needed" << endl;
-            keyframe = keyframe_manager.create_keyframe(*frame);
-        }
 
         DepthFilter filter(keyframe_manager, camera_settings);
-        filter.update_depth(*frame);
+
+        vector<KeyPoint3d> updated_kps3d;
+        filter.update_depth(*frame, updated_kps3d);
 
         for (size_t i = 0; i < frame->kps.kps3d.size(); i++) {
             KeyPointInformation &info = frame->kps.info[i];
@@ -148,25 +147,31 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
             KeyPoint3d &kp3d = keyframe->kps.kps3d[info.keypoint_index];
 
 
-            Mat &covariance = info.kf.errorCovPost;
-            float confidence = covariance.at<float>(0,0)*covariance.at<float>(0,0) +
-                covariance.at<float>(1,1)*covariance.at<float>(1,1) +
-                covariance.at<float>(2,2)*covariance.at<float>(2,2);
+            //Mat &covariance = info.kf.errorCovPost;
+            //float variance = covariance.at<float>(0,0) + covariance.at<float>(1,1) +
+            //    covariance.at<float>(2,2);
 
             if (info.outlier_count > info.inlier_count)
                 info.ignore_completely = true;
 
-            cout << "Confidence of inliers: " << confidence << endl;
+            // Needs a fix. We can only move a long a ray starting at reference
+            // frame
+            //if (variance > 0.1)
+            //    continue;
 
-            kp3d.x = info.kf.statePost.at<float>(0);
-            kp3d.y = info.kf.statePost.at<float>(1);
-            kp3d.z = info.kf.statePost.at<float>(2);
+            kp3d = updated_kps3d[i];
             frame->kps.kps3d[i] = kp3d;
+        }
+        project_keypoints(frame->pose, frame->kps.kps3d, camera_settings,
+                frame->kps.kps2d);
 
+        if (keyframe_manager.keyframe_needed(*frame)) {
+            cout << "New keyframe is needed" << endl;
+            keyframe = keyframe_manager.create_keyframe(*frame);
         }
     }
 
-    trajectory.push_back(frame->pose);
+    trajectory.push_back(frame->pose.get_pose());
 
     if (!previous_frame.empty()) {
         previous_frame->kps.kps2d.clear();

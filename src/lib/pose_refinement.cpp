@@ -9,8 +9,9 @@
 #include "transform_keypoints.hpp"
 #include "image_comparison.hpp"
 #include "optical_flow.hpp"
+#include "exponential_map.hpp"
 
-#define SUPER_VERBOSE 1
+//#define SUPER_VERBOSE 1
 
 using namespace cv;
 using namespace std;
@@ -25,8 +26,9 @@ public:
                         const CameraSettings &camera_settings);
     //bool compute(InputArray param, OutputArray err, OutputArray J) const;
     double calc(const double *x) const;
+    float do_calc(const PoseManager &x) const;
     int getDims() const { return 6; }
-    void getGradient(const double *x, double *grad);
+    void get_gradient(const PoseManager &x, Vec6f &grad);
 
 
 private:
@@ -40,31 +42,6 @@ private:
 PoseRefiner::PoseRefiner(const CameraSettings &camera_settings) :
     camera_settings(camera_settings)
 {
-}
-
-static void exponential_map(const Mat &twist, Mat &pose)
-{
-    Vec3d v(twist.ptr<double>(0));
-    Vec3d w(twist.ptr<double>(3));
-
-    twist.copyTo(pose);
-    // The angles don't change. See robotics vision and control
-    // page 53 for more details
-    Mat w_skew = (Mat_<double>(3,3) <<
-            0, -w(2), w(1),
-            w(2), 0, -w(0),
-            -w(1), w(0), 0);
-    float _norm = 1.0;
-    //float _norm = norm(w);
-    Mat _eye = Mat::eye(3,3, CV_64F);
-    Mat translation = Mat(3,1, CV_64F, pose.ptr<double>(0));
-
-    // Take closed form solution from robotics vision and control page 53
-    // Note: This exponential map doesn't give the exact same value as expm
-    // from Matlab or Numpy. It is different up to a scaling. It seems that
-    // expm uses norm set to 1.0. However, this differs from the closed form
-    // solution written in robotics vision and control.
-    translation = (_eye*_norm + (1-cos(_norm))*w_skew+(_norm-sin(_norm))*(w_skew*w_skew))*v;
 }
 
 float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
@@ -113,8 +90,8 @@ float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
         float diff = (kp2d.x - new_estimate.x)*(kp2d.x - new_estimate.x) +
             (kp2d.y - new_estimate.y)*(kp2d.y - new_estimate.y);
         // Maybe it is occluded now -> ignore it
-        if (_err > 800) {
-            cout << "Refine: ignore kp " << kp2d.x << ", " << kp2d.y << endl;
+        if (_err > 20) {
+            // cout << "Refine: ignore kp " << kp2d.x << ", " << kp2d.y << endl;
             info.ignore_completely = true;
         }
         // don't move more than 9px!
@@ -147,7 +124,7 @@ float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
 
     imshow("bla", result);
 #endif
-    Pose refined_pose;
+    PoseManager refined_pose;
     float ret = update_pose(frame.kps, frame.pose, refined_pose);
     frame.pose = refined_pose;
 
@@ -156,8 +133,8 @@ float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
 
 #if 0
 float PoseRefiner::update_pose(const KeyPoints &keypoints,
-        const Pose &estimated_pose,
-        Pose &refined_pose)
+        const PoseManager &estimated_pose,
+        PoseManager &refined_pose)
 {
     const vector<KeyPoint2d> &keypoints2d = keypoints.kps2d;
     const vector<KeyPoint3d> &keypoints3d = keypoints.kps3d;
@@ -167,12 +144,14 @@ float PoseRefiner::update_pose(const KeyPoints &keypoints,
     Mat _pose = Mat::zeros(6, 1, CV_64FC1);
     double *x0 = _pose.ptr<double>(0);
 
-    x0[0] = estimated_pose.x;
-    x0[1] = estimated_pose.y;
-    x0[2] = estimated_pose.z;
-    x0[3] = estimated_pose.pitch;
-    x0[4] = estimated_pose.yaw;
-    x0[5] = estimated_pose.roll;
+    Pose pose = estimated_pose.get_pose();
+
+    x0[0] = pose.x;
+    x0[1] = pose.y;
+    x0[2] = pose.z;
+    x0[3] = pose.pitch;
+    x0[4] = pose.yaw;
+    x0[5] = pose.roll;
 
     Ptr<MinProblemSolver::Function> callback = new PoseRefinerCallback(keypoints2d,
             keypoints3d, keypoint_information, camera_settings);
@@ -183,15 +162,17 @@ float PoseRefiner::update_pose(const KeyPoints &keypoints,
 
     solver->minimize(_pose);
 
-    refined_pose.x = x0[0];
-    refined_pose.y = x0[1];
-    refined_pose.z = x0[2];
-    refined_pose.pitch = x0[3];
-    refined_pose.yaw = x0[4];
-    refined_pose.roll = x0[5];
+    pose.x = x0[0];
+    pose.y = x0[1];
+    pose.z = x0[2];
+    pose.pitch = x0[3];
+    pose.yaw = x0[4];
+    pose.roll = x0[5];
 
-    cout << "estimated pose: " << estimated_pose.x << "," << estimated_pose.y << ","  << estimated_pose.z << "," << estimated_pose.pitch << ","  << estimated_pose.yaw << "," << estimated_pose.roll << endl;
-    cout << "refined pose: " << refined_pose.x << "," << refined_pose.y << ","  << refined_pose.z << "," << refined_pose.pitch << ","  << refined_pose.yaw << "," << refined_pose.roll << endl;
+    refined_pose.set_pose(pose);
+
+    cout << "estimated pose: " << estimated_pose << endl;
+    cout << "refined pose: " << refined_pose << endl;
 
     vector<KeyPoint2d> projected_keypoints2d;
     project_keypoints(refined_pose, keypoints3d, camera_settings, projected_keypoints2d);
@@ -208,33 +189,36 @@ float PoseRefiner::update_pose(const KeyPoints &keypoints,
 
 #else
 float PoseRefiner::update_pose(const KeyPoints &keypoints,
-        const Pose &estimated_pose,
-        Pose &refined_pose)
+        const PoseManager &estimated_pose,
+        PoseManager &refined_pose)
 {
     const vector<KeyPoint2d> &keypoints2d = keypoints.kps2d;
     const vector<KeyPoint3d> &keypoints3d = keypoints.kps3d;
     const vector<KeyPointInformation> &keypoint_information = keypoints.info;
 
-    Mat x0 = (Mat_<double>(6,1) <<
-        estimated_pose.x, estimated_pose.y, estimated_pose.z,
-        estimated_pose.pitch, estimated_pose.yaw, estimated_pose.roll);
-
     size_t maxIter = 50;
-    float k = 0.1;
 
-    Ptr<MinProblemSolver::Function> solver_callback = new PoseRefinerCallback(keypoints2d,
+    Ptr<PoseRefinerCallback> solver_callback = new PoseRefinerCallback(keypoints2d,
             keypoints3d, keypoint_information, camera_settings);
 
-    double prev_cost = solver_callback->calc(x0.ptr<double>(0));
+    PoseManager x0 = estimated_pose;
+
+    float prev_cost = solver_callback->do_calc(x0);
     for (size_t i = 0; i < maxIter; i++) {
-        Mat gradient(6,1,CV_64F);
-        solver_callback->getGradient(x0.ptr<double>(0),
-                gradient.ptr<double>(0));
+        Vec6f gradient;
+        solver_callback->get_gradient(x0, gradient);
+//        cout << "Refinement Gradient: " << gradient(0) << "," << gradient(1) << "," <<
+//            gradient(2) << "," << gradient(3) << "," << gradient(4) << "," <<
+//            gradient(5) << endl;
+
+        float k = 1.0;
         for (;i < maxIter; i++) {
-            Mat x = x0 + (k*gradient);
-            double new_cost = solver_callback->calc(x.ptr<double>(0));
+            Vec6f x = x0.get_vector() + (k*gradient);
+            PoseManager _x;
+            _x.set_vector(x);
+            float new_cost = solver_callback->do_calc(_x);
             if (new_cost < prev_cost) {
-                x0 = x;
+                x0 = _x;
                 prev_cost = new_cost;
                 break;
             }
@@ -248,12 +232,7 @@ float PoseRefiner::update_pose(const KeyPoints &keypoints,
         }
     }
 
-    refined_pose.x = x0.at<double>(0);
-    refined_pose.y = x0.at<double>(1);
-    refined_pose.z = x0.at<double>(2);
-    refined_pose.pitch = x0.at<double>(3);
-    refined_pose.yaw = x0.at<double>(4);
-    refined_pose.roll = x0.at<double>(5);
+    refined_pose = x0;
 
     vector<KeyPoint2d> projected_keypoints2d;
     project_keypoints(refined_pose, keypoints3d, camera_settings, projected_keypoints2d);
@@ -263,8 +242,8 @@ float PoseRefiner::update_pose(const KeyPoints &keypoints,
     Mat err;
     absdiff(_projected_keypoints2d, _keypoints2d, err);
 
-    cout << "estimated pose: " << estimated_pose.x << "," << estimated_pose.y << ","  << estimated_pose.z << "," << estimated_pose.pitch << ","  << estimated_pose.yaw << "," << estimated_pose.roll << endl;
-    cout << "refined pose: " << refined_pose.x << "," << refined_pose.y << ","  << refined_pose.z << "," << refined_pose.pitch << ","  << refined_pose.yaw << "," << refined_pose.roll << endl;
+    cout << "estimated pose: " << estimated_pose << endl;
+    cout << "refined pose: " << refined_pose << endl;
 
     cout << "Error after optimization: " << sum(err)[0] << endl;
 
@@ -295,6 +274,14 @@ double PoseRefinerCallback::calc(const double *x) const
     pose.yaw = x[4];
     pose.roll = x[5];
 
+    PoseManager _pose;
+    _pose.set_pose(pose);
+
+    return do_calc(_pose);
+}
+
+float PoseRefinerCallback::do_calc(const PoseManager &pose) const
+{
     vector<KeyPoint2d> projected_keypoints2d;
     project_keypoints(pose, keypoints3d, camera_settings, projected_keypoints2d);
     Mat _projected_keypoints2d(projected_keypoints2d.size(), 2, CV_32F, &projected_keypoints2d[0].x);
@@ -310,30 +297,22 @@ double PoseRefinerCallback::calc(const double *x) const
         }
     }
 #ifdef SUPER_VERBOSE
-    cout << "pose: " << pose.x << "," << pose.y << ","  << pose.z << "," << pose.pitch << ","  << pose.yaw << "," << pose.roll << endl;
+    cout << "pose: " << pose;
     cout << "Diff: " << tot_diff << endl;
 #endif
 
     return tot_diff;
 }
 
-void PoseRefinerCallback::getGradient(const double *x, double *grad)
+void PoseRefinerCallback::get_gradient(const PoseManager &x, Vec6f &grad)
 {
-    Pose pose;
-    pose.x = x[0];
-    pose.y = x[1];
-    pose.z = x[2];
-    pose.pitch = x[3];
-    pose.yaw = x[4];
-    pose.roll = x[5];
-
     vector<KeyPoint2d> projected_keypoints2d;
-    project_keypoints(pose, keypoints3d, camera_settings, projected_keypoints2d);
+    project_keypoints(x, keypoints3d, camera_settings, projected_keypoints2d);
 
-    Mat err = Mat::zeros(6, 1, CV_64F);
-    Mat hessian = Mat::zeros(6,6, CV_64F);
+    Mat err = Mat::zeros(6, 1, CV_32F);
+    Mat hessian = Mat::zeros(6,6, CV_32F);
 
-    Mat tot_diff = Mat::zeros(2,1, CV_64F);
+    Mat tot_diff = Mat::zeros(2,1, CV_32F);
 
     for (size_t i = 0; i < keypoints3d.size(); i++) {
         auto x = keypoints3d[i].x;
@@ -343,16 +322,16 @@ void PoseRefinerCallback::getGradient(const double *x, double *grad)
         if (keypoint_information[i].ignore_during_refinement)
             continue;
 
-        Mat jacobian = -(Mat_<double>(2,6) <<
+        Mat jacobian = -(Mat_<float>(2,6) <<
                 1.0/z, 0, -1.0*x/(z*z), -1.0*x*y/(z*z), 1.0*(1.0+(x*x)/(z*z)), -1.0*y/z,
                 0, 1.0/z, -1.0*y/(z*z), -1.0*(1+(y*y)/(z*z)), 1.0*x*y/(z*z), 1.0*x/z);
 
-        Mat diff = keypoint_information[i].confidence*(Mat_<double>(2,1) <<
+        Mat diff = keypoint_information[i].confidence*(Mat_<float>(2,1) <<
                 keypoints2d[i].x -projected_keypoints2d[i].x,
                 keypoints2d[i].y -projected_keypoints2d[i].y);
 
-        if ((fabs(diff.at<double>(0)) > 3.0) ||
-                (fabs(diff.at<double>(1)) > 3.0))
+        if ((fabs(diff.at<float>(0)) > 3.0) ||
+                (fabs(diff.at<float>(1)) > 3.0))
             continue;
         tot_diff += diff;
 #if 0
@@ -374,10 +353,10 @@ void PoseRefinerCallback::getGradient(const double *x, double *grad)
 
     Mat twist = hessian_inv*err / keypoints2d.size();
 
-    Mat gradient(1, 6, CV_64F);
+    Mat gradient(1, 6, CV_32F);
 
     exponential_map(twist, gradient);
-    double *data = gradient.ptr<double>();
+    float *data = gradient.ptr<float>();
 
     // double _norm = cv::norm(gradient);
     // gradient /= _norm;
@@ -386,6 +365,5 @@ void PoseRefinerCallback::getGradient(const double *x, double *grad)
     cout << "gradient: " << data[0] << "," << data[1] << "," << data[2] << ","<< data[3] << ","<< data[4] << ","<< data[5] << "," << endl;
     cout << "Total diff: " << tot_diff << endl;
 #endif
-
-    memcpy(grad, data, 6*sizeof(double));
+    grad = Vec6f(data);
 }
