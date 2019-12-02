@@ -30,6 +30,7 @@ private:
     KeyFrame* keyframe;
     cv::Ptr<Frame> frame;
     std::vector<Pose> trajectory;
+    cv::Vec6f motion;
 };
 
 #endif

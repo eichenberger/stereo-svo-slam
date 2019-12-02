@@ -16,7 +16,7 @@ void CornerDetector::detect_keypoints(const Mat &image,
         vector<KeyPointInformation> &kp_info,
         int level)
 {
-    Ptr<FastFeatureDetector> detector = FastFeatureDetector::create();
+    Ptr<FastFeatureDetector> detector = FastFeatureDetector::create(6);
     vector<KeyPoint> _keypoints;
 
     detector->detect(image, _keypoints);

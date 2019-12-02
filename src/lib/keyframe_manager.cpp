@@ -66,7 +66,7 @@ bool KeyFrameManager::keyframe_needed(const Frame &frame)
 
     int max_keypoints = (cols/camera_settings.grid_width)*(rows/camera_settings.grid_height);
 
-    if (inside_frame < 3*(max_keypoints/4)) {
+    if (inside_frame < 0.66*max_keypoints) {
         return true;
     }
 

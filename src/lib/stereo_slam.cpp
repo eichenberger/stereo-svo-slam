@@ -27,7 +27,8 @@ static TickMeter tick_meter;
 #endif
 
 StereoSlam::StereoSlam(const CameraSettings &camera_settings) :
-    camera_settings(camera_settings), keyframe_manager(camera_settings)
+    camera_settings(camera_settings), keyframe_manager(camera_settings),
+    motion(0, 0, 0, 0, 0, 0)
 {
 }
 
@@ -133,6 +134,9 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
         START_MEASUREMENT();
         frame->id = previous_frame->id + 1;
 
+        Vec6f motion_applied = frame->pose.get_vector() + motion;
+        frame->pose.set_vector(motion_applied);
+
         estimate_pose(previous_frame);
 
 
@@ -173,7 +177,12 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
 
     trajectory.push_back(frame->pose.get_pose());
 
+
     if (!previous_frame.empty()) {
+        const Vec6f current_pose(frame->pose.get_vector());
+        const Vec6f previous_pose(previous_frame->pose.get_vector());
+        motion = current_pose - previous_pose;
+
         previous_frame->kps.kps2d.clear();
         previous_frame->kps.kps3d.clear();
         previous_frame->kps.info.clear();

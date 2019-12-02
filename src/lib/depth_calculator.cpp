@@ -20,7 +20,6 @@ static void detect_keypoints_on_each_level(
 
     keypoints_pyr.resize(stereo_images.left.size()/2);
     kp_info_pyr.resize(stereo_images.left.size()/2);
-//#pragma omp parallel for
     for (unsigned int i = 0; i < stereo_images.left.size()/2; i++) {
         vector<KeyPoint2d> _keypoints;
         vector<KeyPointInformation> _kp_info;
@@ -43,7 +42,7 @@ static void select_best_keypoints(
     keypoints = keypoints_pyr[0];
     kp_info = kp_info_pyr[0];
 
-//#pragma omp parallel for
+#pragma omp parallel for
     for (unsigned int i = 1; i < keypoints_pyr.size(); i++) {
         vector<KeyPoint2d> _keypoints = keypoints_pyr[i];
         vector<KeyPointInformation> _info = kp_info_pyr[i];
@@ -95,7 +94,6 @@ static void merge_keypoints(Frame &frame,
     int image_width = frame.stereo_image.left[0].cols;
     int image_height = frame.stereo_image.left[0].rows;
 
-//#pragma omp parallel for
     for (int x = 0; x < image_width; x += grid_width) {
         int left = x;
         int right = left + grid_width;
@@ -192,7 +190,7 @@ void DepthCalculator::calculate_depth(Frame &frame,
     Vec3f translation(frame.pose.get_translation());
 
     // Estimate the depth now
-//#pragma omp parallel for
+#pragma omp parallel for
     for (uint32_t i = old_keypoint_count; i < keypoints2d.size(); i++) {
         auto keypoint = keypoints2d[i];
         int x = static_cast<int>(keypoint.x);
@@ -248,33 +246,6 @@ void DepthCalculator::calculate_depth(Frame &frame,
         keypoints3d[i].x = kp3d(0);
         keypoints3d[i].y = kp3d(1);
         keypoints3d[i].z = kp3d(2);
-
-#if 0
-        // Reduce confidence if intensitiy difference is high
-        // float _confidence = 100-_match.err;
-        float _confidence;
-
-        // Give penalty for edglets
-        _confidence = (kp_info[i].type == KP_FAST) ? 1.0 : 0.4;
-
-        // Create a convidence window _/-\_ between k0, k1, k2 and k3
-        _confidence *= (0.2 + (max<float>(0, _z - dist_window_k0)*dist_fac0 -
-                max<float>(0, _z - dist_window_k1)*dist_fac0 -
-                max<float>(0, _z -dist_window_k2)*dist_fac1 +
-                max<float>(0, _z-dist_window_k3)*dist_fac1)*0.8);
-
-        cout << "z value: " << _z << " cost: " << minVal << " matches: " << matches << endl;
-        // More convidence if cost is low -\_. Convidence going down > k0 until k1
-        _confidence *= (1.0 - 0.4*(max<float>(0, minVal - cost_k0)*cost_fac0 -
-                    max<float>(0, minVal - cost_k1)*cost_fac0));
-
-        _confidence *= (0.6*(min<float>(1.0, kp_info[i].score/150.0)) + 0.4);
-         // The more matches we had the less confident we are...
-         // Normally we only have one match
-        _confidence *= 1.0/matches;
-
-        _confidence = 1.0;
- #endif
 
         uint32_t color = rand();
         kp_info[i].color.r = (color >> 0) & 0xFF;
