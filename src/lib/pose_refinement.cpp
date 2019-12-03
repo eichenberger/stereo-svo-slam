@@ -105,7 +105,7 @@ float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
         active[info.keyframe_id].pop_back();
     }
 
-#if 0
+#if 1
     Mat result;
     frame.stereo_image.left[0].copyTo(result);
     cvtColor(result, result,  COLOR_GRAY2RGB);
@@ -319,7 +319,8 @@ void PoseRefinerCallback::get_gradient(const PoseManager &x, Vec6f &grad)
         auto y = keypoints3d[i].y;
         auto z = keypoints3d[i].z;
 
-        if (keypoint_information[i].ignore_during_refinement)
+        if (keypoint_information[i].ignore_during_refinement ||
+                keypoint_information[i].ignore_completely)
             continue;
 
         Mat jacobian = -(Mat_<float>(2,6) <<

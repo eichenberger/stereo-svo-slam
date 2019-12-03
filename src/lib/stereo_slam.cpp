@@ -59,8 +59,8 @@ void StereoSlam::estimate_pose(Frame *previous_frame)
     refiner.refine_pose(keyframe_manager, *frame);
 
     // Reproject keypoints with refined pose
-    project_keypoints(frame->pose, frame->kps.kps3d, camera_settings,
-            frame->kps.kps2d);
+//    project_keypoints(frame->pose, frame->kps.kps3d, camera_settings,
+//            frame->kps.kps2d);
 
     END_MEASUREMENT("pose refinement");
 }
@@ -143,7 +143,30 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
         DepthFilter filter(keyframe_manager, camera_settings);
 
         vector<KeyPoint3d> updated_kps3d;
-        filter.update_depth(*frame, updated_kps3d);
+
+ #if 1
+        vector<KeyPoint2d> kps2d;
+        project_keypoints(frame->pose, frame->kps.kps3d, camera_settings,
+                kps2d);
+        Mat result;
+        frame->stereo_image.left[0].copyTo(result);
+        cvtColor(result, result,  COLOR_GRAY2RGB);
+        for (size_t i = 0; i < kps2d.size(); i++) {
+            KeyPointInformation &info = frame->kps.info[i];
+            KeyPoint2d &kp2d = kps2d[i];
+            Scalar color (info.color.r, info.color.g, info.color.b);
+            int msize = 10;
+            if (frame->kps.info[i].ignore_during_refinement || frame->kps.info[i].ignore_during_refinement) {
+                msize=5;
+            }
+            int marker = MARKER_CROSS;
+            Point kp = Point(kp2d.x, kp2d.y);
+            cv::drawMarker(result, kp, color, marker, msize);
+        }
+
+        imshow("after refinement", result);
+#endif
+       filter.update_depth(*frame, updated_kps3d);
 
         for (size_t i = 0; i < frame->kps.kps3d.size(); i++) {
             KeyPointInformation &info = frame->kps.info[i];
@@ -169,6 +192,8 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
         project_keypoints(frame->pose, frame->kps.kps3d, camera_settings,
                 frame->kps.kps2d);
 
+
+
         if (keyframe_manager.keyframe_needed(*frame)) {
             cout << "New keyframe is needed" << endl;
             keyframe = keyframe_manager.create_keyframe(*frame);
@@ -176,7 +201,6 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
     }
 
     trajectory.push_back(frame->pose.get_pose());
-
 
     if (!previous_frame.empty()) {
         const Vec6f current_pose(frame->pose.get_vector());

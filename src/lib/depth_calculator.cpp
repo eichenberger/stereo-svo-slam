@@ -236,11 +236,12 @@ void DepthCalculator::calculate_depth(Frame &frame,
         float _x = (keypoint.x - cx)/fx*_z;
         float _y = (keypoint.y - cy)/fy*_z;
 
-        Vec3f kp3d(_x, _y, _z);
+        Vec3f kp3d_loc(_x, _y, _z);
+        Vec3f kp3d;
 
         // The position is fucked up therefore rot_mat and tranlation
         // are already the inverse and we can use it directly
-        kp3d = rot_mat*kp3d;
+        kp3d = rot_mat*kp3d_loc;
         kp3d += translation;
 
         keypoints3d[i].x = kp3d(0);
@@ -267,24 +268,10 @@ void DepthCalculator::calculate_depth(Frame &frame,
         setIdentity(kf.processNoiseCov, Scalar::all(0.001));
         setIdentity(kf.errorCovPost, Scalar::all(1.0));
 
-        // Variance can be +- 0.5 pixel
-        float deviation = abs((baseline/(disparity+0.5)-baseline/(disparity-0.5)));
+        // Standard deviation can be +- 1.0 pixel
+        float deviation = 1.0;
 
-        // disparity can't be negaritve
-        if (disparity < 0.5)
-            deviation = abs((1/(disparity+0.5)));
-
-        // This should probably be dependent on where it is in 2d
-        float x_deviation = abs((deviation*keypoint.x-cx)/camera_settings.fx);
-        float y_deviation = abs((deviation*keypoint.y-cy)/camera_settings.fy);
-        float z_deviation = deviation;
-
-        Vec3f deviation_vec(x_deviation, y_deviation, z_deviation);
-        deviation_vec = rot_mat * deviation_vec;
-
-        Matx<float, 1, 1> directed_deviation= deviation_vec.t() * deviation_vec;
-
-        kf.errorCovPost.at<float>(0,0) = directed_deviation(0);
+        kf.errorCovPost.at<float>(0,0) = deviation*deviation;
 
         kf.statePost = (Mat_<float>(1,1) << 1.0);
     }

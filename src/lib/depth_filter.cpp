@@ -79,91 +79,111 @@ void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
 
     }
 
+    updated_kps3d = frame.kps.kps3d;
+
     vector<KeyPointInformation> &info = frame.kps.info;
-    vector<KeyPoint3d> &kps3d_orig = frame.kps.kps3d;
-    const PoseManager &pose = frame.pose;
-    Matx33f rotation(pose.get_rotation_matrix());
     for (size_t i = 0; i < kps3d.size(); i++) {
         float &disparity = disparities[i];
         if (disparity < 0)
             continue;
 
-        float dist_x = kps3d[i].x-kps3d_orig[i].x;
-        float dist_y = kps3d[i].y-kps3d_orig[i].y;
-        float dist_z = kps3d[i].z-kps3d_orig[i].z;
+        KeyFrame *keyframe = keyframe_manager.get_keyframe(info[i].keyframe_id);
+        KeyPoint3d &kp3d_ref = keyframe->kps.kps3d[info[i].keypoint_index];
+        Matx33f rotation(keyframe->pose.get_inv_rotation_matrix());
+        Vec3f translation(keyframe->pose.get_translation());
 
-        // Variance can be +- 0.5 pixel
-        float deviation = abs((baseline/(disparity+0.5)-baseline/(disparity-0.5)));
+        // We rotate the distances so that we get a z value with reference
+        // current frame
+        Vec3f kp3d(&kps3d[i].x);
+        kp3d = kp3d - translation;
+        kp3d = rotation*kp3d;
 
-        // disparity can't be negaritve
-        if (disparity < 0.5)
-            deviation = abs((1/(disparity+0.5)));
-        // This should probably be dependent on where it is in 2d
-        float x_deviation = abs((deviation*kps2d[i].x-camera_settings.cx)/camera_settings.fx);
-        float y_deviation = abs((deviation*kps2d[i].y-camera_settings.cy)/camera_settings.fy);
-        float z_deviation = deviation;
+        Vec3f _kp3d_ref(&kp3d_ref.x);
+        _kp3d_ref = _kp3d_ref - translation;
+        _kp3d_ref = rotation*_kp3d_ref;
 
-        // We rotation the standard deviation to the global coordinate system
-        Vec3f deviation_vec(x_deviation, y_deviation, z_deviation);
-        deviation_vec = rotation * deviation_vec;
+        float disp_ref = baseline/_kp3d_ref(2);
+        float disp = baseline/kp3d(2);
 
-        cout << "Deviation: " << deviation_vec(0) << ", " <<
-            deviation_vec(1) << ", " << deviation_vec(2) << endl;
-        cout << "Dist: " << dist_x << ", " << dist_y << ", " << dist_z << endl;
+        float pixel_distance = disp - disp_ref;
 
-        // Let's define a point as inliner if it is within 2*deviation which should
-        // match for 95% of all points
+        cout << "Disparity reference: " << disp_ref<< endl;
+        cout << "Disparity new: " << disparity << endl;
+        cout << "Disparity transformed: " << disp << endl;
+        cout << "Pixel distance: " << pixel_distance << endl;
+
+        // Standard deviation can be +- 3 pixel
+        float deviation = 1;
+        // Let's define a point as inliner if it is within 5*deviation which should
+        // match for 99% of all points
         // rotation can introduce a negative sign for deviation again therfore abs
-        if (abs(dist_x) > 2*abs(deviation_vec(0)) ||
-                abs(dist_y) > 2*abs(deviation_vec(1)) ||
-                abs(dist_z) > 2*abs(deviation_vec(2))) {
+        if (abs(pixel_distance) > 5*deviation) {
             info[i].outlier_count++;
             continue;
         }
         else
             info[i].inlier_count++;
 
-        KeyFrame *keyframe = keyframe_manager.get_keyframe(info[i].keyframe_id);
+        Matx33f rotation_frame(frame.pose.get_inv_rotation_matrix());
+        Vec3f translation_frame(frame.pose.get_translation());
+        Vec3f _kp3d_ref_cur(&kp3d_ref.x);
+        _kp3d_ref_cur = _kp3d_ref_cur - translation_frame;
+        _kp3d_ref_cur = rotation_frame*_kp3d_ref_cur;
 
-        Vec3f p1(&kps3d_orig[i].x);
-        Vec3f p2(&kps3d[i].x);
+        // Take the z distance of the current estimated 3d point form the
+        // frame and from the reference frame
+        float scaled_deviation = _kp3d_ref_cur(2)/_kp3d_ref(2) * deviation;
+
+        cout << "Scaled deviation: " << scaled_deviation << endl;
+
+
+#if 1
+        // TODO: Why is z distance of points increasing and not decreasing?
+        // They should be at 7.5 meters but increase up to 9.2m???
         Vec3f c1(keyframe->pose.get_translation());
-        Vec3f c2(pose.get_translation());
+        Vec3f c2(frame.pose.get_translation());
 
-        Vec3f line = p1-c1;
-        Vec3f rot;
-        rot[0] = -atan(line(0)/line(2));
-        rot[1] = -atan(line(1)/line(2));
-        rot[2] = 0;
+        cout << "Frame diff: " << abs((c1(0) -c2(0))) << endl;
+        // TODO: We need to have at least a small diff in x direction
+        if (abs((c1(0) -c2(0))) < 0.2)
+            continue;
+
+        if (info[i].ignore_completely || info[i].ignore_during_refinement)
+            continue;
+
+        KeyPoint2d &kp2d = frame.kps.kps2d[i];
+        Vec3f p1(&kp3d_ref.x);
+        Vec3f p2;
+        p2[0] = kp2d.x-cx;
+        p2[1] = kp2d.y-cy;
+        p2[2] = fx;
 
 
-        //cout << "u/v: " << keyframe->kps.kps2d[info[i].keypoint_index].x <<
-        //    ", " << keyframe->kps.kps2d[info[i].keypoint_index].y << endl;
-        //cout << "rot: " << rot(0) <<", " << rot(1) << "," << rot(2) << endl;
-
-        // Now we rotate the standard deviation so that the z value will be
-        // our deviation along the line from Cref to P
-        Rodrigues(rot, rotation);
-        deviation_vec = rotation*deviation_vec;
-
-        Mat res = (Mat_<float>(3, 2) << p1(0)-c1(0), -(p2(0)-c2(0)),
+        // This is the a matrix we need to solve to get the new l
+        // where the two lines from reference and new frame intersect
+        Mat a = (Mat_<float>(3, 2) << p1(0)-c1(0), -(p2(0)-c2(0)),
                     p1(1)-c1(1), -(p2(1)-c2(1)),
                         p1(2)-c1(2), -(p2(2)-c2(2)));
         Vec3f y=c2-c1;
         Vec2f l;
 
-        solve(res, y, l, DECOMP_SVD);
+        solve(a, y, l, DECOMP_SVD);
+
+        Vec3f point1 = c1 + l(0)*(p1-c1);
+        Vec3f point2 = c2 + l(1)*(p2-c2);
+
+        cout << "P1: " << p1(0) << "," << p1(1) << "," << p1(2) << endl;
+        cout << "Point1: " << point1(0) << "," << point1(1) << "," << point1(2) << endl;
+        cout << "P2: " << p2(0) << "," << p2(1) << "," << p2(2) << endl;
+        cout << "Point2: " << point2(0) << "," << point2(1) << "," << point2(2) << endl;
 
         // Vec3f p1_stroke = c1+(l(0)*(p1-c1));
-
-        // cout << "p1: " << p1 << " p1': " << p1_stroke << " l0: " << l(0) << " l1: " << l(1) <<endl;
-        // cout << "deviation: " << deviation_vec(2) << endl;
 
         KalmanFilter &kf = info[i].kf;
 
         // We take the deviation along the line which is now the z part
         // and calculate the variance (deviation squared)
-        kf.measurementNoiseCov.at<float>(0,0) = deviation_vec(2)*deviation_vec(2);
+        kf.measurementNoiseCov.at<float>(0,0) = 10.0;
 
         //cout << "Pre Error: " << endl <<
         //    kf.errorCovPre.at<float>(0,0) << ", " << endl;
@@ -171,8 +191,6 @@ void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
         //cout << "Post Error: " << endl <<
         //    kf.errorCovPost.at<float>(0,0) << ", " << endl;
 
-        Mat old_l;
-        old_l = kf.statePost;
 
         kf.predict();
 
@@ -187,30 +205,29 @@ void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
         new_l = kf.correct(new_l);
 
         // Correct point. The old_l is the reference.
-        Vec3f p1_corrected = c1+((new_l.at<float>(0)/old_l.at<float>(0))*(p1-c1));
+        Vec3f p1_corrected = c1+(new_l.at<float>(0)*(p1-c1));
 
-        //cout << "New measurement: " << kps3d[i].x << ","
-        //    << kps3d[i].y << ","  << kps3d[i].z;
+        cout << " l0: " << l(0) << " l1: " << l(1) <<endl;
+        cout << " updated l: " << new_l.at<float>(0) << endl;
 
-        kps3d[i].x = p1_corrected(0);
-        kps3d[i].y = p1_corrected(1);
-        kps3d[i].z = p1_corrected(2);
+        updated_kps3d[i].x = p1_corrected(0);
+        updated_kps3d[i].y = p1_corrected(1);
+        updated_kps3d[i].z = p1_corrected(2);
 
-        //cout << "New estimate: " << kps3d[i].x << ","
-        //    << kps3d[i].y << ","  << kps3d[i].z;
-        //cout << " Old measurement: " << kps3d_orig[i].x << ","
-        //    << kps3d_orig[i].y << "," << kps3d_orig[i].z << endl;
+        cout << "New estimate: " << updated_kps3d[i].x << ","
+            << updated_kps3d[i].y << ","  << updated_kps3d[i].z;
+        cout << " Old measurement: " << kp3d_ref.x << ","
+            << kp3d_ref.y << "," << kp3d_ref.z << endl;
 
+        kf.statePost.at<float>(0) = 1.0;
         //cout << "Pre Error after correction: " << endl <<
         //    kf.errorCovPre.at<float>(0,0) << ", " << endl;
 
         //cout << "Error after correction: " << endl <<
         //    kf.errorCovPost.at<float>(0,0) << ", " << endl;
         //cout << endl;
+#endif
     }
-
-    updated_kps3d = kps3d;
-
 }
 
 void DepthFilter::calculate_disparities(Frame &frame, std::vector<float> &disparity)
