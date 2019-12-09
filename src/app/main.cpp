@@ -77,7 +77,7 @@ static void draw_frame(KeyFrame &keyframe, Frame &frame)
         float z = kps3d[i].z;
         char ignore = info[i].ignore_completely ? '-' : '+';
         text << fixed << setprecision(3) <<
-            info[i].keyframe_id << ":" << i << ignore << ":" <<
+            info[i].keyframe_id << ":" << info[i].keypoint_index << ":" << ignore << ":" <<
             x  << "," <<
             y << ","  <<
             z << "; " << info[i].inlier_count << ", " << info[i].outlier_count;

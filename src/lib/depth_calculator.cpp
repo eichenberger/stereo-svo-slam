@@ -265,15 +265,15 @@ void DepthCalculator::calculate_depth(Frame &frame,
         kf.init(1,1);
         setIdentity(kf.transitionMatrix);
         setIdentity(kf.measurementMatrix);
-        setIdentity(kf.processNoiseCov, Scalar::all(0.001));
+        setIdentity(kf.processNoiseCov, Scalar::all(0.0001));
         setIdentity(kf.errorCovPost, Scalar::all(1.0));
 
-        // Standard deviation can be +- 1.0 pixel
-        float deviation = 1.0;
+        // Standard deviation can be +- 0.5 pixel
+        float deviation = 0.5/(baseline/fx);
 
         kf.errorCovPost.at<float>(0,0) = deviation*deviation;
 
-        kf.statePost = (Mat_<float>(1,1) << 1.0);
+        kf.statePost = (Mat_<float>(1,1) << 1/_z);
     }
     keyframe_count++;
 }

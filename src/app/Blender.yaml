@@ -6,25 +6,24 @@
 
 # Camera calibration and distortion parameters (OpenCV) 
 #
-#
-Camera1.fx: 587.5
-Camera1.fy: 587.5
+# fx = 20mm/(32mm/752px) = 470.0 px
+Camera1.fx: 470.0 
+Camera1.fy: 470.0
 Camera1.cx: 376.0
 Camera1.cy: 240.0
 
 
-Camera2.fx: 587.5
-Camera2.fy: 587.5
+Camera2.fx: 470.0
+Camera2.fy: 470.0
 Camera2.cx: 376.0
 Camera2.cy: 240.0
 
 Camera.image_width: 752
 Camera.image_height: 480
 
-# stereo baseline times fx (in mm)
-#Camera.bf: 3242.2
-#Camera.bf: 258.0
-Camera.baseline: 35.25
+# baselien in m * fx = baseline
+# 0.06 * 470px = 28.2
+Camera.baseline: 28.2
 
 Camera1.k1: 0.0
 Camera1.k2: 0.0

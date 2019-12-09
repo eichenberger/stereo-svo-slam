@@ -89,18 +89,18 @@ void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
 
         KeyFrame *keyframe = keyframe_manager.get_keyframe(info[i].keyframe_id);
         KeyPoint3d &kp3d_ref = keyframe->kps.kps3d[info[i].keypoint_index];
-        Matx33f rotation(keyframe->pose.get_inv_rotation_matrix());
+        Matx33f inv_rotation_kf(keyframe->pose.get_inv_rotation_matrix());
         Vec3f translation(keyframe->pose.get_translation());
 
         // We rotate the distances so that we get a z value with reference
         // current frame
         Vec3f kp3d(&kps3d[i].x);
         kp3d = kp3d - translation;
-        kp3d = rotation*kp3d;
+        kp3d = inv_rotation_kf*kp3d;
 
         Vec3f _kp3d_ref(&kp3d_ref.x);
         _kp3d_ref = _kp3d_ref - translation;
-        _kp3d_ref = rotation*_kp3d_ref;
+        _kp3d_ref = inv_rotation_kf*_kp3d_ref;
 
         float disp_ref = baseline/_kp3d_ref(2);
         float disp = baseline/kp3d(2);
@@ -113,7 +113,7 @@ void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
         cout << "Pixel distance: " << pixel_distance << endl;
 
         // Standard deviation can be +- 3 pixel
-        float deviation = 1;
+        float deviation = 0.5;
         // Let's define a point as inliner if it is within 5*deviation which should
         // match for 99% of all points
         // rotation can introduce a negative sign for deviation again therfore abs
@@ -124,40 +124,45 @@ void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
         else
             info[i].inlier_count++;
 
-        Matx33f rotation_frame(frame.pose.get_inv_rotation_matrix());
-        Vec3f translation_frame(frame.pose.get_translation());
-        Vec3f _kp3d_ref_cur(&kp3d_ref.x);
-        _kp3d_ref_cur = _kp3d_ref_cur - translation_frame;
-        _kp3d_ref_cur = rotation_frame*_kp3d_ref_cur;
-
-        // Take the z distance of the current estimated 3d point form the
-        // frame and from the reference frame
-        float scaled_deviation = _kp3d_ref_cur(2)/_kp3d_ref(2) * deviation;
-
-        cout << "Scaled deviation: " << scaled_deviation << endl;
-
-
 #if 1
-        // TODO: Why is z distance of points increasing and not decreasing?
-        // They should be at 7.5 meters but increase up to 9.2m???
+        Matx33f inv_rotation_frame(frame.pose.get_inv_rotation_matrix());
+
+        Matx33f rotation_kf(keyframe->pose.get_rotation_matrix());
+        Matx33f rotation_frame(frame.pose.get_rotation_matrix());
+
         Vec3f c1(keyframe->pose.get_translation());
         Vec3f c2(frame.pose.get_translation());
+        Vec3f c1_rot = inv_rotation_frame*c1;
+        Vec3f c2_rot = inv_rotation_kf*c2;
 
-        cout << "Frame diff: " << abs((c1(0) -c2(0))) << endl;
-        // TODO: We need to have at least a small diff in x direction
-        if (abs((c1(0) -c2(0))) < 0.2)
+        Vec3f diff;
+        absdiff(c1_rot, c2_rot, diff);
+        cout << "Frame diff: " << diff(0) << ", " << diff(1) << endl;
+        // We require a minimal movement of 10cm in x or y direction
+        // If it's smaller the noise is to big and don't forget
+        // we have a disparity of the camera which helps us
+        // A movement in z direction can't help us at all
+        if (diff(0) < 0.1 || diff(1) < 0.1)
             continue;
 
         if (info[i].ignore_completely || info[i].ignore_during_refinement)
             continue;
 
+        KeyPoint2d &kp2d_ref = keyframe->kps.kps2d[info[i].keypoint_index];
+        Vec3f p1;
+        p1[0] = kp2d_ref.x - cx;
+        p1[1] = kp2d_ref.y - cy;
+        p1[2] = fx;
+
+        p1 = rotation_kf * p1;
+
         KeyPoint2d &kp2d = frame.kps.kps2d[i];
-        Vec3f p1(&kp3d_ref.x);
         Vec3f p2;
         p2[0] = kp2d.x-cx;
         p2[1] = kp2d.y-cy;
         p2[2] = fx;
 
+        p2 = rotation_frame * p2;
 
         // This is the a matrix we need to solve to get the new l
         // where the two lines from reference and new frame intersect
@@ -169,8 +174,15 @@ void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
 
         solve(a, y, l, DECOMP_SVD);
 
+
         Vec3f point1 = c1 + l(0)*(p1-c1);
         Vec3f point2 = c2 + l(1)*(p2-c2);
+
+        cout << "Point ID: " << info[i].keyframe_id << "," << info[i].keypoint_index << endl;
+        cout << "l0: " << l(0) << ", l1: " << l(1) <<endl;
+
+        cout << "C1: " << c1(0) << "," << c1(1) << "," << c1(2) << ",";
+        cout << "C2: " << c2(0) << "," << c2(1) << "," << c2(2) << endl;
 
         cout << "P1: " << p1(0) << "," << p1(1) << "," << p1(2) << endl;
         cout << "Point1: " << point1(0) << "," << point1(1) << "," << point1(2) << endl;
@@ -181,51 +193,40 @@ void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
 
         KalmanFilter &kf = info[i].kf;
 
-        // We take the deviation along the line which is now the z part
-        // and calculate the variance (deviation squared)
-        kf.measurementNoiseCov.at<float>(0,0) = 10.0;
 
-        //cout << "Pre Error: " << endl <<
-        //    kf.errorCovPre.at<float>(0,0) << ", " << endl;
-
-        //cout << "Post Error: " << endl <<
-        //    kf.errorCovPost.at<float>(0,0) << ", " << endl;
-
+        // Deviation of 0.5 pixel divided by baseline which here is
+        // the movement
+        deviation = 0.5/(sqrt(diff(0)*diff(0)+ diff(1)*diff(1))/2);
+        kf.measurementNoiseCov.at<float>(0,0) = deviation*deviation;
 
         kf.predict();
 
-        //cout << "Pre Error after prediction: " << endl <<
-        //    kf.errorCovPre.at<float>(0,0) << ", " << endl;
+        Vec3f new_p = inv_rotation_kf*l(0)*(p1-c1);
+        float _z = new_p(2);
 
-        //cout << "Post Error after prediction: " << endl <<
-        //    kf.errorCovPost.at<float>(0,0) << ", " << endl;
+        cout << "Z for correction: " << _z << endl;
 
-        Vec3f measurement(&kps3d[i].x);
-        Mat new_l(1, 1, CV_32F, l(0));
-        new_l = kf.correct(new_l);
+        _z = 1.0/kf.correct((Mat_<float>(1,1) << 1/_z)).at<float>(0);
 
-        // Correct point. The old_l is the reference.
-        Vec3f p1_corrected = c1+(new_l.at<float>(0)*(p1-c1));
+        cout << "Z after correction: " << _z << endl;
 
-        cout << " l0: " << l(0) << " l1: " << l(1) <<endl;
-        cout << " updated l: " << new_l.at<float>(0) << endl;
+        float _x = (kp2d_ref.x - cx)/fx*_z;
+        float _y = (kp2d_ref.y - cy)/fy*_z;
 
-        updated_kps3d[i].x = p1_corrected(0);
-        updated_kps3d[i].y = p1_corrected(1);
-        updated_kps3d[i].z = p1_corrected(2);
+        Vec3f corrected_p (_x, _y, _z);
+        corrected_p = c1 + rotation_kf*corrected_p;
+
+        cout << "Corrected z: " << _z;
+
+        updated_kps3d[i].x = corrected_p(0);
+        updated_kps3d[i].y = corrected_p(1);
+        updated_kps3d[i].z = corrected_p(2);
 
         cout << "New estimate: " << updated_kps3d[i].x << ","
             << updated_kps3d[i].y << ","  << updated_kps3d[i].z;
-        cout << " Old measurement: " << kp3d_ref.x << ","
+        cout << " Old estimate: " << kp3d_ref.x << ","
             << kp3d_ref.y << "," << kp3d_ref.z << endl;
 
-        kf.statePost.at<float>(0) = 1.0;
-        //cout << "Pre Error after correction: " << endl <<
-        //    kf.errorCovPre.at<float>(0,0) << ", " << endl;
-
-        //cout << "Error after correction: " << endl <<
-        //    kf.errorCovPost.at<float>(0,0) << ", " << endl;
-        //cout << endl;
 #endif
     }
 }

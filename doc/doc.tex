@@ -33,16 +33,16 @@
 
 \tableofcontents
 
-\chapter{Planing}
+\chapter{Introduction}
 
-This chapter describes the planing of the master thesis. The first section lists the requirements the second section shows the time planing.
+Humans have different sensors to know the pose of the head inside a room. Everyone who ever tried to stand on one foot and closed the eyes knows that this makes finding the balance harder. From this we can guess that our eyes are an import factor of finding the pose for our brain. In this thesis we try to find a way to use the same optical information from a camera to estimate the pose of the camera inside a room. This is called visual odometry (VO). In this documentation we analyse and reimplement a algorithm which is called Semi-Dens Visual Odometry (SVO). The corresponding paper states that this algorithm is fast and can be used on embedded systems. We try to reimplement this algorithm and use it together with stereo cameras while the original algorithm uses a monocular camera.
 
 \section{Requirement Specification}
 
 This section lists the features that must and shall be implemented during the master thesis. The word must means that these are hard requirements. Shall describes nice to have features that aren't hardly required. Can are options that are not required at all. The numbers after \# are IDs found in the Gantt chart of figure \ref{fig:gantt}.
 
 \subsection{SLAM Library \#42}
-A SLAM library must be written which runs at 30 fps on stereo gray scale images at a resolution of 640x480 on two Intel i5-7Y54 CPUs.
+A SLAM library must be written which runs at 30 fps on stereo gray scale images at a resolution of 752x480 on two Intel i5-7Y54 CPUs.
 \subsubsection{SVO based algorithm \#44}
 A first implementation of the library shall be based on SVO. However, it's not mandatory to be the exact SVO algorithm.
 \subsubsection{Plane Detection \#45}
