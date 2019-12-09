@@ -12,6 +12,7 @@
 
 //#define VERBOSE 1
 //#define SUPER_VERBOSE 1
+// #define PLOT_GRADIENT 1
 
 using namespace cv;
 using namespace std;
@@ -30,6 +31,7 @@ public:
     int getDims() const { return 6; };
     void get_gradient(const PoseManager pose, Vec6f &grad);
     void setLevel(int level);
+    void reset_hessian();
 
 private:
     const StereoImage &current_stereo_image;
@@ -40,7 +42,7 @@ private:
     vector<KeyPoint2d> level_keypoints2d;
     int level;
 
-    cv::Ptr<Mat> hessian_inv;
+    cv::Ptr<Mat> hessian;
     cv::Ptr<vector<Mat>> gradient_times_jacobians;
 };
 
@@ -113,6 +115,7 @@ float PoseEstimator::estimate_pose_at_level(const PoseManager &pose_manager_gues
         int level)
 {
     size_t maxIter = 50;
+    solver_callback->reset_hessian();
     solver_callback->setLevel(level);
     PoseManager x0 = pose_manager_guess;
     float prev_cost = solver_callback->do_calc(x0);
@@ -149,6 +152,8 @@ float PoseEstimator::estimate_pose_at_level(const PoseManager &pose_manager_gues
 
     pose = x0;
 
+    cout << "Previous pose: " << pose_manager_guess;
+    cout << " New pose: " << pose << endl;
 
     return prev_cost;
 }
@@ -214,14 +219,7 @@ float PoseEstimatorCallback::do_calc(const PoseManager &pose_manager) const
     }
 
 #ifdef SUPER_VERBOSE
-    cout << "Diff sum: " << diff_sum << " x: " <<
-        x[0] << "," <<
-        x[1] << "," <<
-        x[2] << "," <<
-        x[3] << "," <<
-        x[4] << "," <<
-        x[5] << "," <<
-        std::endl;
+    cout << "Diff sum: " << diff_sum <<  std::endl;
 #endif
 
     return diff_sum;
@@ -251,14 +249,29 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
     Matx33f rot_mat(pose.get_inv_rotation_matrix());
     Vec3f translation(pose.get_translation());
 
+#ifdef PLOT_GRADIENT
+    static vector<Point2f> plot_kps;
+    static vector<Point2f> gradients;
+#endif
+
+
     // If we haven't calculated the hessian_inv yet we will do it now.
     // Because of compositional lucas kanade we only do it once
-    if (hessian_inv.empty()) {
-        hessian_inv = new Mat(6,6, CV_32F);
-        Mat hessian = Mat::zeros(6,6, CV_32F);
-        gradient_times_jacobians = new vector<Mat>;
+    if (hessian.empty()) {
+#ifdef PLOT_GRADIENT
+        gradients.clear();
+        plot_kps.clear();
+#endif
+        cout << "Calculate hessian" << endl;
+        hessian = new Mat(Mat::zeros(6,6, CV_32F));
+        gradient_times_jacobians.reset(new vector<Mat>);
+
+        auto fx = level_camera_settings.fx;
+        auto fy = level_camera_settings.fy;
+
+
         for (size_t i = 0; i < level_keypoints2d.size(); i++) {
-            auto &kp2d = level_keypoints2d[i];
+            auto kp2d = level_keypoints2d[i];
             auto &info = keypoints.info[i];
 
             if (info.ignore_completely)
@@ -277,9 +290,6 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
             auto y = kp(1);
             auto z = kp(2);
 
-            auto fx = level_camera_settings.fx;
-            auto fy = level_camera_settings.fy;
-
             // See A tutorial on SE(3) transformation parameterizations and on-manifold optimization page 58
             // for the jaccobian. Take - because we want to minimize
             Mat jacobian = -(Mat_<float>(2,6) <<
@@ -292,12 +302,19 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
                     if (kp2d.x < 0 || kp2d.y < 0 || kp2d.x >= current_image.cols ||
                             kp2d.y >= current_image.rows) {
                         gradient_times_jacobians->push_back(Mat::zeros(1, 6, CV_32F));
+
+#ifdef PLOT_GRADIENT
+                        Point2f p1(kp2d.x, kp2d.y);
+                        Point2f p2(0, 0);
+                        plot_kps.push_back(p1);
+                        gradients.push_back(p2);
+#endif
                         kp2d.x ++;
                         continue;
                     }
                     Mat int1, int2, int3, int4;
 
-                    const Size patch_size(1,2);
+                    const Size patch_size(2,2);
 
                     cv::getRectSubPix(previous_image,
                             patch_size, Point2f(kp2d.x+1,kp2d.y), int1, CV_32F);
@@ -308,8 +325,9 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
                     cv::getRectSubPix(previous_image,
                             patch_size, Point2f(kp2d.x,kp2d.y-1), int4, CV_32F);
 
-                    float diff1 = int1.at<float>(0)-int2.at<float>(0);
-                    float diff2 = int3.at<float>(0)-int4.at<float>(0);
+
+                    float diff1 = sum(int1-int2)(0);
+                    float diff2 = sum(int3-int4)(0);
                     Mat _grad = (Mat_<float>(1,2) <<
                             diff1, diff2);
 
@@ -317,8 +335,16 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
                     // Store the result of grad*jacobian for further usage
                     gradient_times_jacobians->push_back(_grad_times_jac);
 
+#ifdef PLOT_GRADIENT
+                    Point2f p1(kp2d.x, kp2d.y);
+                    Point2f p2(diff1, diff2);
+
+                    plot_kps.push_back(p1);
+                    gradients.push_back(p2);
+#endif
+
                     // Calculate the gauss newton hessian_inv (~second derivate)
-                    hessian += (_grad_times_jac.t()*_grad_times_jac);
+                    *hessian += (_grad_times_jac.t()*_grad_times_jac);
                     kp2d.x ++;
                 }
                 kp2d.x -= PATCH_SIZE;
@@ -326,12 +352,11 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
             }
         }
 
-        *hessian_inv = hessian.inv();
 #ifdef SUPER_VERBOSE
         std::cout << "Hessian matrix: " << std::endl;
         for (size_t i = 0; i < 6; i++) {
             for (size_t j = 0; j < 6; j++) {
-                std::cout << hessian.at<float>(i, j) << ", ";
+                std::cout << hessian->at<float>(i, j) << ", ";
             }
             std::cout << std::endl;
         }
@@ -342,10 +367,18 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
     vector<KeyPoint2d> kps2d;
     project_keypoints(pose, keypoints.kps3d, level_camera_settings, kps2d);
 
-    // cout << "pose: " << pose << endl;
+    cout << "pose for projection: " << pose << endl;
 
+    Mat grad_image;
+
+    cvtColor(previous_image, grad_image, COLOR_GRAY2RGB);
     Mat residual = Mat::zeros(6,1, CV_32F);
     vector<Mat>::iterator _grad_times_jac = gradient_times_jacobians->begin();
+#ifdef PLOT_GRADIENT
+    vector<Point2f>::iterator gradient = gradients.begin();
+    Point2f tot_grad(0,0);
+    Point2f tot_grad_raw(0,0);
+#endif
     for (size_t i = 0; i < kps2d.size(); i++) {
         auto &info = keypoints.info[i];
         if (info.ignore_completely)
@@ -354,6 +387,9 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
         Point2f kp2d(kps2d[i].x-PATCH_SIZE/2, kps2d[i].y-PATCH_SIZE/2);
         Point2f kp2d_ref(level_keypoints2d[i].x-PATCH_SIZE/2, level_keypoints2d[i].y-PATCH_SIZE/2);
 
+
+        Point2f grad(0,0);
+        Point2f grad_ref(0,0);
         // cout << "Keypoint 2D at: " << kps2d[i].x << ", " << kps2d[i].y << endl;
         // const KeyPoint3d &kp3d = keypoints.kps3d[i];
         // cout << "Keypoint 3D at: " << kp3d.x << ", " << kp3d.y << ", " << kp3d.z << endl;
@@ -368,12 +404,21 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
                 cv::getRectSubPix(current_image, Size(2,2),
                         kp2d, int2, CV_32F);
 
-                auto diff = int2.at<float>(0) - int1.at<float>(0);
+                float diff = sum(int2-int1)(0);
 
 #if SUPER_VERBOSE
                 cout << "Intensity difference template at " <<
                      kp2d_ref.x << ", " << kp2d_ref.y << " image at " <<
                      kp2d.x << ", " << kp2d.y << " diff: " << diff << endl;
+#endif
+
+
+#ifdef PLOT_GRADIENT
+                grad += diff*(*gradient);
+                tot_grad += diff*(*gradient);
+                tot_grad_raw += *gradient;
+                grad_ref += *gradient;
+                gradient++;
 #endif
 
                 Mat residual_kp = (*_grad_times_jac)*diff;
@@ -388,10 +433,38 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
             kp2d.x -= PATCH_SIZE;
             kp2d_ref.x -= PATCH_SIZE;
         }
+#ifdef PLOT_GRADIENT
+        Point2f p1(level_keypoints2d[i].x, level_keypoints2d[i].y);
+        Point2f p2 = p1;
+        p2.x += grad.x*0.0001;
+        p2.y += grad.y*0.0001;
+        arrowedLine(grad_image,p1,p2,Scalar(255,0,0));
 
+        p2 = p1;
+        p2.x += grad_ref.x*0.01;
+        p2.y += grad_ref.y*0.01;
+        arrowedLine(grad_image,p1,p2,Scalar(0,255,0));
+#endif
     }
+#ifdef PLOT_GRADIENT
+    Point2f p1(level_camera_settings.cx, level_camera_settings.cy);
+    Point2f p2 = p1;
+    p2.x += tot_grad.x*0.00001;
+    p2.y += tot_grad.y*0.00001;
+    arrowedLine(grad_image,p1,p2,Scalar(0,0,255));
 
-    Mat delta_pos = *hessian_inv * residual;
+    p2 = p1;
+    p2.x += tot_grad_raw.x*0.001;
+    p2.y += tot_grad_raw.y*0.001;
+    arrowedLine(grad_image,p1,p2,Scalar(0,255,255));
+    namedWindow("gradients", WINDOW_GUI_EXPANDED);
+    imshow("gradients" , grad_image);
+    waitKey(0);
+#endif
+
+
+    Mat delta_pos; // = *hessian_inv * residual;
+    solve(*hessian, residual, delta_pos, DECOMP_SVD);
     Mat pose_gradient(6, 1, CV_32F);
     exponential_map(delta_pos, pose_gradient);
 
@@ -420,14 +493,7 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
         delta_pos.at<float>(5) << "," <<
         std::endl;
 
-    cout << "Current Pose: " <<
-        x[0] << "," <<
-        x[1] << "," <<
-        x[2] << "," <<
-        x[3] << "," <<
-        x[4] << "," <<
-        x[5] << "," <<
-        std::endl;
+    cout << "Current Pose: " << pose << endl;
 
     cout << "Gradient: " <<
         grad[0] << "," <<
@@ -474,4 +540,10 @@ void PoseEstimatorCallback::setLevel(int level)
         level_keypoints2d[i].x /= divider;
         level_keypoints2d[i].y /= divider;
     }
+}
+
+void PoseEstimatorCallback::reset_hessian()
+{
+    hessian.reset();
+    cout << "Reset hessian empty: " << hessian.empty() << endl;
 }

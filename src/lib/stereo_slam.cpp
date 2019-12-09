@@ -131,7 +131,6 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
 #endif
     }
     else {
-        START_MEASUREMENT();
         frame->id = previous_frame->id + 1;
 
         Vec6f motion_applied = frame->pose.get_vector() + motion;
@@ -144,7 +143,7 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
 
         vector<KeyPoint3d> updated_kps3d;
 
- #if 1
+ #if 0
         vector<KeyPoint2d> kps2d;
         project_keypoints(frame->pose, frame->kps.kps3d, camera_settings,
                 kps2d);
@@ -166,29 +165,23 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
 
         imshow("after refinement", result);
 #endif
-       filter.update_depth(*frame, updated_kps3d);
+        START_MEASUREMENT();
+        filter.update_depth(*frame, updated_kps3d);
 
         for (size_t i = 0; i < frame->kps.kps3d.size(); i++) {
             KeyPointInformation &info = frame->kps.info[i];
             KeyFrame *keyframe = keyframe_manager.get_keyframe(info.keyframe_id);
             KeyPoint3d &kp3d = keyframe->kps.kps3d[info.keypoint_index];
 
-
-            //Mat &covariance = info.kf.errorCovPost;
-            //float variance = covariance.at<float>(0,0) + covariance.at<float>(1,1) +
-            //    covariance.at<float>(2,2);
-
+            // If we count more inlier than outlier it's probably
+            // a complete outlier then...
             if (info.outlier_count > info.inlier_count)
                 info.ignore_completely = true;
-
-            // Needs a fix. We can only move a long a ray starting at reference
-            // frame
-            //if (variance > 0.1)
-            //    continue;
 
             kp3d = updated_kps3d[i];
             frame->kps.kps3d[i] = kp3d;
         }
+        END_MEASUREMENT("Filter update");
         project_keypoints(frame->pose, frame->kps.kps3d, camera_settings,
                 frame->kps.kps2d);
 
@@ -196,7 +189,9 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
 
         if (keyframe_manager.keyframe_needed(*frame)) {
             cout << "New keyframe is needed" << endl;
+            START_MEASUREMENT();
             keyframe = keyframe_manager.create_keyframe(*frame);
+            END_MEASUREMENT("Create new keyframe");
         }
     }
 
