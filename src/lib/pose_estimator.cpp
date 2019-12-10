@@ -60,7 +60,7 @@ private:
 
     cv::Ptr<Mat> hessian;
     Mat inv_hessian;
-    cv::Ptr<vector<Mat>> gradient_times_jacobians;
+    cv::Ptr<vector<Matx16f>> gradient_times_jacobians;
 
     const static int PATCH_SIZE;
 };
@@ -285,7 +285,7 @@ void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
     const Mat &previous_image = previous_stereo_image.left[level];
 
     hessian = new Mat(Mat::zeros(6,6, CV_32F));
-    gradient_times_jacobians.reset(new vector<Mat>);
+    gradient_times_jacobians.reset(new vector<Matx16f>);
     gradient_times_jacobians->resize(level_keypoints2d.size()*PATCH_SIZE*PATCH_SIZE);
 
 #pragma omp parallel for default(none) shared(pose, gradient_times_jacobians, hessian, current_image, previous_image)
@@ -321,7 +321,7 @@ void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
             for (size_t c = 0; c < PATCH_SIZE; c++) {
                 if ((kp2d.x-1.5) < 0 || (kp2d.y-1.5) < 0 || (kp2d.x+1.5) >= current_image.cols ||
                         (kp2d.y+1.5) >= current_image.rows) {
-                    (*gradient_times_jacobians)[i*PATCH_SIZE*PATCH_SIZE+r*PATCH_SIZE+c] = Mat::zeros(1, 6, CV_32F);
+                    (*gradient_times_jacobians)[i*PATCH_SIZE*PATCH_SIZE+r*PATCH_SIZE+c] = Matx16f::zeros();
 
                     kp2d.x ++;
                     continue;
@@ -353,8 +353,7 @@ void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
                 float diff1 = int1-int2;
                 float diff2 = int3-int4;
 #endif
-                Mat _grad = (Mat_<float>(1,2) <<
-                        diff1, diff2);
+                Matx12f _grad (diff1, diff2);
 
                 Mat _grad_times_jac = _grad*jacobian;
                 // Store the result of grad*jacobian for further usage
@@ -451,8 +450,8 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
     END_MEASUREMENT("Calculate diffs");
 
     START_MEASUREMENT();
-    Mat residual = Mat::zeros(1,6, CV_32F);
-#pragma omp parallel for default(none) shared(diffs, gradient_times_jacobians, kps2d, residual)
+    Matx16f _residual;
+#pragma omp parallel for default(none) shared(diffs, gradient_times_jacobians, kps2d, _residual)
     for (size_t i = 0; i < kps2d.size(); i++) {
         // For OMP
         size_t j = i*PATCH_SIZE*PATCH_SIZE;
@@ -460,13 +459,13 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
         for (size_t r = 0; r < PATCH_SIZE; r++)
         {
             for (size_t c = 0; c < PATCH_SIZE; c++, diff++, j++) {
-                Mat &_grad_times_jac = (*gradient_times_jacobians)[j];
-                Mat residual_kp = _grad_times_jac*(*diff);
-                residual -= residual_kp;
+                Matx16f &_grad_times_jac = (*gradient_times_jacobians)[j];
+                Matx16f residual_kp = _grad_times_jac*(*diff);
+                _residual -= residual_kp;
             }
         }
     }
-    transpose(residual, residual);
+    Matx61f  residual = _residual.t();
     END_MEASUREMENT("Calculate residuals");
 
     Mat delta_pos;
