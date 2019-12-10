@@ -33,7 +33,7 @@ void get_total_intensity_diff(const cv::Mat &image1, const cv::Mat &image2,
         vector<float> &diff)
 {
     diff.resize(keypoints1.size());
-//#pragma omp parallel for
+#pragma omp parallel for default(none) shared(keypoints1, keypoints2, image1, image2, patchSize, diff)
     for (unsigned i = 0; i < keypoints1.size(); i++) {
         KeyPoint2d kp1 = keypoints1[i];
         KeyPoint2d kp2 = keypoints2[i];

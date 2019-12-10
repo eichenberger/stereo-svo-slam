@@ -20,17 +20,16 @@ void project_keypoints(const PoseManager &pose,
     out.clear();
     out.resize(in.size());
 
-    Pose _pose = pose.get_pose();
+    Vec3f _pose (pose.get_translation());
+
 
     // We use the form translate firts rotate later
     // However, projectPoints first translates and then rotates which
     // breaks everything
-    Mat _in(in.size(), 3, CV_32F);
+    vector<Point3f> _in(in.size());
+#pragma omp parallel for default(none) shared(_in, in, _pose)
     for (size_t i = 0; i < in.size(); i++) {
-        float *ptr = _in.ptr<float>(i);
-        ptr[0] = in[i].x - _pose.x;
-        ptr[1] = in[i].y - _pose.y;
-        ptr[2] = in[i].z - _pose.z;
+        _in[i] = Vec3f(&in[i].x) - _pose;
     }
 
     Mat distCoeffs = (Mat_<float>(5, 1) <<
@@ -44,7 +43,7 @@ void project_keypoints(const PoseManager &pose,
     // The pose calculated by the algorithm is inverted compared to what
     // would be normal therefore, -
     projectPoints(_in, -rvec, tvec, cameraMatrix, distCoeffs, _out);
-    memcpy(&out[0].x, _out.ptr<float>(), sizeof(float)*2*out.size());
+    memcpy(&out[0].x, _out.ptr<float>(), sizeof(KeyPoint2d)*out.size());
 }
 
 //void transform_keypoints_inverse(const struct Pose &pose,

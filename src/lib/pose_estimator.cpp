@@ -12,7 +12,7 @@
 
 //#define VERBOSE 1
 //#define SUPER_VERBOSE 1
-// #define PLOT_GRADIENT 1
+//#define PLOT_GRADIENT 1 // Disable omp if you want to plot the gradient!
 
 using namespace cv;
 using namespace std;
@@ -210,12 +210,11 @@ float PoseEstimatorCallback::do_calc(const PoseManager &pose_manager) const
     //cout << "Diffs: ";
     //    cout << diff << ", ";
     //cout << endl;
-    int i = -1;
-    for (auto diff:diffs) {
-        i++;
+//#pragma omp parallel for default(none) shared(diffs, keypoints) reduction(+:diff_sum)
+    for (size_t i = 0; i < diffs.size(); i++) {
         if (keypoints.info[i].ignore_completely)
             continue;
-        diff_sum += diff;
+        diff_sum += diffs[i];
     }
 
 #ifdef SUPER_VERBOSE
@@ -246,9 +245,6 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
     const Mat &current_image = current_stereo_image.left[level];
     const Mat &previous_image = previous_stereo_image.left[level];
 
-    Matx33f rot_mat(pose.get_inv_rotation_matrix());
-    Vec3f translation(pose.get_translation());
-
 #ifdef PLOT_GRADIENT
     static vector<Point2f> plot_kps;
     static vector<Point2f> gradients;
@@ -265,14 +261,17 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
         cout << "Calculate hessian" << endl;
         hessian = new Mat(Mat::zeros(6,6, CV_32F));
         gradient_times_jacobians.reset(new vector<Mat>);
+        gradient_times_jacobians->resize(level_keypoints2d.size()*PATCH_SIZE*PATCH_SIZE);
 
-        auto fx = level_camera_settings.fx;
-        auto fy = level_camera_settings.fy;
-
-
+#pragma omp parallel for default(none) shared(pose, gradient_times_jacobians, hessian, current_image, previous_image)
         for (size_t i = 0; i < level_keypoints2d.size(); i++) {
+            const auto fx = level_camera_settings.fx;
+            const auto fy = level_camera_settings.fy;
+            // Define insice for to make it thread safe
+            Matx33f rot_mat(pose.get_inv_rotation_matrix());
+            Vec3f translation(pose.get_translation());
             auto kp2d = level_keypoints2d[i];
-            auto &info = keypoints.info[i];
+            const auto &info = keypoints.info[i];
 
             if (info.ignore_completely)
                 continue;
@@ -301,7 +300,7 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
                 for (size_t c = 0; c < PATCH_SIZE; c++) {
                     if (kp2d.x < 0 || kp2d.y < 0 || kp2d.x >= current_image.cols ||
                             kp2d.y >= current_image.rows) {
-                        gradient_times_jacobians->push_back(Mat::zeros(1, 6, CV_32F));
+                        (*gradient_times_jacobians)[i*PATCH_SIZE*PATCH_SIZE+r*PATCH_SIZE+c] = Mat::zeros(1, 6, CV_32F);
 
 #ifdef PLOT_GRADIENT
                         Point2f p1(kp2d.x, kp2d.y);
@@ -316,14 +315,14 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
 
                     const Size patch_size(2,2);
 
-                    cv::getRectSubPix(previous_image,
-                            patch_size, Point2f(kp2d.x+1,kp2d.y), int1, CV_32F);
-                    cv::getRectSubPix(previous_image,
-                            patch_size, Point2f(kp2d.x-1,kp2d.y), int2, CV_32F);
-                    cv::getRectSubPix(previous_image,
-                            patch_size, Point2f(kp2d.x,kp2d.y+1), int3, CV_32F);
-                    cv::getRectSubPix(previous_image,
-                            patch_size, Point2f(kp2d.x,kp2d.y-1), int4, CV_32F);
+                    getRectSubPix(previous_image,
+                        patch_size, Point2f(kp2d.x+1,kp2d.y), int1, CV_32F);
+                    getRectSubPix(previous_image,
+                        patch_size, Point2f(kp2d.x-1,kp2d.y), int2, CV_32F);
+                    getRectSubPix(previous_image,
+                        patch_size, Point2f(kp2d.x,kp2d.y+1), int3, CV_32F);
+                    getRectSubPix(previous_image,
+                        patch_size, Point2f(kp2d.x,kp2d.y-1), int4, CV_32F);
 
 
                     float diff1 = sum(int1-int2)(0);
@@ -333,7 +332,7 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
 
                     Mat _grad_times_jac = _grad*jacobian;
                     // Store the result of grad*jacobian for further usage
-                    gradient_times_jacobians->push_back(_grad_times_jac);
+                    (*gradient_times_jacobians)[i*PATCH_SIZE*PATCH_SIZE+r*PATCH_SIZE+c] = _grad_times_jac;
 
 #ifdef PLOT_GRADIENT
                     Point2f p1(kp2d.x, kp2d.y);
@@ -369,16 +368,16 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
 
     cout << "pose for projection: " << pose << endl;
 
-    Mat grad_image;
-
-    cvtColor(previous_image, grad_image, COLOR_GRAY2RGB);
     Mat residual = Mat::zeros(6,1, CV_32F);
-    vector<Mat>::iterator _grad_times_jac = gradient_times_jacobians->begin();
 #ifdef PLOT_GRADIENT
+    Mat grad_image;
+    cvtColor(previous_image, grad_image, COLOR_GRAY2RGB);
     vector<Point2f>::iterator gradient = gradients.begin();
     Point2f tot_grad(0,0);
     Point2f tot_grad_raw(0,0);
 #endif
+#pragma omp parallel for default(none) shared(pose, gradient_times_jacobians, \
+        keypoints, kps2d, residual, current_image, previous_image)
     for (size_t i = 0; i < kps2d.size(); i++) {
         auto &info = keypoints.info[i];
         if (info.ignore_completely)
@@ -387,9 +386,10 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
         Point2f kp2d(kps2d[i].x-PATCH_SIZE/2, kps2d[i].y-PATCH_SIZE/2);
         Point2f kp2d_ref(level_keypoints2d[i].x-PATCH_SIZE/2, level_keypoints2d[i].y-PATCH_SIZE/2);
 
-
+#ifdef PLOT_GRADIENT
         Point2f grad(0,0);
         Point2f grad_ref(0,0);
+#endif
         // cout << "Keypoint 2D at: " << kps2d[i].x << ", " << kps2d[i].y << endl;
         // const KeyPoint3d &kp3d = keypoints.kps3d[i];
         // cout << "Keypoint 3D at: " << kp3d.x << ", " << kp3d.y << ", " << kp3d.z << endl;
@@ -421,12 +421,12 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
                 gradient++;
 #endif
 
-                Mat residual_kp = (*_grad_times_jac)*diff;
+                Mat&_grad_times_jac = (*gradient_times_jacobians)[i*PATCH_SIZE*PATCH_SIZE + r*PATCH_SIZE+c];
+                Mat residual_kp = _grad_times_jac*diff;
                 transpose(residual_kp, residual_kp);
                 residual -= residual_kp;
                 kp2d.x++;
                 kp2d_ref.x++;
-                _grad_times_jac++;
             }
             kp2d.y++;
             kp2d_ref.y++;
@@ -470,7 +470,7 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
 
     Vec3f translation_grad(pose_gradient.ptr<float>(0));
     Vec3f rotation_gradient(pose_gradient.ptr<float>(3));
-    rot_mat = pose.get_rotation_matrix();
+    Matx33f rot_mat(pose.get_rotation_matrix());
     translation_grad = rot_mat*translation_grad;
     rotation_gradient = rot_mat*rotation_gradient;
 
