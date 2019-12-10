@@ -193,7 +193,7 @@ int main(int argc, char **argv)
     parser.addOption(showProgressOption);
 
     QTimer timer;
-    timer.setInterval(1.0/30.0*1000.0);
+    timer.setInterval(1.0/60.0*1000.0);
 
     QObject::connect(&timer, &QTimer::timeout,
             std::bind(&read_image, input, &slam));

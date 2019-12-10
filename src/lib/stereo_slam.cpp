@@ -61,8 +61,10 @@ void StereoSlam::estimate_pose(Frame *previous_frame)
     cout << "Pose after estimation: " << estimated_pose << endl;
 
     vector<KeyPoint2d> estimated_kps;
+    START_MEASUREMENT();
     project_keypoints(estimated_pose, previous_frame->kps.kps3d, camera_settings,
             estimated_kps);
+    END_MEASUREMENT("project keypoints");
 
     frame->pose = estimated_pose;
     frame->kps.info = previous_frame->kps.info;
@@ -87,7 +89,7 @@ static void halfSample(const cv::Mat& in, cv::Mat& out)
     assert( in.type()==CV_8U && out.type()==CV_8U);
 
 // OMP variant is slower...
-// #pragma omp parallel for
+// #pragma omp parallel for default(none) shared(out, in)
     for (int j = 0; j < out.rows; j++) {
         int y = j<<1;
         const uint8_t* upper_in= in.ptr<uint8_t>(y);
@@ -116,8 +118,10 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
     Ptr<Frame> previous_frame = frame;
     frame = new Frame;
 
+    START_MEASUREMENT();
     createImgPyramid(left, camera_settings.max_pyramid_levels, frame->stereo_image.left);
     createImgPyramid(right, camera_settings.max_pyramid_levels, frame->stereo_image.right);
+    END_MEASUREMENT("Create pyramid");
 
     // Check if this is the first frame
     if (previous_frame.empty()) {

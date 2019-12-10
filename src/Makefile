@@ -1,9 +1,9 @@
 CXX      ?= gcc
-#CXXFLAGS  ?= -O3 -fopt-info-vec-missed -fopt-info-vec # -fopt-info-vec-all
-#LDFLAGS ?= -O3
+CXXFLAGS  ?= -O3 #-fopt-info-vec-missed -fopt-info-vec # -fopt-info-vec-all
+LDFLAGS ?= -O3
 
-CXXFLAGS  ?= -O0 -ggdb
-LDFLAGS ?= -O0 -ggdb
+#CXXFLAGS  ?= -O0 -ggdb
+#LDFLAGS ?= -O0 -ggdb
 
 .PHONY: test clean lib python
 

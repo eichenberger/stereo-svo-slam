@@ -44,6 +44,7 @@ private:
     int level;
 
     cv::Ptr<Mat> hessian;
+    Mat inv_hessian;
     cv::Ptr<vector<Mat>> gradient_times_jacobians;
 
     const static int PATCH_SIZE;
@@ -207,8 +208,6 @@ float PoseEstimatorCallback::do_calc(const PoseManager &pose_manager) const
     // Don't use OMP -> SSE
     float diff_sum = 0;
     for (size_t i = 0; i < diffs.size(); i++) {
-//        if (keypoints.info[i].ignore_completely)
-//            continue;
         diff_sum += diffs[i];
     }
 
@@ -243,19 +242,12 @@ void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
 
 #pragma omp parallel for default(none) shared(pose, gradient_times_jacobians, hessian, current_image, previous_image)
     for (size_t i = 0; i < level_keypoints2d.size(); i++) {
+        // For OMP
         const auto fx = level_camera_settings.fx;
         const auto fy = level_camera_settings.fy;
-        // Define insice for to make it thread safe
-        Matx33f rot_mat(pose.get_inv_rotation_matrix());
-        Vec3f translation(pose.get_translation());
+        const Matx33f rot_mat(pose.get_inv_rotation_matrix());
+        const Vec3f translation(pose.get_translation());
         auto kp2d = level_keypoints2d[i];
-//        const auto &info = keypoints.info[i];
-
-//        if (info.ignore_completely) {
-//            for (size_t j = 0; j < PATCH_SIZE*PATCH_SIZE; j++)
-//                (*gradient_times_jacobians)[i*PATCH_SIZE*PATCH_SIZE + j] = Mat::zeros(1, 6, CV_32F);
-//            continue;
-//        }
 
         // cout << "Keypoint position: " << kp2d.x << ", " << kp2d.y << endl;
         kp2d.x -= PATCH_SIZE/2;
@@ -318,6 +310,8 @@ void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
         }
     }
 
+    inv_hessian = hessian->inv(DECOMP_SVD);
+
 #ifdef SUPER_VERBOSE
     std::cout << "Hessian matrix: " << std::endl;
     for (size_t i = 0; i < 6; i++) {
@@ -354,12 +348,6 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
     for (size_t i = 0; i < kps2d.size(); i++) {
         // For OMP
         vector<float>::iterator diff = diffs.begin() + i*PATCH_SIZE*PATCH_SIZE;
-//        auto &info = keypoints.info[i];
-//        if (info.ignore_completely) {
-//            for (size_t j = 0; j < PATCH_SIZE*PATCH_SIZE; j++, diff++)
-//                *diff=0;
-//            continue;
-//        }
 
         Point2f kp2d(kps2d[i].x-PATCH_SIZE/2, kps2d[i].y-PATCH_SIZE/2);
         Point2f kp2d_ref(level_keypoints2d[i].x-PATCH_SIZE/2, level_keypoints2d[i].y-PATCH_SIZE/2);
@@ -401,7 +389,8 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
     transpose(residual, residual);
 
     Mat delta_pos;
-    solve(*hessian, residual, delta_pos, DECOMP_SVD);
+    // solve(*hessian, residual, delta_pos, DECOMP_SVD);
+    delta_pos = inv_hessian * residual;
     Mat pose_gradient(6, 1, CV_32F);
     exponential_map(delta_pos, pose_gradient);
 
