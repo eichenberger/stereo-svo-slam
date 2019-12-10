@@ -57,7 +57,7 @@ void StereoSlam::estimate_pose(Frame *previous_frame)
     float cost = estimator.estimate_pose(previous_frame->pose, estimated_pose);
     END_MEASUREMENT("estimator");
 
-    cout << "Cost after estimation: " << cost << endl;
+    cout << "Estimation cost (intensity diff): " << cost << endl;
     cout << "Pose after estimation: " << estimated_pose << endl;
 
     vector<KeyPoint2d> estimated_kps;
@@ -76,6 +76,9 @@ void StereoSlam::estimate_pose(Frame *previous_frame)
     refiner.refine_pose(keyframe_manager, *frame);
 
     END_MEASUREMENT("pose refinement");
+
+    cout << "Refinement cost (reprojection error): " << cost << endl;
+    cout << "Pose after refinement: " << frame->pose << endl;
 }
 
 
@@ -153,7 +156,6 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
 
         remove_outliers(previous_frame);
         estimate_pose(previous_frame);
-
 
         DepthFilter filter(keyframe_manager, camera_settings);
 

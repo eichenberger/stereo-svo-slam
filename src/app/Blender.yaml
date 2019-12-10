@@ -37,8 +37,8 @@ Camera2.k3: 0.0
 Camera2.p1: 0.0
 Camera2.p2: 0.0
 
-Camera.grid_width: 60
-Camera.grid_height: 40
+Camera.grid_width: 75
+Camera.grid_height: 48
 Camera.search_x: 50
 Camera.search_y: 6
 Camera.window_size: 4

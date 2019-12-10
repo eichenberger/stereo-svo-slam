@@ -23,6 +23,20 @@
 using namespace cv;
 using namespace std;
 
+#define PRINT_TIME_TRACE
+
+#ifdef PRINT_TIME_TRACE
+static TickMeter tick_meter;
+#define START_MEASUREMENT() tick_meter.reset(); tick_meter.start()
+
+#define END_MEASUREMENT(_name) tick_meter.stop();\
+    cout << _name << " took: " << tick_meter.getTimeMilli() << "ms" << endl
+
+#else
+#define START_MEASUREMENT()
+#define END_MEASUREMENT(_name)
+#endif
+
 static void draw_frame(KeyFrame &keyframe, Frame &frame)
 {
     const int SCALE = 2;
@@ -113,7 +127,9 @@ static void read_image(ImageInput *input, StereoSlam *slam)
         return;
     }
 
+    START_MEASUREMENT();
     slam->new_image(gray_l, gray_r);
+    END_MEASUREMENT("Stereo SLAM");
 
     Frame frame;
     slam->get_frame(frame);

@@ -67,8 +67,9 @@ float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
     }
 
     // Do optical flow with each ref image <-> frame set
+    // No omp because optical flow should alread take care
     for (auto itr : reference) {
-        KeyFrame *keyframe = keyframe_manager.get_keyframe(itr.first);
+        const KeyFrame *keyframe = keyframe_manager.get_keyframe(itr.first);
         vector<KeyPoint2d> &active_keypoints = active[itr.first];
         vector<float> &_err = err[itr.first];
 
@@ -105,7 +106,7 @@ float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
         active[info.keyframe_id].pop_back();
     }
 
-#if 1
+#if 0
     Mat result;
     frame.stereo_image.left[0].copyTo(result);
     cvtColor(result, result,  COLOR_GRAY2RGB);
@@ -208,7 +209,7 @@ float PoseRefiner::update_pose(const KeyPoints &keypoints,
     for (size_t i = 0; i < maxIter; i++) {
         Vec6f gradient;
         solver_callback->get_gradient(x0, gradient);
-        float k = 1.0;
+        float k = 10.0;
         for (;i < maxIter; i++) {
             Vec6f x = x0.get_vector() + (k*gradient);
             _x.set_vector(x);
@@ -273,10 +274,13 @@ float PoseRefinerCallback::do_calc(const PoseManager &pose) const
     Mat diff;
     absdiff(_projected_keypoints2d, _keypoints2d, diff);
 
-    double tot_diff = 0;
+    float tot_diff = 0;
+    // TODO: omp has almost no effect
+// #pragma omp parallel for shared(keypoint_information, tot_diff, diff)
     for (size_t i=0; i < keypoint_information.size(); i++) {
+        float *_diff = diff.ptr<float>(i);
         if (!keypoint_information[i].ignore_during_refinement && !keypoint_information[i].ignore_completely) {
-            tot_diff += diff.at<float>(i, 1) + diff.at<float>(i, 0);
+            tot_diff += *_diff + *(_diff+1);
         }
     }
 #ifdef SUPER_VERBOSE
@@ -292,11 +296,13 @@ void PoseRefinerCallback::get_gradient(const PoseManager &x, Vec6f &grad)
     vector<KeyPoint2d> projected_keypoints2d;
     project_keypoints(x, keypoints3d, camera_settings, projected_keypoints2d);
 
-    Mat err = Mat::zeros(6, 1, CV_32F);
-    Mat hessian = Mat::zeros(6,6, CV_32F);
+    Mat err(Mat::zeros(6,1, CV_32F));
+    Mat hessian(Mat::zeros(6, 6, CV_32F));
 
-    Mat tot_diff = Mat::zeros(2,1, CV_32F);
+    Vec2f tot_diff(0,0);
 
+#pragma omp parallel for default(none) \
+    shared(keypoints3d, keypoint_information, tot_diff, err, hessian, projected_keypoints2d)
     for (size_t i = 0; i < keypoints3d.size(); i++) {
         auto x = keypoints3d[i].x;
         auto y = keypoints3d[i].y;
@@ -310,31 +316,19 @@ void PoseRefinerCallback::get_gradient(const PoseManager &x, Vec6f &grad)
                 1.0/z, 0, -1.0*x/(z*z), -1.0*x*y/(z*z), 1.0*(1.0+(x*x)/(z*z)), -1.0*y/z,
                 0, 1.0/z, -1.0*y/(z*z), -1.0*(1+(y*y)/(z*z)), 1.0*x*y/(z*z), 1.0*x/z);
 
-        Mat diff = keypoint_information[i].confidence*(Mat_<float>(2,1) <<
-                keypoints2d[i].x -projected_keypoints2d[i].x,
+        Vec2f diff (keypoints2d[i].x -projected_keypoints2d[i].x,
                 keypoints2d[i].y -projected_keypoints2d[i].y);
 
-        if ((fabs(diff.at<float>(0)) > 3.0) ||
-                (fabs(diff.at<float>(1)) > 3.0))
+        if ((fabs(diff(0)) > 3.0) ||
+                (fabs(diff(1)) > 3.0))
             continue;
         tot_diff += diff;
-#if 0
-        double weight = max(0.1, (2.0 - cv::norm(diff))/2.0);
-
-        Mat transposed_jacobian = jacobian.t();
-        hessian += transposed_jacobian*jacobian * weight;
-        err += transposed_jacobian * diff * weight;
-
-#else
         Mat transposed_jacobian = jacobian.t();
         hessian += transposed_jacobian*jacobian;
         err += transposed_jacobian * diff;
-#endif
-
     }
 
-    Mat hessian_inv = hessian.inv();
-
+    Mat hessian_inv = hessian.inv(DECOMP_SVD);
     Mat twist = hessian_inv*err / keypoints2d.size();
 
     Mat gradient(1, 6, CV_32F);
@@ -342,8 +336,6 @@ void PoseRefinerCallback::get_gradient(const PoseManager &x, Vec6f &grad)
     exponential_map(twist, gradient);
     float *data = gradient.ptr<float>();
 
-    // double _norm = cv::norm(gradient);
-    // gradient /= _norm;
 
 #ifdef SUPER_VERBOSE
     cout << "gradient: " << data[0] << "," << data[1] << "," << data[2] << ","<< data[3] << ","<< data[4] << ","<< data[5] << "," << endl;

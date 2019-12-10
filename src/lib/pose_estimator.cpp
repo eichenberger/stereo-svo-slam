@@ -129,7 +129,7 @@ float PoseEstimator::estimate_pose_at_level(const PoseManager &pose_manager_gues
     for (size_t i = 0; i < maxIter; i++) {
         Vec6f gradient;
         solver_callback->get_gradient(x0, gradient);
-        float k = 1.0;
+        float k = 10.0;
         for (;i < maxIter; i++) {
             Vec6f x = x0.get_vector() + (k*gradient);
             _x.set_vector(x);
