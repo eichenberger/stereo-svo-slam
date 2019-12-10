@@ -51,43 +51,46 @@ void DepthFilter::outlier_check(Frame &frame, const vector<float> &disparities)
     vector<KeyPoint3d> kps3d;
     kps3d.resize(kps2d.size());
 
-    Matx33f rot_mat(frame.pose.get_rotation_matrix());
-
-    Vec3f translation(frame.pose.get_translation());
+    const Matx33f rot_mat(frame.pose.get_rotation_matrix());
+    const Vec3f translation(frame.pose.get_translation());
+#pragma omp parallel for default(none) shared(disparities, kps3d, kps2d, rot_mat, translation) firstprivate(fx, fy, cx, cy, baseline)
     for (size_t i = 0; i < disparities.size(); i++) {
+        const KeyPoint2d &kp2d = kps2d[i];
+        KeyPoint3d &kp3d = kps3d[i];
+
         float disparity = disparities[i];
         if (disparity < 0)
             continue;
         // Calculate depth and transform kp3d into global coordinates
         float _z = baseline/std::max<float>(disparity, 0.5);
-        float _x = (kps2d[i].x - cx)/fx*_z;
-        float _y = (kps2d[i].y - cy)/fy*_z;
+        float _x = (kp2d.x - cx)/fx*_z;
+        float _y = (kp2d.y - cy)/fy*_z;
 
-        Mat kp3d = (Mat_<float>(3, 1) <<
-                _x, _y, _z);
+        Vec3f _kp3d (_x, _y, _z);
 
-        kp3d = rot_mat*kp3d;
-        kp3d += translation;
+        _kp3d = rot_mat*_kp3d;
+        _kp3d += translation;
 
-        kps3d[i].x = kp3d.at<float>(0);
-        kps3d[i].y = kp3d.at<float>(1);
-        kps3d[i].z = kp3d.at<float>(2);
+        kp3d.x = _kp3d(0);
+        kp3d.y = _kp3d(1);
+        kp3d.z = _kp3d(2);
 
     }
 
     vector<KeyPointInformation> &info = frame.kps.info;
+#pragma omp parallel for default(none) shared(kps3d, info, disparities, keyframe_manager) firstprivate(baseline)
     for (size_t i = 0; i < kps3d.size(); i++) {
         const float &disparity = disparities[i];
         if (disparity < 0)
             continue;
 
-        KeyFrame *keyframe = keyframe_manager.get_keyframe(info[i].keyframe_id);
-        KeyPoint3d &kp3d_ref = keyframe->kps.kps3d[info[i].keypoint_index];
+        const KeyFrame *keyframe = keyframe_manager.get_keyframe(info[i].keyframe_id);
+        const KeyPoint3d &kp3d_ref = keyframe->kps.kps3d[info[i].keypoint_index];
         Matx33f inv_rotation_kf(keyframe->pose.get_inv_rotation_matrix());
         Vec3f translation(keyframe->pose.get_translation());
 
         // We rotate the distances so that we get a z value with reference
-        // at current frame
+        // at keyframe
         Vec3f kp3d(&kps3d[i].x);
         kp3d = kp3d - translation;
         kp3d = inv_rotation_kf*kp3d;
@@ -101,12 +104,12 @@ void DepthFilter::outlier_check(Frame &frame, const vector<float> &disparities)
 
         float pixel_distance = disp - disp_ref;
 
-        cout << "Disparity reference: " << disp_ref<< endl;
-        cout << "Disparity new: " << disparity << endl;
-        cout << "Disparity transformed: " << disp << endl;
-        cout << "Pixel distance: " << pixel_distance << endl;
+        // cout << "Disparity reference: " << disp_ref<< endl;
+        // cout << "Disparity new: " << disparity << endl;
+        // cout << "Disparity transformed: " << disp << endl;
+        // cout << "Pixel distance: " << pixel_distance << endl;
 
-        // Standard deviation can be +- 3 pixel
+        // Standard deviation can be +- 0.5 pixel
         float deviation = 0.5;
         // Let's define a point as inliner if it is within 5*deviation which should
         // match for 99% of all points
@@ -132,21 +135,21 @@ void DepthFilter::update_kps3d(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
     vector<KeyPointInformation> &info = frame.kps.info;
 #pragma omp parallel for default(none) shared(updated_kps3d, keyframe_manager, info, frame) firstprivate(fx, fy, cx, cy)
     for (size_t i = 0; i < updated_kps3d.size(); i++) {
+        KeyPoint3d &update_kp3d = updated_kps3d[i];
         const KeyFrame *keyframe = keyframe_manager.get_keyframe(info[i].keyframe_id);
-
-        Matx33f inv_rotation_frame(frame.pose.get_inv_rotation_matrix());
 
         Matx33f inv_rotation_kf(keyframe->pose.get_inv_rotation_matrix());
         Matx33f rotation_kf(keyframe->pose.get_rotation_matrix());
         Matx33f rotation_frame(frame.pose.get_rotation_matrix());
 
+        // Rotate everything from global coordinates to local
         Vec3f c1(keyframe->pose.get_translation());
         Vec3f c2(frame.pose.get_translation());
-        Vec3f c1_rot = inv_rotation_frame*c1;
-        Vec3f c2_rot = inv_rotation_kf*c2;
-
         Vec3f diff;
-        absdiff(c1_rot, c2_rot, diff);
+        absdiff(c1, c2, diff);
+
+        diff = inv_rotation_kf*diff;
+
         // cout << "Frame diff: " << diff(0) << ", " << diff(1) << endl;
         // We require a minimal movement of 10cm in x or y direction
         // If it's smaller the noise is to big and don't forget
@@ -187,23 +190,6 @@ void DepthFilter::update_kps3d(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
 
         solve(a, y, l, DECOMP_SVD);
 
-
-        // Vec3f point1 = c1 + l(0)*(p1-c1);
-        // Vec3f point2 = c2 + l(1)*(p2-c2);
-
-        //cout << "Point ID: " << info[i].keyframe_id << "," << info[i].keypoint_index << endl;
-        //cout << "l0: " << l(0) << ", l1: " << l(1) <<endl;
-
-        //cout << "C1: " << c1(0) << "," << c1(1) << "," << c1(2) << ",";
-        //cout << "C2: " << c2(0) << "," << c2(1) << "," << c2(2) << endl;
-
-        //cout << "P1: " << p1(0) << "," << p1(1) << "," << p1(2) << endl;
-        //cout << "Point1: " << point1(0) << "," << point1(1) << "," << point1(2) << endl;
-        //cout << "P2: " << p2(0) << "," << p2(1) << "," << p2(2) << endl;
-        //cout << "Point2: " << point2(0) << "," << point2(1) << "," << point2(2) << endl;
-
-        // Vec3f p1_stroke = c1+(l(0)*(p1-c1));
-
         KalmanFilter &kf = info[i].kf;
 
 
@@ -216,12 +202,8 @@ void DepthFilter::update_kps3d(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
 
         Vec3f new_p = inv_rotation_kf*l(0)*(p1-c1);
         float _z = new_p(2);
-
-        //cout << "Z for correction: " << _z << endl;
-
+        // Only 1/z is normally distributed, therefore the Kalman Filter estimates 1/z not z
         _z = 1.0/kf.correct((Mat_<float>(1,1) << 1/_z)).at<float>(0);
-
-        //cout << "Z after correction: " << _z << endl;
 
         float _x = (kp2d_ref.x - cx)/fx*_z;
         float _y = (kp2d_ref.y - cy)/fy*_z;
@@ -229,19 +211,10 @@ void DepthFilter::update_kps3d(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
         Vec3f corrected_p (_x, _y, _z);
         corrected_p = c1 + rotation_kf*corrected_p;
 
-        //cout << "Corrected z: " << _z;
-
-        updated_kps3d[i].x = corrected_p(0);
-        updated_kps3d[i].y = corrected_p(1);
-        updated_kps3d[i].z = corrected_p(2);
-
-        // const KeyPoint3d &kp3d_ref = keyframe->kps.kps3d[info[i].keypoint_index];
-        //cout << "New estimate: " << updated_kps3d[i].x << ","
-        //    << updated_kps3d[i].y << ","  << updated_kps3d[i].z;
-        //cout << " Old estimate: " << kp3d_ref.x << ","
-        //    << kp3d_ref.y << "," << kp3d_ref.z << endl;
+        update_kp3d.x = corrected_p(0);
+        update_kp3d.y = corrected_p(1);
+        update_kp3d.z = corrected_p(2);
     }
-
 }
 
 void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
