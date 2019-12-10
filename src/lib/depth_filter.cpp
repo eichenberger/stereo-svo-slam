@@ -38,18 +38,14 @@ std::ostream& operator<<(std::ostream& os, const Vec3f& vector)
     return os;
 }
 
-void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
+void DepthFilter::outlier_check(Frame &frame, const vector<float> &disparities)
 {
-    float fx = camera_settings.fx;
-    float fy = camera_settings.fy;
-    float cx = camera_settings.cx;
-    float cy = camera_settings.cy;
-    float baseline = camera_settings.baseline;
+    const float &fx = camera_settings.fx;
+    const float &fy = camera_settings.fy;
+    const float &cx = camera_settings.cx;
+    const float &cy = camera_settings.cy;
+    const float &baseline = camera_settings.baseline;
 
-
-    // Calculate depth
-    vector<float> disparities;
-    calculate_disparities(frame, disparities);
 
     vector<KeyPoint2d> &kps2d = frame.kps.kps2d;
     vector<KeyPoint3d> kps3d;
@@ -79,11 +75,9 @@ void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
 
     }
 
-    updated_kps3d = frame.kps.kps3d;
-
     vector<KeyPointInformation> &info = frame.kps.info;
     for (size_t i = 0; i < kps3d.size(); i++) {
-        float &disparity = disparities[i];
+        const float &disparity = disparities[i];
         if (disparity < 0)
             continue;
 
@@ -123,10 +117,26 @@ void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
         }
         else
             info[i].inlier_count++;
+    }
+}
 
-#if 1
+void DepthFilter::update_kps3d(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
+{
+    const float &fx = camera_settings.fx;
+    const float &fy = camera_settings.fy;
+    const float &cx = camera_settings.cx;
+    const float &cy = camera_settings.cy;
+
+    updated_kps3d = frame.kps.kps3d;
+
+    vector<KeyPointInformation> &info = frame.kps.info;
+#pragma omp parallel for default(none) shared(updated_kps3d, keyframe_manager, info, frame) firstprivate(fx, fy, cx, cy)
+    for (size_t i = 0; i < updated_kps3d.size(); i++) {
+        const KeyFrame *keyframe = keyframe_manager.get_keyframe(info[i].keyframe_id);
+
         Matx33f inv_rotation_frame(frame.pose.get_inv_rotation_matrix());
 
+        Matx33f inv_rotation_kf(keyframe->pose.get_inv_rotation_matrix());
         Matx33f rotation_kf(keyframe->pose.get_rotation_matrix());
         Matx33f rotation_frame(frame.pose.get_rotation_matrix());
 
@@ -137,18 +147,21 @@ void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
 
         Vec3f diff;
         absdiff(c1_rot, c2_rot, diff);
-        cout << "Frame diff: " << diff(0) << ", " << diff(1) << endl;
+        // cout << "Frame diff: " << diff(0) << ", " << diff(1) << endl;
         // We require a minimal movement of 10cm in x or y direction
         // If it's smaller the noise is to big and don't forget
         // we have a disparity of the camera which helps us
         // A movement in z direction can't help us at all
-        if (diff(0) < 0.1 || diff(1) < 0.1)
+        // It also seems if the distance is too big we have too much jitter
+        // and it gets inaccurate again
+        if ((diff(0) < 0.1 && diff(1) < 0.1) || diff(0) > 0.7 ||
+            diff(1) > 0.7 || diff(2) > 0.5)
             continue;
 
         if (info[i].ignore_completely || info[i].ignore_during_refinement)
             continue;
 
-        KeyPoint2d &kp2d_ref = keyframe->kps.kps2d[info[i].keypoint_index];
+        const KeyPoint2d &kp2d_ref = keyframe->kps.kps2d[info[i].keypoint_index];
         Vec3f p1;
         p1[0] = kp2d_ref.x - cx;
         p1[1] = kp2d_ref.y - cy;
@@ -156,7 +169,7 @@ void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
 
         p1 = rotation_kf * p1;
 
-        KeyPoint2d &kp2d = frame.kps.kps2d[i];
+        const KeyPoint2d &kp2d = frame.kps.kps2d[i];
         Vec3f p2;
         p2[0] = kp2d.x-cx;
         p2[1] = kp2d.y-cy;
@@ -175,19 +188,19 @@ void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
         solve(a, y, l, DECOMP_SVD);
 
 
-        Vec3f point1 = c1 + l(0)*(p1-c1);
-        Vec3f point2 = c2 + l(1)*(p2-c2);
+        // Vec3f point1 = c1 + l(0)*(p1-c1);
+        // Vec3f point2 = c2 + l(1)*(p2-c2);
 
-        cout << "Point ID: " << info[i].keyframe_id << "," << info[i].keypoint_index << endl;
-        cout << "l0: " << l(0) << ", l1: " << l(1) <<endl;
+        //cout << "Point ID: " << info[i].keyframe_id << "," << info[i].keypoint_index << endl;
+        //cout << "l0: " << l(0) << ", l1: " << l(1) <<endl;
 
-        cout << "C1: " << c1(0) << "," << c1(1) << "," << c1(2) << ",";
-        cout << "C2: " << c2(0) << "," << c2(1) << "," << c2(2) << endl;
+        //cout << "C1: " << c1(0) << "," << c1(1) << "," << c1(2) << ",";
+        //cout << "C2: " << c2(0) << "," << c2(1) << "," << c2(2) << endl;
 
-        cout << "P1: " << p1(0) << "," << p1(1) << "," << p1(2) << endl;
-        cout << "Point1: " << point1(0) << "," << point1(1) << "," << point1(2) << endl;
-        cout << "P2: " << p2(0) << "," << p2(1) << "," << p2(2) << endl;
-        cout << "Point2: " << point2(0) << "," << point2(1) << "," << point2(2) << endl;
+        //cout << "P1: " << p1(0) << "," << p1(1) << "," << p1(2) << endl;
+        //cout << "Point1: " << point1(0) << "," << point1(1) << "," << point1(2) << endl;
+        //cout << "P2: " << p2(0) << "," << p2(1) << "," << p2(2) << endl;
+        //cout << "Point2: " << point2(0) << "," << point2(1) << "," << point2(2) << endl;
 
         // Vec3f p1_stroke = c1+(l(0)*(p1-c1));
 
@@ -196,7 +209,7 @@ void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
 
         // Deviation of 0.5 pixel divided by baseline which here is
         // the movement
-        deviation = 0.5/(sqrt(diff(0)*diff(0)+ diff(1)*diff(1))/2);
+        float deviation = 0.5/(sqrt(diff(0)*diff(0)+ diff(1)*diff(1))/2);
         kf.measurementNoiseCov.at<float>(0,0) = deviation*deviation;
 
         kf.predict();
@@ -204,11 +217,11 @@ void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
         Vec3f new_p = inv_rotation_kf*l(0)*(p1-c1);
         float _z = new_p(2);
 
-        cout << "Z for correction: " << _z << endl;
+        //cout << "Z for correction: " << _z << endl;
 
         _z = 1.0/kf.correct((Mat_<float>(1,1) << 1/_z)).at<float>(0);
 
-        cout << "Z after correction: " << _z << endl;
+        //cout << "Z after correction: " << _z << endl;
 
         float _x = (kp2d_ref.x - cx)/fx*_z;
         float _y = (kp2d_ref.y - cy)/fy*_z;
@@ -216,19 +229,31 @@ void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
         Vec3f corrected_p (_x, _y, _z);
         corrected_p = c1 + rotation_kf*corrected_p;
 
-        cout << "Corrected z: " << _z;
+        //cout << "Corrected z: " << _z;
 
         updated_kps3d[i].x = corrected_p(0);
         updated_kps3d[i].y = corrected_p(1);
         updated_kps3d[i].z = corrected_p(2);
 
-        cout << "New estimate: " << updated_kps3d[i].x << ","
-            << updated_kps3d[i].y << ","  << updated_kps3d[i].z;
-        cout << " Old estimate: " << kp3d_ref.x << ","
-            << kp3d_ref.y << "," << kp3d_ref.z << endl;
-
-#endif
+        // const KeyPoint3d &kp3d_ref = keyframe->kps.kps3d[info[i].keypoint_index];
+        //cout << "New estimate: " << updated_kps3d[i].x << ","
+        //    << updated_kps3d[i].y << ","  << updated_kps3d[i].z;
+        //cout << " Old estimate: " << kp3d_ref.x << ","
+        //    << kp3d_ref.y << "," << kp3d_ref.z << endl;
     }
+
+}
+
+void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
+{
+
+    // Calculate depth
+    vector<float> disparities;
+    calculate_disparities(frame, disparities);
+
+    outlier_check(frame, disparities);
+
+    update_kps3d(frame, updated_kps3d);
 }
 
 void DepthFilter::calculate_disparities(Frame &frame, std::vector<float> &disparity)

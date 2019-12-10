@@ -75,10 +75,6 @@ void StereoSlam::estimate_pose(Frame *previous_frame)
     PoseRefiner refiner(camera_settings);
     refiner.refine_pose(keyframe_manager, *frame);
 
-    // Reproject keypoints with refined pose
-//    project_keypoints(frame->pose, frame->kps.kps3d, camera_settings,
-//            frame->kps.kps2d);
-
     END_MEASUREMENT("pose refinement");
 }
 

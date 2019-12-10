@@ -139,7 +139,8 @@ float PoseEstimator::estimate_pose_at_level(const PoseManager &pose_manager_gues
                 prev_cost = new_cost;
                 break;
             }
-            else if (fabs(new_cost - prev_cost) < 0.1) {
+            else if (fabs(new_cost - prev_cost) < 1.0) {
+                // Change below 1px
                 cout << "Drop out because of small change" << endl;
                 i = maxIter;
                 break;

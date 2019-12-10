@@ -105,7 +105,7 @@ float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
         active[info.keyframe_id].pop_back();
     }
 
-#if 0
+#if 1
     Mat result;
     frame.stereo_image.left[0].copyTo(result);
     cvtColor(result, result,  COLOR_GRAY2RGB);

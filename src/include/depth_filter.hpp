@@ -15,6 +15,8 @@ public:
 
 private:
     void calculate_disparities(Frame &frame, std::vector<float> &disparity);
+    void outlier_check(Frame &frame, const std::vector<float> &disparities);
+    void update_kps3d(Frame &frame, std::vector<KeyPoint3d> &updated_kps3d);
 
     KeyFrameManager &keyframe_manager;
     const CameraSettings &camera_settings;
