@@ -32,6 +32,21 @@ StereoSlam::StereoSlam(const CameraSettings &camera_settings) :
 {
 }
 
+void StereoSlam::remove_outliers(Frame *frame)
+{
+    KeyPoints updated;
+    // Set to maximum size
+    for (size_t i = 0; i < frame->kps.kps2d.size(); i++) {
+        if (frame->kps.info[i].ignore_completely)
+            continue;
+        updated.kps2d.push_back(frame->kps.kps2d[i]);
+        updated.kps3d.push_back(frame->kps.kps3d[i]);
+        updated.info.push_back(frame->kps.info[i]);
+    }
+
+    frame->kps = updated;
+}
+
 void StereoSlam::estimate_pose(Frame *previous_frame)
 {
     PoseEstimator estimator(frame->stereo_image, previous_frame->stereo_image,
@@ -136,6 +151,7 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
         Vec6f motion_applied = frame->pose.get_vector() + motion;
         frame->pose.set_vector(motion_applied);
 
+        remove_outliers(previous_frame);
         estimate_pose(previous_frame);
 
 
@@ -143,28 +159,6 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
 
         vector<KeyPoint3d> updated_kps3d;
 
- #if 0
-        vector<KeyPoint2d> kps2d;
-        project_keypoints(frame->pose, frame->kps.kps3d, camera_settings,
-                kps2d);
-        Mat result;
-        frame->stereo_image.left[0].copyTo(result);
-        cvtColor(result, result,  COLOR_GRAY2RGB);
-        for (size_t i = 0; i < kps2d.size(); i++) {
-            KeyPointInformation &info = frame->kps.info[i];
-            KeyPoint2d &kp2d = kps2d[i];
-            Scalar color (info.color.r, info.color.g, info.color.b);
-            int msize = 10;
-            if (frame->kps.info[i].ignore_during_refinement || frame->kps.info[i].ignore_during_refinement) {
-                msize=5;
-            }
-            int marker = MARKER_CROSS;
-            Point kp = Point(kp2d.x, kp2d.y);
-            cv::drawMarker(result, kp, color, marker, msize);
-        }
-
-        imshow("after refinement", result);
-#endif
         START_MEASUREMENT();
         filter.update_depth(*frame, updated_kps3d);
 

@@ -12,7 +12,6 @@
 
 //#define VERBOSE 1
 //#define SUPER_VERBOSE 1
-//#define PLOT_GRADIENT 1 // Disable omp if you want to plot the gradient!
 
 using namespace cv;
 using namespace std;
@@ -34,6 +33,8 @@ public:
     void reset_hessian();
 
 private:
+    void calculate_hessian(const PoseManager pose);
+
     const StereoImage &current_stereo_image;
     const StereoImage &previous_stereo_image;
     const KeyPoints &keypoints;
@@ -44,8 +45,11 @@ private:
 
     cv::Ptr<Mat> hessian;
     cv::Ptr<vector<Mat>> gradient_times_jacobians;
+
+    const static int PATCH_SIZE;
 };
 
+const int PoseEstimatorCallback::PATCH_SIZE = 4;
 
 PoseEstimator::PoseEstimator(const StereoImage &current_stereo_image,
     const StereoImage &previous_stereo_image,
@@ -119,22 +123,17 @@ float PoseEstimator::estimate_pose_at_level(const PoseManager &pose_manager_gues
     solver_callback->setLevel(level);
     PoseManager x0 = pose_manager_guess;
     float prev_cost = solver_callback->do_calc(x0);
-//    cout << "Estimate at level: " << level << " x0: " << pose_manager_guess << endl;
+    PoseManager _x;
+
     for (size_t i = 0; i < maxIter; i++) {
         Vec6f gradient;
         solver_callback->get_gradient(x0, gradient);
         float k = 1.0;
         for (;i < maxIter; i++) {
             Vec6f x = x0.get_vector() + (k*gradient);
-            PoseManager _x;
             _x.set_vector(x);
-            // cout << "Calc at x: " << _x << endl;
             float new_cost = solver_callback->do_calc(_x);
             if (new_cost < prev_cost) {
-#ifdef VERBOSE
-                cout << "Better value prev cost: " << prev_cost << " new cost: " << new_cost << endl;
-                cout << "x: " << _x << endl;
-#endif
                 x0 = _x;
                 prev_cost = new_cost;
                 break;
@@ -205,15 +204,11 @@ float PoseEstimatorCallback::do_calc(const PoseManager &pose_manager) const
             current_stereo_image.left[level],
             level_keypoints2d, kps2d, level_camera_settings.window_size, diffs);
 
-    // Use float because maybe it is faster? TODO: Verify
+    // Don't use OMP -> SSE
     float diff_sum = 0;
-    //cout << "Diffs: ";
-    //    cout << diff << ", ";
-    //cout << endl;
-//#pragma omp parallel for default(none) shared(diffs, keypoints) reduction(+:diff_sum)
     for (size_t i = 0; i < diffs.size(); i++) {
-        if (keypoints.info[i].ignore_completely)
-            continue;
+//        if (keypoints.info[i].ignore_completely)
+//            continue;
         diff_sum += diffs[i];
     }
 
@@ -236,7 +231,104 @@ double PoseEstimatorCallback::calc(const double *x) const
     return do_calc(manager);
 }
 
+void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
+{
+    const Mat &current_image = current_stereo_image.left[level];
+    const Mat &previous_image = previous_stereo_image.left[level];
 
+    cout << "Calculate hessian" << endl;
+    hessian = new Mat(Mat::zeros(6,6, CV_32F));
+    gradient_times_jacobians.reset(new vector<Mat>);
+    gradient_times_jacobians->resize(level_keypoints2d.size()*PATCH_SIZE*PATCH_SIZE);
+
+#pragma omp parallel for default(none) shared(pose, gradient_times_jacobians, hessian, current_image, previous_image)
+    for (size_t i = 0; i < level_keypoints2d.size(); i++) {
+        const auto fx = level_camera_settings.fx;
+        const auto fy = level_camera_settings.fy;
+        // Define insice for to make it thread safe
+        Matx33f rot_mat(pose.get_inv_rotation_matrix());
+        Vec3f translation(pose.get_translation());
+        auto kp2d = level_keypoints2d[i];
+//        const auto &info = keypoints.info[i];
+
+//        if (info.ignore_completely) {
+//            for (size_t j = 0; j < PATCH_SIZE*PATCH_SIZE; j++)
+//                (*gradient_times_jacobians)[i*PATCH_SIZE*PATCH_SIZE + j] = Mat::zeros(1, 6, CV_32F);
+//            continue;
+//        }
+
+        // cout << "Keypoint position: " << kp2d.x << ", " << kp2d.y << endl;
+        kp2d.x -= PATCH_SIZE/2;
+        kp2d.y -= PATCH_SIZE/2;
+        Vec3f kp(&keypoints.kps3d[i].x);
+
+        // Neutralize angle
+        kp -= translation;
+        kp = rot_mat*kp;
+
+        auto x = kp(0);
+        auto y = kp(1);
+        auto z = kp(2);
+
+        // See A tutorial on SE(3) transformation parameterizations and on-manifold optimization page 58
+        // for the jaccobian. Take - because we want to minimize
+        Mat jacobian = -(Mat_<float>(2,6) <<
+            fx/z, 0, -fx*x/(z*z), -fx*x*y/(z*z), fx*(1+(x*x)/(z*z)), -fx*y/z,
+            0, fy/z, -fy*y/(z*z), -fy*(1+(y*y)/(z*z)), fy*x*y/(z*z), fy*x/z);
+
+        for (size_t r = 0; r < PATCH_SIZE; r++)
+        {
+            for (size_t c = 0; c < PATCH_SIZE; c++) {
+                if (kp2d.x < 0 || kp2d.y < 0 || kp2d.x >= current_image.cols ||
+                        kp2d.y >= current_image.rows) {
+                    (*gradient_times_jacobians)[i*PATCH_SIZE*PATCH_SIZE+r*PATCH_SIZE+c] = Mat::zeros(1, 6, CV_32F);
+
+                    kp2d.x ++;
+                    continue;
+                }
+                Mat int1, int2, int3, int4;
+
+                const Size patch_size(2,2);
+
+                getRectSubPix(previous_image,
+                    patch_size, Point2f(kp2d.x+1,kp2d.y), int1, CV_32F);
+                getRectSubPix(previous_image,
+                    patch_size, Point2f(kp2d.x-1,kp2d.y), int2, CV_32F);
+                getRectSubPix(previous_image,
+                    patch_size, Point2f(kp2d.x,kp2d.y+1), int3, CV_32F);
+                getRectSubPix(previous_image,
+                    patch_size, Point2f(kp2d.x,kp2d.y-1), int4, CV_32F);
+
+
+                float diff1 = sum(int1-int2)(0);
+                float diff2 = sum(int3-int4)(0);
+                Mat _grad = (Mat_<float>(1,2) <<
+                        diff1, diff2);
+
+                Mat _grad_times_jac = _grad*jacobian;
+                // Store the result of grad*jacobian for further usage
+                (*gradient_times_jacobians)[i*PATCH_SIZE*PATCH_SIZE+r*PATCH_SIZE+c] = _grad_times_jac;
+
+                // Calculate the gauss newton hessian_inv (~second derivate)
+                *hessian += (_grad_times_jac.t()*_grad_times_jac);
+                kp2d.x ++;
+            }
+            kp2d.x -= PATCH_SIZE;
+            kp2d.y ++;
+        }
+    }
+
+#ifdef SUPER_VERBOSE
+    std::cout << "Hessian matrix: " << std::endl;
+    for (size_t i = 0; i < 6; i++) {
+        for (size_t j = 0; j < 6; j++) {
+            std::cout << hessian->at<float>(i, j) << ", ";
+        }
+        std::cout << std::endl;
+    }
+#endif
+
+}
 
 void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
 {
@@ -245,121 +337,10 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
     const Mat &current_image = current_stereo_image.left[level];
     const Mat &previous_image = previous_stereo_image.left[level];
 
-#ifdef PLOT_GRADIENT
-    static vector<Point2f> plot_kps;
-    static vector<Point2f> gradients;
-#endif
-
-
     // If we haven't calculated the hessian_inv yet we will do it now.
     // Because of compositional lucas kanade we only do it once
     if (hessian.empty()) {
-#ifdef PLOT_GRADIENT
-        gradients.clear();
-        plot_kps.clear();
-#endif
-        cout << "Calculate hessian" << endl;
-        hessian = new Mat(Mat::zeros(6,6, CV_32F));
-        gradient_times_jacobians.reset(new vector<Mat>);
-        gradient_times_jacobians->resize(level_keypoints2d.size()*PATCH_SIZE*PATCH_SIZE);
-
-#pragma omp parallel for default(none) shared(pose, gradient_times_jacobians, hessian, current_image, previous_image)
-        for (size_t i = 0; i < level_keypoints2d.size(); i++) {
-            const auto fx = level_camera_settings.fx;
-            const auto fy = level_camera_settings.fy;
-            // Define insice for to make it thread safe
-            Matx33f rot_mat(pose.get_inv_rotation_matrix());
-            Vec3f translation(pose.get_translation());
-            auto kp2d = level_keypoints2d[i];
-            const auto &info = keypoints.info[i];
-
-            if (info.ignore_completely)
-                continue;
-
-            // cout << "Keypoint position: " << kp2d.x << ", " << kp2d.y << endl;
-            kp2d.x -= PATCH_SIZE/2;
-            kp2d.y -= PATCH_SIZE/2;
-            Vec3f kp(&keypoints.kps3d[i].x);
-
-            // Neutralize angle
-            kp -= translation;
-            kp = rot_mat*kp;
-
-            auto x = kp(0);
-            auto y = kp(1);
-            auto z = kp(2);
-
-            // See A tutorial on SE(3) transformation parameterizations and on-manifold optimization page 58
-            // for the jaccobian. Take - because we want to minimize
-            Mat jacobian = -(Mat_<float>(2,6) <<
-                fx/z, 0, -fx*x/(z*z), -fx*x*y/(z*z), fx*(1+(x*x)/(z*z)), -fx*y/z,
-                0, fy/z, -fy*y/(z*z), -fy*(1+(y*y)/(z*z)), fy*x*y/(z*z), fy*x/z);
-
-            for (size_t r = 0; r < PATCH_SIZE; r++)
-            {
-                for (size_t c = 0; c < PATCH_SIZE; c++) {
-                    if (kp2d.x < 0 || kp2d.y < 0 || kp2d.x >= current_image.cols ||
-                            kp2d.y >= current_image.rows) {
-                        (*gradient_times_jacobians)[i*PATCH_SIZE*PATCH_SIZE+r*PATCH_SIZE+c] = Mat::zeros(1, 6, CV_32F);
-
-#ifdef PLOT_GRADIENT
-                        Point2f p1(kp2d.x, kp2d.y);
-                        Point2f p2(0, 0);
-                        plot_kps.push_back(p1);
-                        gradients.push_back(p2);
-#endif
-                        kp2d.x ++;
-                        continue;
-                    }
-                    Mat int1, int2, int3, int4;
-
-                    const Size patch_size(2,2);
-
-                    getRectSubPix(previous_image,
-                        patch_size, Point2f(kp2d.x+1,kp2d.y), int1, CV_32F);
-                    getRectSubPix(previous_image,
-                        patch_size, Point2f(kp2d.x-1,kp2d.y), int2, CV_32F);
-                    getRectSubPix(previous_image,
-                        patch_size, Point2f(kp2d.x,kp2d.y+1), int3, CV_32F);
-                    getRectSubPix(previous_image,
-                        patch_size, Point2f(kp2d.x,kp2d.y-1), int4, CV_32F);
-
-
-                    float diff1 = sum(int1-int2)(0);
-                    float diff2 = sum(int3-int4)(0);
-                    Mat _grad = (Mat_<float>(1,2) <<
-                            diff1, diff2);
-
-                    Mat _grad_times_jac = _grad*jacobian;
-                    // Store the result of grad*jacobian for further usage
-                    (*gradient_times_jacobians)[i*PATCH_SIZE*PATCH_SIZE+r*PATCH_SIZE+c] = _grad_times_jac;
-
-#ifdef PLOT_GRADIENT
-                    Point2f p1(kp2d.x, kp2d.y);
-                    Point2f p2(diff1, diff2);
-
-                    plot_kps.push_back(p1);
-                    gradients.push_back(p2);
-#endif
-
-                    // Calculate the gauss newton hessian_inv (~second derivate)
-                    *hessian += (_grad_times_jac.t()*_grad_times_jac);
-                    kp2d.x ++;
-                }
-                kp2d.x -= PATCH_SIZE;
-                kp2d.y ++;
-            }
-        }
-
-#ifdef SUPER_VERBOSE
-        std::cout << "Hessian matrix: " << std::endl;
-        for (size_t i = 0; i < 6; i++) {
-            for (size_t j = 0; j < 6; j++) {
-                std::cout << hessian->at<float>(i, j) << ", ";
-            }
-            std::cout << std::endl;
-        }
-#endif
+        calculate_hessian(pose);
     }
 
     // See ICRA Forster 14 for the whole algorithm
@@ -368,35 +349,23 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
 
     cout << "pose for projection: " << pose << endl;
 
-    Mat residual = Mat::zeros(6,1, CV_32F);
-#ifdef PLOT_GRADIENT
-    Mat grad_image;
-    cvtColor(previous_image, grad_image, COLOR_GRAY2RGB);
-    vector<Point2f>::iterator gradient = gradients.begin();
-    Point2f tot_grad(0,0);
-    Point2f tot_grad_raw(0,0);
-#endif
-#pragma omp parallel for default(none) shared(pose, gradient_times_jacobians, \
-        keypoints, kps2d, residual, current_image, previous_image)
+    vector<float> diffs(kps2d.size()*PATCH_SIZE*PATCH_SIZE);
+#pragma omp parallel for default(none) shared(diffs, kps2d, previous_image, current_image)
     for (size_t i = 0; i < kps2d.size(); i++) {
-        auto &info = keypoints.info[i];
-        if (info.ignore_completely)
-            continue;
+        // For OMP
+        vector<float>::iterator diff = diffs.begin() + i*PATCH_SIZE*PATCH_SIZE;
+//        auto &info = keypoints.info[i];
+//        if (info.ignore_completely) {
+//            for (size_t j = 0; j < PATCH_SIZE*PATCH_SIZE; j++, diff++)
+//                *diff=0;
+//            continue;
+//        }
 
         Point2f kp2d(kps2d[i].x-PATCH_SIZE/2, kps2d[i].y-PATCH_SIZE/2);
         Point2f kp2d_ref(level_keypoints2d[i].x-PATCH_SIZE/2, level_keypoints2d[i].y-PATCH_SIZE/2);
-
-#ifdef PLOT_GRADIENT
-        Point2f grad(0,0);
-        Point2f grad_ref(0,0);
-#endif
-        // cout << "Keypoint 2D at: " << kps2d[i].x << ", " << kps2d[i].y << endl;
-        // const KeyPoint3d &kp3d = keypoints.kps3d[i];
-        // cout << "Keypoint 3D at: " << kp3d.x << ", " << kp3d.y << ", " << kp3d.z << endl;
-
         for (size_t r = 0; r < PATCH_SIZE; r++)
         {
-            for (size_t c = 0; c < PATCH_SIZE; c++) {
+            for (size_t c = 0; c < PATCH_SIZE; c++, diff++ , kp2d.x++, kp2d_ref.x++) {
                 Mat int1, int2;
 
                 cv::getRectSubPix(previous_image, Size(2,2),
@@ -404,66 +373,34 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
                 cv::getRectSubPix(current_image, Size(2,2),
                         kp2d, int2, CV_32F);
 
-                float diff = sum(int2-int1)(0);
-
-#if SUPER_VERBOSE
-                cout << "Intensity difference template at " <<
-                     kp2d_ref.x << ", " << kp2d_ref.y << " image at " <<
-                     kp2d.x << ", " << kp2d.y << " diff: " << diff << endl;
-#endif
-
-
-#ifdef PLOT_GRADIENT
-                grad += diff*(*gradient);
-                tot_grad += diff*(*gradient);
-                tot_grad_raw += *gradient;
-                grad_ref += *gradient;
-                gradient++;
-#endif
-
-                Mat&_grad_times_jac = (*gradient_times_jacobians)[i*PATCH_SIZE*PATCH_SIZE + r*PATCH_SIZE+c];
-                Mat residual_kp = _grad_times_jac*diff;
-                transpose(residual_kp, residual_kp);
-                residual -= residual_kp;
-                kp2d.x++;
-                kp2d_ref.x++;
+                *diff = sum(int2-int1)(0);
             }
             kp2d.y++;
             kp2d_ref.y++;
             kp2d.x -= PATCH_SIZE;
             kp2d_ref.x -= PATCH_SIZE;
         }
-#ifdef PLOT_GRADIENT
-        Point2f p1(level_keypoints2d[i].x, level_keypoints2d[i].y);
-        Point2f p2 = p1;
-        p2.x += grad.x*0.0001;
-        p2.y += grad.y*0.0001;
-        arrowedLine(grad_image,p1,p2,Scalar(255,0,0));
 
-        p2 = p1;
-        p2.x += grad_ref.x*0.01;
-        p2.y += grad_ref.y*0.01;
-        arrowedLine(grad_image,p1,p2,Scalar(0,255,0));
-#endif
     }
-#ifdef PLOT_GRADIENT
-    Point2f p1(level_camera_settings.cx, level_camera_settings.cy);
-    Point2f p2 = p1;
-    p2.x += tot_grad.x*0.00001;
-    p2.y += tot_grad.y*0.00001;
-    arrowedLine(grad_image,p1,p2,Scalar(0,0,255));
 
-    p2 = p1;
-    p2.x += tot_grad_raw.x*0.001;
-    p2.y += tot_grad_raw.y*0.001;
-    arrowedLine(grad_image,p1,p2,Scalar(0,255,255));
-    namedWindow("gradients", WINDOW_GUI_EXPANDED);
-    imshow("gradients" , grad_image);
-    waitKey(0);
-#endif
+    Mat residual = Mat::zeros(1,6, CV_32F);
+#pragma omp parallel for default(none) shared(diffs, gradient_times_jacobians, kps2d, residual)
+    for (size_t i = 0; i < kps2d.size(); i++) {
+        // For OMP
+        size_t j = i*PATCH_SIZE*PATCH_SIZE;
+        vector<float>::iterator diff = diffs.begin() + i*PATCH_SIZE*PATCH_SIZE;
+        for (size_t r = 0; r < PATCH_SIZE; r++)
+        {
+            for (size_t c = 0; c < PATCH_SIZE; c++, diff++, j++) {
+                Mat &_grad_times_jac = (*gradient_times_jacobians)[j];
+                Mat residual_kp = _grad_times_jac*(*diff);
+                residual -= residual_kp;
+            }
+        }
+    }
+    transpose(residual, residual);
 
-
-    Mat delta_pos; // = *hessian_inv * residual;
+    Mat delta_pos;
     solve(*hessian, residual, delta_pos, DECOMP_SVD);
     Mat pose_gradient(6, 1, CV_32F);
     exponential_map(delta_pos, pose_gradient);

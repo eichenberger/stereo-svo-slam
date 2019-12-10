@@ -24,6 +24,7 @@ private:
     void new_keyframe();
 
     void estimate_pose(Frame *previous_frame);
+    void remove_outliers(Frame *frame);
 
     const CameraSettings &camera_settings;
     KeyFrameManager keyframe_manager;
