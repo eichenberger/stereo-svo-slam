@@ -16,6 +16,21 @@
 using namespace cv;
 using namespace std;
 
+#define PRINT_TIME_TRACE
+
+#ifdef PRINT_TIME_TRACE
+static TickMeter tick_meter;
+#define START_MEASUREMENT() tick_meter.reset(); tick_meter.start()
+
+#define END_MEASUREMENT(_name) tick_meter.stop();\
+    cout << _name << " took: " << tick_meter.getTimeMilli() << "ms" << endl
+
+#else
+#define START_MEASUREMENT()
+#define END_MEASUREMENT(_name)
+#endif
+
+
 // We could use one of the opencv solver. However, they don't really fit
 class PoseEstimatorCallback : public MinProblemSolver::Function
 {
@@ -61,6 +76,39 @@ PoseEstimator::PoseEstimator(const StereoImage &current_stereo_image,
 {
     solver_callback = new PoseEstimatorCallback(current_stereo_image,
             previous_stereo_image, previous_keypoints, camera_settings);
+
+}
+
+static float get_patch_sum(const Mat &image,const Point2f &center)
+{
+    Point2f start = center;
+    Point ip;
+
+    // Even if center is e.g. 2 we would take center 2.5 because we want
+    // to have the center in the middle of the pixel
+    start.x -= 0.5f;
+    start.y -= 0.5f;
+
+    ip.x = floor(start.x);
+    ip.y = floor(start.y);
+
+    // how much do we count the last pixel
+    float x2 = start.x - ip.x;
+    float y2 = start.y - ip.y;
+
+    // how much do we count the first pixel
+    float x1 = 1.0 - x2;
+    float y1 = 1.0 - y2;
+
+    const uint8_t *src1 = image.ptr<uint8_t>(ip.y, ip.x);
+    const uint8_t *src2 = image.ptr<uint8_t>(ip.y+1, ip.x);
+    const uint8_t *src3 = image.ptr<uint8_t>(ip.y+2, ip.x);
+
+    float intensity = x1*y1*(*src1) + y1*(*(src1+1)) + x2*y1*(*(src1+2)) + \
+                      x1*(*src2)    + *(src2+1)      + x2*(*(src2+2)) + \
+                      x1*y2*(*src3) + y2*(*(src3+1)) + x2*y2*(*(src3+2));
+
+    return intensity;
 
 }
 
@@ -236,7 +284,6 @@ void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
     const Mat &current_image = current_stereo_image.left[level];
     const Mat &previous_image = previous_stereo_image.left[level];
 
-    cout << "Calculate hessian" << endl;
     hessian = new Mat(Mat::zeros(6,6, CV_32F));
     gradient_times_jacobians.reset(new vector<Mat>);
     gradient_times_jacobians->resize(level_keypoints2d.size()*PATCH_SIZE*PATCH_SIZE);
@@ -272,13 +319,15 @@ void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
         for (size_t r = 0; r < PATCH_SIZE; r++)
         {
             for (size_t c = 0; c < PATCH_SIZE; c++) {
-                if (kp2d.x < 0 || kp2d.y < 0 || kp2d.x >= current_image.cols ||
-                        kp2d.y >= current_image.rows) {
+                if ((kp2d.x-1.5) < 0 || (kp2d.y-1.5) < 0 || (kp2d.x+1.5) >= current_image.cols ||
+                        (kp2d.y+1.5) >= current_image.rows) {
                     (*gradient_times_jacobians)[i*PATCH_SIZE*PATCH_SIZE+r*PATCH_SIZE+c] = Mat::zeros(1, 6, CV_32F);
 
                     kp2d.x ++;
                     continue;
                 }
+
+#if 0
                 Mat int1, int2, int3, int4;
 
                 const Size patch_size(2,2);
@@ -295,6 +344,15 @@ void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
 
                 float diff1 = sum(int1-int2)(0);
                 float diff2 = sum(int3-int4)(0);
+#else
+                float int1, int2, int3, int4;
+                int1 = get_patch_sum(previous_image, Point2f(kp2d.x+1,kp2d.y));
+                int2 = get_patch_sum(previous_image, Point2f(kp2d.x-1,kp2d.y));
+                int3 = get_patch_sum(previous_image, Point2f(kp2d.x,kp2d.y+1));
+                int4 = get_patch_sum(previous_image, Point2f(kp2d.x,kp2d.y-1));
+                float diff1 = int1-int2;
+                float diff2 = int3-int4;
+#endif
                 Mat _grad = (Mat_<float>(1,2) <<
                         diff1, diff2);
 
@@ -325,6 +383,7 @@ void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
 
 }
 
+
 void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
 {
     const int PATCH_SIZE=4;
@@ -344,6 +403,7 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
 
     cout << "pose for projection: " << pose << endl;
 
+    START_MEASUREMENT();
     vector<float> diffs(kps2d.size()*PATCH_SIZE*PATCH_SIZE);
 #pragma omp parallel for default(none) shared(diffs, kps2d, previous_image, current_image)
     for (size_t i = 0; i < kps2d.size(); i++) {
@@ -355,6 +415,7 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
         for (size_t r = 0; r < PATCH_SIZE; r++)
         {
             for (size_t c = 0; c < PATCH_SIZE; c++, diff++ , kp2d.x++, kp2d_ref.x++) {
+#if 0
                 Mat int1, int2;
 
                 cv::getRectSubPix(previous_image, Size(2,2),
@@ -363,6 +424,22 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
                         kp2d, int2, CV_32F);
 
                 *diff = sum(int2-int1)(0);
+                cout << "Diff " << i  << ": " << *diff << endl;
+#else
+
+                if ((kp2d_ref.x-0.5) < 0 || (kp2d.x-0.5) < 0 ||
+                        (kp2d_ref.y - 0.5) < 0  || (kp2d.y-0.5) < 0 ||
+                        (kp2d_ref.x + 0.5) > previous_image.cols ||
+                        (kp2d.x + 0.5) > current_image.cols ||
+                        (kp2d_ref.y + 0.5) > previous_image.rows||
+                        (kp2d.y + 0.5) > current_image.rows)
+                    *diff = 0;
+                else {
+                    float int1 = get_patch_sum(previous_image, kp2d_ref);
+                    float int2 = get_patch_sum(current_image, kp2d);
+                    *diff = int2 - int1;
+                }
+#endif
             }
             kp2d.y++;
             kp2d_ref.y++;
@@ -371,7 +448,9 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
         }
 
     }
+    END_MEASUREMENT("Calculate diffs");
 
+    START_MEASUREMENT();
     Mat residual = Mat::zeros(1,6, CV_32F);
 #pragma omp parallel for default(none) shared(diffs, gradient_times_jacobians, kps2d, residual)
     for (size_t i = 0; i < kps2d.size(); i++) {
@@ -388,6 +467,7 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
         }
     }
     transpose(residual, residual);
+    END_MEASUREMENT("Calculate residuals");
 
     Mat delta_pos;
     // solve(*hessian, residual, delta_pos, DECOMP_SVD);
