@@ -93,7 +93,7 @@ void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
         Vec3f translation(keyframe->pose.get_translation());
 
         // We rotate the distances so that we get a z value with reference
-        // current frame
+        // at current frame
         Vec3f kp3d(&kps3d[i].x);
         kp3d = kp3d - translation;
         kp3d = inv_rotation_kf*kp3d;
@@ -233,21 +233,23 @@ void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
 
 void DepthFilter::calculate_disparities(Frame &frame, std::vector<float> &disparity)
 {
-    int window_size = camera_settings.window_size_depth_calculator;
-    int window_before = window_size/2;
-    int window_after = (window_size+1)/2;
+    const int window_size = camera_settings.window_size_depth_calculator;
+    const int window_before = window_size/2;
+    const int window_after = (window_size+1)/2;
 
-    int search_x = camera_settings.search_x;
-    int search_y = camera_settings.search_y;
+    const int search_x = camera_settings.search_x;
+    const int search_y = camera_settings.search_y;
 
     const Mat &left = frame.stereo_image.left[0];
     const Mat &right= frame.stereo_image.right[0];
 
     disparity.resize(frame.kps.kps2d.size());
 
-    for (size_t i = 0; i < frame.kps.kps2d.size(); i++) {
+    const vector<KeyPoint2d> &kps2d = frame.kps.kps2d;
+#pragma omp parallel for default(none) shared (kps2d, disparity, left, right) firstprivate(window_before, window_after, search_x, search_y)
+    for (size_t i = 0; i < kps2d.size(); i++) {
         disparity[i] = -1;
-        auto keypoint = frame.kps.kps2d[i];
+        auto keypoint = kps2d[i];
         int x = static_cast<int>(keypoint.x);
         int y = static_cast<int>(keypoint.y);
 
@@ -256,7 +258,7 @@ void DepthFilter::calculate_disparities(Frame &frame, std::vector<float> &dispar
         int32_t y11 = max<int>(0, y - window_before);
         int32_t y12 = min<int>(left.rows, y + window_after);
 
-        // If we can't see the point at all
+        // If point is out of image -> disparity will be -1
         if (x12 <= 0 || y12 <= 0 || x11 >= (left.cols-1) ||
                 y11 >= (left.rows-1))
             continue;
@@ -268,6 +270,7 @@ void DepthFilter::calculate_disparities(Frame &frame, std::vector<float> &dispar
         int32_t y21 = max<int>(0, y - window_before - search_y);
         int32_t y22 = min<int>(left.rows - 1, y + window_after + search_y);
 
+        // If point is out of image -> disparity will be -1
         if (x22 <= 0 || y22 <= 0 || x21 >= (left.cols-1) ||
                 y21 >= (left.rows-1))
             continue;
