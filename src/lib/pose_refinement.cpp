@@ -202,19 +202,15 @@ float PoseRefiner::update_pose(const KeyPoints &keypoints,
             keypoints3d, keypoint_information, camera_settings);
 
     PoseManager x0 = estimated_pose;
+    PoseManager _x;
 
     float prev_cost = solver_callback->do_calc(x0);
     for (size_t i = 0; i < maxIter; i++) {
         Vec6f gradient;
         solver_callback->get_gradient(x0, gradient);
-//        cout << "Refinement Gradient: " << gradient(0) << "," << gradient(1) << "," <<
-//            gradient(2) << "," << gradient(3) << "," << gradient(4) << "," <<
-//            gradient(5) << endl;
-
         float k = 1.0;
         for (;i < maxIter; i++) {
             Vec6f x = x0.get_vector() + (k*gradient);
-            PoseManager _x;
             _x.set_vector(x);
             float new_cost = solver_callback->do_calc(_x);
             if (new_cost < prev_cost) {
@@ -233,19 +229,6 @@ float PoseRefiner::update_pose(const KeyPoints &keypoints,
     }
 
     refined_pose = x0;
-
-    vector<KeyPoint2d> projected_keypoints2d;
-    project_keypoints(refined_pose, keypoints3d, camera_settings, projected_keypoints2d);
-    Mat _projected_keypoints2d(projected_keypoints2d.size(), 2, CV_32F, &projected_keypoints2d[0].x);
-    Mat _keypoints2d(keypoints2d.size(), 2, CV_32F, (void*)&keypoints2d[0].x);
-
-    Mat err;
-    absdiff(_projected_keypoints2d, _keypoints2d, err);
-
-    cout << "estimated pose: " << estimated_pose << endl;
-    cout << "refined pose: " << refined_pose << endl;
-
-    cout << "Error after optimization: " << sum(err)[0] << endl;
 
     return prev_cost;
 

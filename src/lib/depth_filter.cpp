@@ -38,6 +38,19 @@ std::ostream& operator<<(std::ostream& os, const Vec3f& vector)
     return os;
 }
 
+void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
+{
+    // Calculate depth
+    vector<float> disparities;
+    calculate_disparities(frame, disparities);
+
+    outlier_check(frame, disparities);
+
+    update_kps3d(frame, updated_kps3d);
+}
+
+
+
 void DepthFilter::outlier_check(Frame &frame, const vector<float> &disparities)
 {
     const float &fx = camera_settings.fx;
@@ -215,18 +228,6 @@ void DepthFilter::update_kps3d(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
         update_kp3d.y = corrected_p(1);
         update_kp3d.z = corrected_p(2);
     }
-}
-
-void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
-{
-
-    // Calculate depth
-    vector<float> disparities;
-    calculate_disparities(frame, disparities);
-
-    outlier_check(frame, disparities);
-
-    update_kps3d(frame, updated_kps3d);
 }
 
 void DepthFilter::calculate_disparities(Frame &frame, std::vector<float> &disparity)
