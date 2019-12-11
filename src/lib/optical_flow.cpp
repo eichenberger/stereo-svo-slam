@@ -39,7 +39,7 @@ void OpticalFlow::calculate_optical_flow(const StereoImage &previous_stereo_imag
 
     vector<uchar> status;
     cv::calcOpticalFlowPyrLK(previous_image, current_image, _previous_keypoints2d,
-            _current_keypoints2d, status, err, patch_size, 0,
+            _current_keypoints2d, status, err, patch_size, 2,
             TermCriteria(TermCriteria::COUNT+TermCriteria::EPS, 30, 0.01),
             OPTFLOW_USE_INITIAL_FLOW);
 

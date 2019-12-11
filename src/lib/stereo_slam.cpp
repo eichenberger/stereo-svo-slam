@@ -125,7 +125,7 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
     createImgPyramid(right, 1, frame->stereo_image.right);
     Size patch_size(camera_settings.window_size_opt_flow,
             camera_settings.window_size_opt_flow);
-    buildOpticalFlowPyramid(left, frame->stereo_image.opt_flow, patch_size, 3);
+    buildOpticalFlowPyramid(left, frame->stereo_image.opt_flow, patch_size, 2);
     END_MEASUREMENT("Create pyramid");
 
     // Check if this is the first frame
