@@ -16,6 +16,21 @@
 using namespace cv;
 using namespace std;
 
+#define PRINT_TIME_TRACE
+
+#ifdef PRINT_TIME_TRACE
+static TickMeter tick_meter;
+#define START_MEASUREMENT() tick_meter.reset(); tick_meter.start()
+
+#define END_MEASUREMENT(_name) tick_meter.stop();\
+    cout << "REFINEMENT: " << _name << " took: " << tick_meter.getTimeMilli() << "ms" << endl
+
+#else
+#define START_MEASUREMENT()
+#define END_MEASUREMENT(_name)
+#endif
+
+
 // We could use one of the opencv solver. However, they don't really fit
 class PoseRefinerCallback : public MinProblemSolver::Function
 {
@@ -53,6 +68,7 @@ float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
     map<int, vector<KeyPoint2d>> active;
     map<int, vector<float>> err;
 
+    START_MEASUREMENT();
     // Split the keypoints acording to keyframe where it was first seen
     for (size_t i = 0; i < frame.kps.info.size(); i++) {
         KeyPointInformation &info = frame.kps.info[i];
@@ -65,7 +81,9 @@ float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
         ref_keypoints.push_back(keyframe->kps.kps2d[info.keypoint_index]);
         active_keypoints.push_back(frame.kps.kps2d[i]);
     }
+    END_MEASUREMENT("Split keypoints");
 
+    START_MEASUREMENT();
     // Do optical flow with each ref image <-> frame set
     // No omp because optical flow should alread take care
     for (auto itr : reference) {
@@ -76,7 +94,9 @@ float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
         optical_flow.calculate_optical_flow(keyframe->stereo_image,
                 itr.second, frame.stereo_image, active_keypoints, _err);
     }
+    END_MEASUREMENT("Optical flow");
 
+    START_MEASUREMENT();
     // Add refined keypoints back to the original array, start with last entry
     // to allow pop_back
     for (size_t i = frame.kps.kps2d.size(); i > 0; i--) {
@@ -105,6 +125,7 @@ float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
         kp2d = new_estimate;
         active[info.keyframe_id].pop_back();
     }
+    END_MEASUREMENT("Merge keypoints");
 
 #if 0
     Mat result;
@@ -296,8 +317,8 @@ void PoseRefinerCallback::get_gradient(const PoseManager &x, Vec6f &grad)
     vector<KeyPoint2d> projected_keypoints2d;
     project_keypoints(x, keypoints3d, camera_settings, projected_keypoints2d);
 
-    Mat err(Mat::zeros(6,1, CV_32F));
-    Mat hessian(Mat::zeros(6, 6, CV_32F));
+    Matx61f err(Matx61f::zeros());
+    Matx66f hessian(Matx66f::zeros());
 
     Vec2f tot_diff(0,0);
 
@@ -312,9 +333,9 @@ void PoseRefinerCallback::get_gradient(const PoseManager &x, Vec6f &grad)
                 keypoint_information[i].ignore_completely)
             continue;
 
-        Mat jacobian = -(Mat_<float>(2,6) <<
-                1.0/z, 0, -1.0*x/(z*z), -1.0*x*y/(z*z), 1.0*(1.0+(x*x)/(z*z)), -1.0*y/z,
+        Matx<float, 2, 6> jacobian(1.0/z, 0, -1.0*x/(z*z), -1.0*x*y/(z*z), 1.0*(1.0+(x*x)/(z*z)), -1.0*y/z,
                 0, 1.0/z, -1.0*y/(z*z), -1.0*(1+(y*y)/(z*z)), 1.0*x*y/(z*z), 1.0*x/z);
+        jacobian *= -1;
 
         Vec2f diff (keypoints2d[i].x -projected_keypoints2d[i].x,
                 keypoints2d[i].y -projected_keypoints2d[i].y);
@@ -323,13 +344,16 @@ void PoseRefinerCallback::get_gradient(const PoseManager &x, Vec6f &grad)
                 (fabs(diff(1)) > 3.0))
             continue;
         tot_diff += diff;
-        Mat transposed_jacobian = jacobian.t();
+        Matx<float, 6, 2> transposed_jacobian = jacobian.t();
+        // It seems that matrices are not atomic even if they are marked as shared
+#pragma omp critical
         hessian += transposed_jacobian*jacobian;
+#pragma omp critical
         err += transposed_jacobian * diff;
     }
 
-    Mat hessian_inv = hessian.inv(DECOMP_SVD);
-    Mat twist = hessian_inv*err / keypoints2d.size();
+    Matx66f hessian_inv = hessian.inv(DECOMP_SVD);
+    Mat twist (hessian_inv*err); //  / keypoints2d.size();
 
     Mat gradient(1, 6, CV_32F);
 
