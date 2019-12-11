@@ -11,7 +11,7 @@
 #include "exponential_map.hpp"
 
 //#define VERBOSE 1
-//#define SUPER_VERBOSE 1
+#define SUPER_VERBOSE 1
 
 using namespace cv;
 using namespace std;
@@ -284,11 +284,10 @@ void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
     const Mat &current_image = current_stereo_image.left[level];
     const Mat &previous_image = previous_stereo_image.left[level];
 
-    hessian = new Mat(Mat::zeros(6,6, CV_32F));
     gradient_times_jacobians.reset(new vector<Matx16f>);
     gradient_times_jacobians->resize(level_keypoints2d.size()*PATCH_SIZE*PATCH_SIZE);
 
-#pragma omp parallel for default(none) shared(pose, gradient_times_jacobians, hessian, current_image, previous_image)
+#pragma omp parallel for default(none) shared(pose, gradient_times_jacobians, current_image, previous_image)
     for (size_t i = 0; i < level_keypoints2d.size(); i++) {
         // For OMP
         const auto fx = level_camera_settings.fx;
@@ -316,13 +315,14 @@ void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
             fx/z, 0, -fx*x/(z*z), -fx*x*y/(z*z), fx*(1+(x*x)/(z*z)), -fx*y/z,
             0, fy/z, -fy*y/(z*z), -fy*(1+(y*y)/(z*z)), fy*x*y/(z*z), fy*x/z);
 
+        vector<Matx16f>::iterator it = gradient_times_jacobians->begin() + i*PATCH_SIZE*PATCH_SIZE;
+
         for (size_t r = 0; r < PATCH_SIZE; r++)
         {
-            for (size_t c = 0; c < PATCH_SIZE; c++) {
-                if ((kp2d.x-1.5) < 0 || (kp2d.y-1.5) < 0 || (kp2d.x+1.5) >= current_image.cols ||
-                        (kp2d.y+1.5) >= current_image.rows) {
-                    (*gradient_times_jacobians)[i*PATCH_SIZE*PATCH_SIZE+r*PATCH_SIZE+c] = Matx16f::zeros();
-
+            for (size_t c = 0; c < PATCH_SIZE; c++, it++) {
+                if ((kp2d.x-1.5) < 0 || (kp2d.y-1.5) < 0 || (kp2d.x+2.5) >= current_image.cols ||
+                        (kp2d.y+2.5) >= current_image.rows) {
+                    *it = Matx16f::zeros();
                     kp2d.x ++;
                     continue;
                 }
@@ -357,10 +357,9 @@ void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
 
                 Mat _grad_times_jac = _grad*jacobian;
                 // Store the result of grad*jacobian for further usage
-                (*gradient_times_jacobians)[i*PATCH_SIZE*PATCH_SIZE+r*PATCH_SIZE+c] = _grad_times_jac;
+                *it = _grad_times_jac;
 
                 // Calculate the gauss newton hessian_inv (~second derivate)
-                *hessian += (_grad_times_jac.t()*_grad_times_jac);
                 kp2d.x ++;
             }
             kp2d.x -= PATCH_SIZE;
@@ -368,8 +367,14 @@ void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
         }
     }
 
-    inv_hessian = hessian->inv(DECOMP_SVD);
 
+    hessian = new Mat(Mat::zeros(6,6, CV_32F));
+    // avoid problems with omp -> do it outside of omp loop
+    for (auto it: *gradient_times_jacobians) {
+        *hessian += (it.t()*it);
+    }
+
+    inv_hessian = hessian->inv(DECOMP_SVD);
 #ifdef SUPER_VERBOSE
     std::cout << "Hessian matrix: " << std::endl;
     for (size_t i = 0; i < 6; i++) {
@@ -423,15 +428,14 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
                         kp2d, int2, CV_32F);
 
                 *diff = sum(int2-int1)(0);
-                cout << "Diff " << i  << ": " << *diff << endl;
 #else
 
                 if ((kp2d_ref.x-0.5) < 0 || (kp2d.x-0.5) < 0 ||
                         (kp2d_ref.y - 0.5) < 0  || (kp2d.y-0.5) < 0 ||
-                        (kp2d_ref.x + 0.5) > previous_image.cols ||
-                        (kp2d.x + 0.5) > current_image.cols ||
-                        (kp2d_ref.y + 0.5) > previous_image.rows||
-                        (kp2d.y + 0.5) > current_image.rows)
+                        (kp2d_ref.x + 1.5) > previous_image.cols ||
+                        (kp2d.x + 1.5) > current_image.cols ||
+                        (kp2d_ref.y + 1.5) > previous_image.rows||
+                        (kp2d.y + 1.5) > current_image.rows)
                     *diff = 0;
                 else {
                     float int1 = get_patch_sum(previous_image, kp2d_ref);
@@ -451,7 +455,15 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
 
     START_MEASUREMENT();
     Matx16f _residual;
-#pragma omp parallel for default(none) shared(diffs, gradient_times_jacobians, kps2d, _residual)
+    // OMP can't reduce matrices, therfore do it manually
+    float &r1 = _residual(0,0);
+    float &r2 = _residual(0,1);
+    float &r3 = _residual(0,2);
+    float &r4 = _residual(0,3);
+    float &r5 = _residual(0,4);
+    float &r6 = _residual(0,5);
+#pragma omp parallel for default(none) shared(diffs, gradient_times_jacobians, kps2d) \
+    reduction(-: r1, r2, r3, r4, r5, r6)
     for (size_t i = 0; i < kps2d.size(); i++) {
         // For OMP
         size_t j = i*PATCH_SIZE*PATCH_SIZE;
@@ -461,7 +473,12 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
             for (size_t c = 0; c < PATCH_SIZE; c++, diff++, j++) {
                 Matx16f &_grad_times_jac = (*gradient_times_jacobians)[j];
                 Matx16f residual_kp = _grad_times_jac*(*diff);
-                _residual -= residual_kp;
+                r1 -= residual_kp(0);
+                r2 -= residual_kp(1);
+                r3 -= residual_kp(2);
+                r4 -= residual_kp(3);
+                r5 -= residual_kp(4);
+                r6 -= residual_kp(5);
             }
         }
     }
@@ -486,8 +503,6 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
     grad[3] = rotation_gradient(0);
     grad[4] = rotation_gradient(1);
     grad[5] = rotation_gradient(2);
-
-//    memcpy(grad, pose_gradient.ptr<double>(), 6*sizeof(double));
 
 #ifdef SUPER_VERBOSE
     cout << "Delta Pos: " <<
