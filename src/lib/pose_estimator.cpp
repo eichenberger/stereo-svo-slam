@@ -11,7 +11,7 @@
 #include "exponential_map.hpp"
 
 //#define VERBOSE 1
-#define SUPER_VERBOSE 1
+//#define SUPER_VERBOSE 1
 
 using namespace cv;
 using namespace std;
@@ -23,7 +23,7 @@ static TickMeter tick_meter;
 #define START_MEASUREMENT() tick_meter.reset(); tick_meter.start()
 
 #define END_MEASUREMENT(_name) tick_meter.stop();\
-    cout << _name << " took: " << tick_meter.getTimeMilli() << "ms" << endl
+    cout << "ESTIMATOR: " << _name << " took: " << tick_meter.getTimeMilli() << "ms" << endl
 
 #else
 #define START_MEASUREMENT()

@@ -73,7 +73,7 @@ void StereoSlam::estimate_pose(Frame *previous_frame)
 
     START_MEASUREMENT();
     PoseRefiner refiner(camera_settings);
-    refiner.refine_pose(keyframe_manager, *frame);
+    cost = refiner.refine_pose(keyframe_manager, *frame);
 
     END_MEASUREMENT("pose refinement");
 
