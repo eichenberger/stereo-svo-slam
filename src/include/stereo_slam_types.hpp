@@ -43,6 +43,7 @@ struct CameraSettings {
 struct StereoImage {
     std::vector<cv::Mat> left;
     std::vector<cv::Mat> right;
+    std::vector<cv::Mat> opt_flow;
 };
 
 enum KeyPointType {

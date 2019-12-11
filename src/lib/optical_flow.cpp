@@ -16,8 +16,12 @@ void OpticalFlow::calculate_optical_flow(const StereoImage &previous_stereo_imag
         const StereoImage &current_stereo_image_pyr,
         vector<KeyPoint2d> &current_keypoints2d,
         vector<float> &err) {
-    const Mat &previous_image = previous_stereo_image_pyr.left[0];
-    const Mat &current_image = current_stereo_image_pyr.left[0];
+
+    Size patch_size(camera_settings.window_size_opt_flow,
+            camera_settings.window_size_opt_flow);
+
+    const vector<Mat> &previous_image = previous_stereo_image_pyr.opt_flow;
+    const vector<Mat> &current_image = current_stereo_image_pyr.opt_flow;
 
     vector<Point2f> _previous_keypoints2d;
     _previous_keypoints2d.resize(previous_keypoints2d.size());
@@ -33,8 +37,6 @@ void OpticalFlow::calculate_optical_flow(const StereoImage &previous_stereo_imag
         _current_keypoints2d[i].y = current_keypoints2d[i].y;
     }
 
-    Size patch_size(camera_settings.window_size_opt_flow,
-            camera_settings.window_size_depth_calculator);
     vector<uchar> status;
     cv::calcOpticalFlowPyrLK(previous_image, current_image, _previous_keypoints2d,
             _current_keypoints2d, status, err, patch_size, 0,

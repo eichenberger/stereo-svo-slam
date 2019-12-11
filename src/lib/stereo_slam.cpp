@@ -118,8 +118,14 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
     frame = new Frame;
 
     START_MEASUREMENT();
+    // Unfortunately we can't use buildOpticalFlowPyramid because
+    // it does some heavy gauss filtering which doesen't work well
+    // with our pose estimator
     createImgPyramid(left, camera_settings.max_pyramid_levels, frame->stereo_image.left);
-    createImgPyramid(right, camera_settings.max_pyramid_levels, frame->stereo_image.right);
+    createImgPyramid(right, 1, frame->stereo_image.right);
+    Size patch_size(camera_settings.window_size_opt_flow,
+            camera_settings.window_size_opt_flow);
+    buildOpticalFlowPyramid(left, frame->stereo_image.opt_flow, patch_size, 3);
     END_MEASUREMENT("Create pyramid");
 
     // Check if this is the first frame

@@ -62,7 +62,6 @@ PoseRefiner::PoseRefiner(const CameraSettings &camera_settings) :
 float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
             Frame &frame)
 {
-    OpticalFlow optical_flow(camera_settings);
 
     map<int, vector<KeyPoint2d>> reference;
     map<int, vector<KeyPoint2d>> active;
@@ -85,15 +84,39 @@ float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
 
     START_MEASUREMENT();
     // Do optical flow with each ref image <-> frame set
+    // Do a lot of dirty hacks to make omp work...
+#if 0
+	OpticalFlow optical_flow(camera_settings);
     // No omp because optical flow should alread take care
     for (auto itr : reference) {
-        const KeyFrame *keyframe = keyframe_manager.get_keyframe(itr.first);
-        vector<KeyPoint2d> &active_keypoints = active[itr.first];
-        vector<float> &_err = err[itr.first];
+		const KeyFrame *keyframe = keyframe_manager.get_keyframe(itr.first);
+		vector<KeyPoint2d> &active_keypoints = active[itr.first];
+		vector<float> &_err = err[itr.first];
+		optical_flow.calculate_optical_flow(keyframe->stereo_image,
+				itr.second, frame.stereo_image, active_keypoints, _err);
+	}
+#else
+	// The openmp variant doesn't ouput exactly the same. However, the difference
+	// is super small and it's much faster
+#pragma omp parallel for default(none) shared(frame, keyframe_manager, reference, active, err)
+    for(size_t i = 0; i < reference.size(); i++) {
+        OpticalFlow optical_flow(camera_settings);
+        // Do stupid hack for openmp
+        map<int, vector<KeyPoint2d>>::iterator itr = reference.begin();
+        for (size_t j = 0; j < i; j++)
+            itr++;
+        const KeyFrame *keyframe = keyframe_manager.get_keyframe(itr->first);
+        vector<KeyPoint2d> &active_keypoints = active[itr->first];
+        vector<float> _err;
 
         optical_flow.calculate_optical_flow(keyframe->stereo_image,
-                itr.second, frame.stereo_image, active_keypoints, _err);
+                itr->second, frame.stereo_image, active_keypoints, _err);
+
+        // Make sure this is atomic
+#pragma omp critical
+        err[itr->first] = _err;
     }
+#endif
     END_MEASUREMENT("Optical flow");
 
     START_MEASUREMENT();
