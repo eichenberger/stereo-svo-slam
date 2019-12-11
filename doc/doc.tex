@@ -193,7 +193,22 @@ Where:
 \subsection{Finding gradient for optimization}
 To speed up the optimization a predefined gradient can be calculated. The method to find such a gradient is related to the Lucas-Kanade optical flow method. Instead of searching a Warp matrix we search a transformation matrix in this scenario. We have two images $I_{k-1}$ and $I_{k}$. We know the pose of image k-1 $T_{k-1}$ . We search the pose $T_k$.\\
 While the inverse compositional Lucas Kanade algorithm tries to find the optimal Warp matrix. We try to find the optimal pose.
-\subsubsection{Lucas Kanade Algorithm}
+\subsubsection{Lucas Kanade Intuitive}
+
+As mentioned in the previous section Lucas Kanade is an algorithm to estimate the optical flow. In the simplest case it just tells us where a certain pixel was in the image before and where it is now. It does that in a efficient way by using the intensity gradients. This section tries to describe how this works in an intuitive but simplified way while the next section will describe it in a more mathematical way.\\
+Let's assume the simplest scenario where we can only move in one direction (left or right). Figure \ref{fig:optical_flow_intuitive} shows this simple scenario. Let's first focus on the case where we have a small movement (a). We first calculate the intensity gradients in the template (first row). Then we calculate the intensity difference (last row) between the current image (second row) and the first image. Now we multiply the gradient times the intensity difference this will give us the direction in which we have to move. Here we assume that moving the current image to left means - and moving it to right +. Now we move in the direction of the gradient and will calculate the intensity difference again. If it increases we moved too much and we have to reduce the step size if it decreases we are fine and we can calculate the new gradient again based on the new intensity difference. After some iterations the intensity change from one iteration to the other should be minimal. We have found the horizontal movement of our image. We already describe the inverse compositional Lucas Kanade algorithm because we calculate the gradients on the template. The ``normal'' Lucas Kanade would calculate the gradients on the current image. This has the disadvantage that we need to calculate the gradients after each iteration and it's therefore less computational efficient.\\
+What we can see in \ref{fig:optical_flow_intuitive} (b) that it's impossible to track movements over bigger distances. If the patch we compare does not connect to the area where the new image has moved, we are unable to move in the right direction. As we can see it's even possible that we move in the wrong direction (b). To overcome this problem we can downsample the image as shown in (c). We only downsampled in horizontal direction for visability. In reality the whole image would be downsampled by factor 2,4,8,16, etc. This is called an optical pyramid. As we can see in (c) after we downsampled the image by factor two we have again a valid gradient which points in the right direction. The idea is that we start to optimized in the lowest level if we converge we optimize again one level higher and so on. With this idea it is possible to track flows over higher distances while still keeping the CPU load low.
+
+\begin{figure}[H]
+	\centering
+	\subfloat[Lucas Kanade small move]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_1.png}}
+	\subfloat[Lucas Kanade big move]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_2.png}}
+	\subfloat[Lucas Kanade big move down sampled]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_3.png}}
+	\caption{Optical Flow Intuitive}\label{fig:optical_flow_intuitive}
+\end{figure}
+
+
+\subsubsection{Lucas Kanade Mathematical}
 Lets assume we have a warp matrix in the following form:
 \begin{equation}\label{eq:lk_warp}
 	p=\begin{pmatrix}
