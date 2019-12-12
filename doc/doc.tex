@@ -79,9 +79,9 @@ The master thesis is honored with 27 ECTS. 1 ECTS consumes 30h which results in 
 \chapter{Algorithm}
 In this chapter we analyse an algorithm that can be used to solve the SLAM problem.
 
-\section{ORB SLAM}
+\section{ORB SLAM idea}
 
-\section{SVO SLAM}
+\section{SVO SLAM idea}
 While ORB SLAM is well documented and can do loop closing, it is difficult to optimize the algorithm for realtime applications.
 
 \subsection{Initialization}\label{sec:initialization}
@@ -190,14 +190,14 @@ Where:
 	x',y' &: \text{x,y reprojection of 3D point by using \ref{eq:cm}}
 \end{align*}
 
-\subsection{Finding gradient for optimization}
+\section{Optical Flow}
 To speed up the optimization a predefined gradient can be calculated. The method to find such a gradient is related to the Lucas-Kanade optical flow method. Instead of searching a Warp matrix we search a transformation matrix in this scenario. We have two images $I_{k-1}$ and $I_{k}$. We know the pose of image k-1 $T_{k-1}$ . We search the pose $T_k$.\\
 While the inverse compositional Lucas Kanade algorithm tries to find the optimal Warp matrix. We try to find the optimal pose.
-\subsubsection{Lucas Kanade Intuitive}
+\subsection{Lucas Kanade Intuitive}
 
 As mentioned in the previous section Lucas Kanade is an algorithm to estimate the optical flow. In the simplest case it just tells us where a certain pixel was in the image before and where it is now. It does that in a efficient way by using the intensity gradients. This section tries to describe how this works in an intuitive but simplified way while the next section will describe it in a more mathematical way.\\
 Let's assume the simplest scenario where we can only move in one direction (left or right). Figure \ref{fig:optical_flow_intuitive} shows this simple scenario. Let's first focus on the case where we have a small movement (a). We first calculate the intensity gradients in the template (first row). Then we calculate the intensity difference (last row) between the current image (second row) and the first image. Now we multiply the gradient times the intensity difference this will give us the direction in which we have to move. Here we assume that moving the current image to left means - and moving it to right +. Now we move in the direction of the gradient and will calculate the intensity difference again. If it increases we moved too much and we have to reduce the step size if it decreases we are fine and we can calculate the new gradient again based on the new intensity difference. After some iterations the intensity change from one iteration to the other should be minimal. We have found the horizontal movement of our image. We already describe the inverse compositional Lucas Kanade algorithm because we calculate the gradients on the template. The ``normal'' Lucas Kanade would calculate the gradients on the current image. This has the disadvantage that we need to calculate the gradients after each iteration and it's therefore less computational efficient.\\
-What we can see in \ref{fig:optical_flow_intuitive} (b) that it's impossible to track movements over bigger distances. If the patch we compare does not connect to the area where the new image has moved, we are unable to move in the right direction. As we can see it's even possible that we move in the wrong direction (b). To overcome this problem we can downsample the image as shown in (c). We only downsampled in horizontal direction for visability. In reality the whole image would be downsampled by factor 2,4,8,16, etc. This is called an optical pyramid. As we can see in (c) after we downsampled the image by factor two we have again a valid gradient which points in the right direction. The idea is that we start to optimized in the lowest level if we converge we optimize again one level higher and so on. With this idea it is possible to track flows over higher distances while still keeping the CPU load low.
+What we can see in \ref{fig:optical_flow_intuitive} (b) that it's impossible to track movements over bigger distances. If the patch we compare does not connect to the area where the new image has moved, we are unable to move in the right direction. As we can see it's even possible that we move in the wrong direction (b). To overcome this problem we can downsample the image as shown in (c). We only downsampled in horizontal direction for visability. In reality the whole image would be downsampled by factor 2,4,8,16, etc. This is called an optical pyramid. As we can see in (c) after we downsampled the image by factor two we have again a valid gradient which points in the right direction. The idea is that we start to optimized in the lowest level if we converge we optimize again one level higher and so on. With this idea it is possible to track flows over higher distances while still being efficient.
 
 \begin{figure}[H]
 	\centering
@@ -207,9 +207,19 @@ What we can see in \ref{fig:optical_flow_intuitive} (b) that it's impossible to 
 	\caption{Optical Flow Intuitive}\label{fig:optical_flow_intuitive}
 \end{figure}
 
+We can extend the above scenario from a movement in one dimension easily to two dimensions as shown in figure \ref{fig:optical_flow_2d}. We simply calculate the gradient in the vertical direction as well. By doing this we can track movements in x and y direction. We easily see that not all values in the patch help to find the right gradient. Some gradients in the patch point in the wrong direction. However, in total the gradient points in the right direction. By using image pyramids we can reduce the influence of such miss matches.
+\begin{figure}[H]
+	\includegraphics[width=1.0\textwidth]{img/optical_flow_2d.png}
+	\caption{Optical Flow Intuitive 2D: +: current-previous intensity > 0, -: current-previous intensity < 0, u: gradient points up, d: gradient points down, l: gradient points left, r: gradient points right, red: wrong direction, green: right direction, blue: no influence, yellow arrow: final gradient}\label{fig:optical_flow_2d}
+\end{figure}
 
-\subsubsection{Lucas Kanade Mathematical}
-Lets assume we have a warp matrix in the following form:
+We showed that optical flow can track two dimensional movements. However, it doesn't track rotations and shearing. This will introduce dependencies between x and y movements which become non-linear. In the next section we extend the intuitive approach so that we can solve non-linear problems.
+
+\subsection{Lucas Kanade Mathematical}
+
+In the previous section we showed the basic idea of optical flow. It is oversimplified and can only track movements in x and y direction. In this section we extend this idea so that more complicated movements can be tracked.\\
+
+Instead of linear movements in x and y direction we want to find a warp matrix which describes a affine transformation of a patch from one image to the other (equation \ref{eq:lk_warp}).
 \begin{equation}\label{eq:lk_warp}
 	p=\begin{pmatrix}
 		p_{11} & p_{12} & p_{13} \\
@@ -220,9 +230,8 @@ Lets assume we have a warp matrix in the following form:
 	p				&:	\text{warp matrix}\\
 	p_{ij}	&:	\text{parameter of warp matrix}
 \end{align*}
+This warp matrix describes movements along the x and y axis($p_{11},p_{22}$, a rotation ($p_{13},p_{21}$) and shearing ($p_{13},p_{23}$). The goal of Lucas Kanade is to find this warp matrix. It does that by minimizing the Intensity difference between patch of pixels in a template (reference image) and a patch of pixels with the same size in the current image as shown in equation \ref{eq:lk_problem}. 
 
-
-Lucas Kanade tries to optimize the following problem \cite{inverse_compositional}:
 \begin{equation}\label{eq:lk_problem}
 	\sum_x\sum_y(I_{k}(x',y')-I_{k-1}(x,y))^2
 \end{equation}
@@ -232,6 +241,8 @@ Lucas Kanade tries to optimize the following problem \cite{inverse_compositional
 	I_{k-1}		&:	\text{Template image}\\
 	I_{k}			&:	\text{Current image}
 \end{align*}
+
+We describe the transformation of a pixel from the reference image to the current image as a matrix multiplication as shown in equation \ref{eq:lk_warped}.
 
 \begin{equation}\label{eq:lk_warped}
 	W=
@@ -260,7 +271,7 @@ Lucas Kanade tries to optimize the following problem \cite{inverse_compositional
 	p_{ij}		&:	\text{parameter of warp matrix}
 \end{align*}
 
-Because \ref{eq:lk_problem} is a nonlinear problem we have to solve it with a nonlinear solver (e.g. Gauss-Newton or Gradient Descent). The problem is solved by iteratively changing the Warpmatrix in the direction of a gradient until the difference of the intensities are minimal:
+Because \ref{eq:lk_problem} is a nonlinear problem we have to solve it with a nonlinear solver (e.g. Gauss-Newton or Gradient Descent). The problem is solved by iteratively changing the warp matrix in the direction of a gradient until the difference of the intensities are minimal:
 \begin{equation}
 	\begin{pmatrix}
 		x' \\
@@ -284,8 +295,7 @@ Because \ref{eq:lk_problem} is a nonlinear problem we have to solve it with a no
 \end{align*}
 
 
-After each iteration we set $p=p_{i-1}+\Delta p$.\\
-We can solve this problem by approximating the gradient. However it would slow down the calculation. Therefore, Lucas Kanade calculates the gradient by doing a first order Taylor approximation of the problem:
+After each iteration we set $p=p_{i-1}+\Delta p$. We can solve this problem by approximating the gradient heuristically. However, it would slow down the calculation. Therefore, Lucas Kanade calculates the gradient by doing a first order Taylor approximation of the problem:
 \begin{equation}\label{eq:lk_taylor}
 	\sum_x\sum_y(I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k}*\frac{\sigma W}{\sigma p}*\Delta p-I_{k-1}(x,y))^2
 \end{equation}
