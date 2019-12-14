@@ -2,6 +2,8 @@ CXX      ?= gcc
 CXXFLAGS  ?= -O3 #-fopt-info-vec-missed -fopt-info-vec # -fopt-info-vec-all
 LDFLAGS ?= -O3
 
+QMAKE ?= qmake
+
 #CXXFLAGS  ?= -O0 -ggdb
 #LDFLAGS ?= -O0 -ggdb
 
@@ -19,6 +21,10 @@ python: lib
 
 app: lib 
 	$(MAKE) -C app
+
+ar-app: lib
+	cd ar-app && $(QMAKE)
+	$(MAKE) -C ar-app
 
 test:
 	$(MAKE) -C test all
