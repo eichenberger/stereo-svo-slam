@@ -153,6 +153,7 @@ int main(int argc, char **argv)
             {{"v", "video"}, "Path to camera or video (/dev/videoX, video.mov)", "video"},
             {{"s", "settings"}, "Path to the settings file (Econ.yaml)", "settings"},
             {{"r", "hidraw"}, "econ: HID device to control the camera (/dev/hidrawX)", "hidraw"},
+            {{"i", "hidrawimu"}, "econ: HID device to control the imu (/dev/hidrawX)", "hidrawimu"},
             {{"e", "exposure"}, "econ: The exposure for the camera 1-30000", "exposure"},
             {{"t", "trajectory"}, "File to store trajectory", "trajectory"},
             {{"m", "move"}, "video: skip first n frames", "move"},
@@ -176,8 +177,12 @@ int main(int argc, char **argv)
 
         EconInput *econ = new EconInput(parser.value("video").toStdString(),
                 parser.value("hidraw").toStdString(),
-                parser.value("settings").toStdString(),
-                parser.value("exposure").toInt());
+                parser.value("hidrawimu").toStdString(),
+                parser.value("settings").toStdString());
+        econ->set_manual_exposure(parser.value("exposure").toInt());
+        float temperature;
+        econ->read_temperature(temperature);
+        cout << "Temperature: " << temperature << endl;
         input = econ;
     }
     else if (camera_type == "video") {
