@@ -6,7 +6,7 @@
 
 #include "stereo_slam_types.hpp"
 
-void project_keypoints(const struct Pose &pose,
+void project_keypoints(const PoseManager &pose,
         const std::vector<KeyPoint3d> &in, const CameraSettings &camera_settings,
         std::vector<KeyPoint2d> &out);
 

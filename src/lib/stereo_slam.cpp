@@ -3,8 +3,9 @@
 #include "transform_keypoints.hpp"
 #include "depth_calculator.hpp"
 #include "pose_estimator.hpp"
-#include "optical_flow.hpp"
 #include "pose_refinement.hpp"
+#include "depth_filter.hpp"
+#include "image_comparison.hpp"
 
 #include "stereo_slam.hpp"
 
@@ -26,101 +27,183 @@ static TickMeter tick_meter;
 #endif
 
 StereoSlam::StereoSlam(const CameraSettings &camera_settings) :
-    camera_settings(camera_settings), keyframe_inserter(camera_settings)
+    camera_settings(camera_settings), keyframe_manager(camera_settings),
+    motion(0, 0, 0, 0, 0, 0)
 {
 }
 
-void StereoSlam::new_image(const Mat &left, const Mat &right) {
-    Size window_size = Size(camera_settings.window_size_opt_flow,
-            camera_settings.window_size_opt_flow);
+void StereoSlam::remove_outliers(Frame *frame)
+{
+    KeyPoints updated;
+    // Set to maximum size
+    for (size_t i = 0; i < frame->kps.kps2d.size(); i++) {
+        if (frame->kps.info[i].ignore_completely)
+            continue;
+        updated.kps2d.push_back(frame->kps.kps2d[i]);
+        updated.kps3d.push_back(frame->kps.kps3d[i]);
+        updated.info.push_back(frame->kps.info[i]);
+    }
 
+    frame->kps = updated;
+}
+
+void StereoSlam::estimate_pose(Frame *previous_frame)
+{
+    PoseEstimator estimator(frame->stereo_image, previous_frame->stereo_image,
+            previous_frame->kps, camera_settings);
+
+    PoseManager estimated_pose;
+    START_MEASUREMENT();
+    float cost = estimator.estimate_pose(previous_frame->pose, estimated_pose);
+    END_MEASUREMENT("estimator");
+
+    cout << "Estimation cost (intensity diff): " << cost << endl;
+    cout << "Pose after estimation: " << estimated_pose << endl;
+
+    vector<KeyPoint2d> estimated_kps;
+    START_MEASUREMENT();
+    project_keypoints(estimated_pose, previous_frame->kps.kps3d, camera_settings,
+            estimated_kps);
+    END_MEASUREMENT("project keypoints");
+
+    frame->pose = estimated_pose;
+    frame->kps.info = previous_frame->kps.info;
+    frame->kps.kps3d = previous_frame->kps.kps3d;
+    frame->kps.kps2d = estimated_kps;
+
+    START_MEASUREMENT();
+    PoseRefiner refiner(camera_settings);
+    cost = refiner.refine_pose(keyframe_manager, *frame);
+
+    END_MEASUREMENT("pose refinement");
+
+    cout << "Refinement cost (reprojection error): " << cost << endl;
+    cout << "Pose after refinement: " << frame->pose << endl;
+}
+
+
+static void halfSample(const cv::Mat& in, cv::Mat& out)
+{
+    assert( in.rows/2==out.rows && in.cols/2==out.cols);
+    assert( in.type()==CV_8U && out.type()==CV_8U);
+
+// OMP variant is slower...
+// #pragma omp parallel for default(none) shared(out, in)
+    for (int j = 0; j < out.rows; j++) {
+        int y = j<<1;
+        const uint8_t* upper_in= in.ptr<uint8_t>(y);
+        const uint8_t* lower_in= in.ptr<uint8_t>(y+1);
+        uint8_t* current_out = out.ptr<uint8_t>(j);
+        for (int i = 0, x = 0; i < out.cols; i++, x+=2) {
+            current_out[i] = (upper_in[x] + upper_in[x+1] + lower_in[x] + lower_in[x+1])/4;
+        }
+    }
+}
+
+
+static void createImgPyramid(const cv::Mat& img_level_0, int n_levels, vector<Mat>& pyr)
+{
+    pyr.resize(n_levels);
+    pyr[0] = img_level_0;
+    for(int i=1; i<n_levels; i++)
+    {
+        pyr[i] = Mat(pyr[i-1].rows/2, pyr[i-1].cols/2, CV_8U);
+        halfSample(pyr[i-1], pyr[i]);
+    }
+}
+
+void StereoSlam::new_image(const Mat &left, const Mat &right) {
+    // Size window_size = Size(3, 3);
     Ptr<Frame> previous_frame = frame;
     frame = new Frame;
 
-    buildOpticalFlowPyramid(left, frame->stereo_image.left,
-            window_size, camera_settings.max_pyramid_levels);
-
-    buildOpticalFlowPyramid(right, frame->stereo_image.right,
-            window_size, camera_settings.max_pyramid_levels);
+    START_MEASUREMENT();
+    // Unfortunately we can't use buildOpticalFlowPyramid because
+    // it does some heavy gauss filtering which doesen't work well
+    // with our pose estimator
+    createImgPyramid(left, camera_settings.max_pyramid_levels, frame->stereo_image.left);
+    createImgPyramid(right, 1, frame->stereo_image.right);
+    Size patch_size(camera_settings.window_size_opt_flow,
+            camera_settings.window_size_opt_flow);
+    buildOpticalFlowPyramid(left, frame->stereo_image.opt_flow, patch_size, 2);
+    END_MEASUREMENT("Create pyramid");
 
     // Check if this is the first frame
     if (previous_frame.empty()) {
-        keyframes.push_back(KeyFrame());
-        keyframe = &keyframes.back();
+        Pose pose;
 
         frame->id = 0;
-        frame->pose.x = 0;
-        frame->pose.y = 0;
-        frame->pose.z = 0;
-        frame->pose.pitch = 0;
-        frame->pose.yaw = 0;
-        frame->pose.roll = 0;
+        pose.x = 0;
+        pose.y = 0;
+        pose.z = 0;
+        pose.pitch = 0;
+        pose.yaw = 0; // M_PI; //0;
+        pose.roll = 0;
+        frame->pose.set_pose(pose);
 
-        keyframe_inserter.new_keyframe(*frame, *keyframe);
+        keyframe = keyframe_manager.create_keyframe(*frame);
+#if 0
+        cout << "void createVector(std::vector<Vector2d> &pts2d, std::vector<Vector3d> &pts3d) { " << endl;
+        for (size_t i = 0; i < frame->kps.kps2d.size(); i++) {
+            cout << "    pts2d.push_back(Vector2d(" << frame->kps.kps2d[i].x << "," <<
+                frame->kps.kps2d[i].y << "));" << endl;
+            cout << "    pts3d.push_back(Vector3d(" << frame->kps.kps3d[i].x << "," <<
+                frame->kps.kps3d[i].y << "," << frame->kps.kps3d[i].z << "));" << endl;
+        }
+        cout << "}" << endl;
+        exit(0);
+#endif
     }
     else {
-        START_MEASUREMENT();
         frame->id = previous_frame->id + 1;
-        PoseEstimator estimator(frame->stereo_image, previous_frame->stereo_image,
-                previous_frame->kps, camera_settings);
 
-        Pose estimated_pose;
-        float cost = estimator.estimate_pose(previous_frame->pose, estimated_pose);
-        END_MEASUREMENT("estimator");
+        Vec6f motion_applied = frame->pose.get_vector() + motion;
+        frame->pose.set_vector(motion_applied);
 
-        cout << "Cost after estimation: " << cost << endl;
-        cout << "Pose after estimation: " <<
-            estimated_pose.x << ", " << estimated_pose.y << ", " << estimated_pose.z << ", " <<
-            estimated_pose.pitch << ", " << estimated_pose.yaw << ", " << estimated_pose.roll << endl;
+        remove_outliers(previous_frame);
+        estimate_pose(previous_frame);
 
-        vector<KeyPoint2d> estimated_kps;
-        project_keypoints(estimated_pose, previous_frame->kps.kps3d, camera_settings,
-                estimated_kps);
+        DepthFilter filter(keyframe_manager, camera_settings);
 
-
-        OpticalFlow optical_flow;
-        vector<float> err;
+        vector<KeyPoint3d> updated_kps3d;
 
         START_MEASUREMENT();
-        KeyPoints refined_kps = previous_frame->kps;
-        optical_flow.calculate_optical_flow(keyframe->stereo_image,
-                keyframe->kps.kps2d, frame->stereo_image, refined_kps.kps2d, err);
+        filter.update_depth(*frame, updated_kps3d);
 
-        END_MEASUREMENT("optical flow");
+        for (size_t i = 0; i < frame->kps.kps3d.size(); i++) {
+            KeyPointInformation &info = frame->kps.info[i];
+            KeyFrame *keyframe = keyframe_manager.get_keyframe(info.keyframe_id);
+            KeyPoint3d &kp3d = keyframe->kps.kps3d[info.keypoint_index];
 
-        for (size_t i = 0; i < refined_kps.kps2d.size(); i++) {
-            if (err[i] > 1000) {
-                refined_kps.kps2d[i].x = 10000000;
-            }
+            // If we count more inlier than outlier it's probably
+            // a complete outlier then...
+            if (info.outlier_count > info.inlier_count)
+                info.ignore_completely = true;
+
+            kp3d = updated_kps3d[i];
+            frame->kps.kps3d[i] = kp3d;
         }
-
-        START_MEASUREMENT();
-        Pose refined_pose;
-        PoseRefiner refiner(camera_settings);
-        refiner.refine_pose(refined_kps, estimated_pose, refined_pose);
-
-        END_MEASUREMENT("pose refinement");
-
-        project_keypoints(refined_pose, keyframe->kps.kps3d, camera_settings,
+        END_MEASUREMENT("Filter update");
+        project_keypoints(frame->pose, frame->kps.kps3d, camera_settings,
                 frame->kps.kps2d);
 
-        frame->kps.kps3d = previous_frame->kps.kps3d;
-        frame->kps.info = previous_frame->kps.info;
-        frame->pose = refined_pose;
 
-        if (keyframe_inserter.keyframe_needed(*frame)) {
+
+        if (keyframe_manager.keyframe_needed(*frame)) {
             cout << "New keyframe is needed" << endl;
-            keyframes.push_back(KeyFrame());
-            keyframe = &keyframes.back();
-            keyframe_inserter.new_keyframe(*frame, *keyframe);
-            frame->pose = keyframe->pose;
-            frame->kps = keyframe->kps;
+            START_MEASUREMENT();
+            keyframe = keyframe_manager.create_keyframe(*frame);
+            END_MEASUREMENT("Create new keyframe");
         }
     }
 
-    trajectory.push_back(frame->pose);
+    trajectory.push_back(frame->pose.get_pose());
 
     if (!previous_frame.empty()) {
+        const Vec6f current_pose(frame->pose.get_vector());
+        const Vec6f previous_pose(previous_frame->pose.get_vector());
+        motion = current_pose - previous_pose;
+
         previous_frame->kps.kps2d.clear();
         previous_frame->kps.kps3d.clear();
         previous_frame->kps.info.clear();
@@ -142,7 +225,7 @@ void StereoSlam::get_frame(Frame &frame)
 
 void StereoSlam::get_keyframes(std::vector<KeyFrame> &keyframes)
 {
-    keyframes = this->keyframes;
+    this->keyframe_manager.get_keyframes(keyframes);
 }
 
 void StereoSlam::get_trajectory(std::vector<Pose> &trajectory)

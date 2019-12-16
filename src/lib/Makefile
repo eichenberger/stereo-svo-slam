@@ -5,13 +5,15 @@ LDFLAGS ?= -O0
 SRC_FILES = corner_detector.cpp \
 			depth_calculator.cpp \
 			image_comparison.cpp \
-			keyframe_inserter.cpp \
+			keyframe_manager.cpp \
 			optical_flow.cpp \
 			pose_estimator.cpp \
 			pose_refinement.cpp \
+			pose_manager.cpp \
 			rotation_matrix.cpp \
 			stereo_slam.cpp \
-			transform_keypoints.cpp
+			transform_keypoints.cpp \
+			depth_filter.cpp
 
 
 OBJ_FILES = $(patsubst %.cpp, %.o, $(SRC_FILES))

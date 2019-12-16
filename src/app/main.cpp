@@ -23,6 +23,20 @@
 using namespace cv;
 using namespace std;
 
+#define PRINT_TIME_TRACE
+
+#ifdef PRINT_TIME_TRACE
+static TickMeter tick_meter;
+#define START_MEASUREMENT() tick_meter.reset(); tick_meter.start()
+
+#define END_MEASUREMENT(_name) tick_meter.stop();\
+    cout << _name << " took: " << tick_meter.getTimeMilli() << "ms" << endl
+
+#else
+#define START_MEASUREMENT()
+#define END_MEASUREMENT(_name)
+#endif
+
 static void draw_frame(KeyFrame &keyframe, Frame &frame)
 {
     const int SCALE = 2;
@@ -46,13 +60,8 @@ static void draw_frame(KeyFrame &keyframe, Frame &frame)
 
         cv::drawMarker(left_kf, kp, color, marker, 10);
 
-        KeyPoint3d &kp3d = keyframe.kps.kps3d[i];
         stringstream text;
-        text << fixed << setprecision(1) <<
-            info[i].keyframe_id << ":" <<
-            kp3d.x  << "," <<
-            kp3d.y << ","  <<
-            kp3d.z;
+        text << fixed << setprecision(1) << info[i].keyframe_id << ":" << i;
         putText(left_kf, text.str(), kp, FONT_HERSHEY_PLAIN, 0.8, Scalar(0,0,0));
     }
 
@@ -60,8 +69,11 @@ static void draw_frame(KeyFrame &keyframe, Frame &frame)
     putText(left_kf, text, Point(20,20), FONT_HERSHEY_PLAIN, 1, Scalar(255,0,0));
 
     vector<KeyPoint2d> &kps = frame.kps.kps2d;
+    vector<KeyPoint3d> &kps3d = frame.kps.kps3d;
     info = frame.kps.info;
     for (size_t i = 0; i < kps.size(); i++) {
+        if (info[i].ignore_completely)
+            continue;
         Point kp = Point(SCALE*kps[i].x, SCALE*kps[i].y);
         Scalar color (info[i].color.r, info[i].color.g, info[i].color.b);
 
@@ -71,13 +83,18 @@ static void draw_frame(KeyFrame &keyframe, Frame &frame)
 
         cv::drawMarker(left, kp, color, marker, marker_size);
 
-        KeyPoint3d &kp3d = keyframe.kps.kps3d[i];
+        //KeyPoint3d &kp3d = frame.kps.kps3d[i];
         stringstream text;
-        text << fixed << setprecision(1) <<
-            info[i].keyframe_id << ":" <<
-            kp3d.x  << "," <<
-            kp3d.y << ","  <<
-            kp3d.z;
+
+        float x = kps3d[i].x;
+        float y = kps3d[i].y;
+        float z = kps3d[i].z;
+        char ignore = info[i].ignore_completely ? '-' : '+';
+        text << fixed << setprecision(3) <<
+            info[i].keyframe_id << ":" << info[i].keypoint_index << ":" << ignore << ":" <<
+            x  << "," <<
+            y << ","  <<
+            z << "; " << info[i].inlier_count << ", " << info[i].outlier_count;
         putText(left, text.str(), kp, FONT_HERSHEY_PLAIN, 0.8, Scalar(0,0,0));
     }
 
@@ -105,21 +122,21 @@ static void read_image(ImageInput *input, StereoSlam *slam)
     Mat image;
 
     Mat gray_r, gray_l;
-    input->read(gray_l, gray_r);
+    if (!input->read(gray_l, gray_r)) {
+        QApplication::quit();
+        return;
+    }
 
+    START_MEASUREMENT();
     slam->new_image(gray_l, gray_r);
+    END_MEASUREMENT("Stereo SLAM");
+
     Frame frame;
     slam->get_frame(frame);
     KeyFrame keyframe;
     slam->get_keyframe(keyframe);
     draw_frame(keyframe, frame);
-    cout << "Current pose: " << frame.pose.x << "," <<
-        frame.pose.y << "," <<
-        frame.pose.z << "," <<
-        frame.pose.pitch << "," <<
-        frame.pose.yaw << "," <<
-        frame.pose.roll << "," <<
-        endl;
+    cout << "Current pose: " << frame.pose << endl;
 
 }
 
@@ -136,6 +153,7 @@ int main(int argc, char **argv)
             {{"v", "video"}, "Path to camera or video (/dev/videoX, video.mov)", "video"},
             {{"s", "settings"}, "Path to the settings file (Econ.yaml)", "settings"},
             {{"r", "hidraw"}, "econ: HID device to control the camera (/dev/hidrawX)", "hidraw"},
+            {{"i", "hidrawimu"}, "econ: HID device to control the imu (/dev/hidrawX)", "hidrawimu"},
             {{"e", "exposure"}, "econ: The exposure for the camera 1-30000", "exposure"},
             {{"t", "trajectory"}, "File to store trajectory", "trajectory"},
             {{"m", "move"}, "video: skip first n frames", "move"},
@@ -159,8 +177,12 @@ int main(int argc, char **argv)
 
         EconInput *econ = new EconInput(parser.value("video").toStdString(),
                 parser.value("hidraw").toStdString(),
-                parser.value("settings").toStdString(),
-                parser.value("exposure").toInt());
+                parser.value("hidrawimu").toStdString(),
+                parser.value("settings").toStdString());
+        econ->set_manual_exposure(parser.value("exposure").toInt());
+        float temperature;
+        econ->read_temperature(temperature);
+        cout << "Temperature: " << temperature << endl;
         input = econ;
     }
     else if (camera_type == "video") {
@@ -192,7 +214,7 @@ int main(int argc, char **argv)
     parser.addOption(showProgressOption);
 
     QTimer timer;
-    timer.setInterval(1.0/30.0*1000.0);
+    timer.setInterval(1.0/60.0*1000.0);
 
     QObject::connect(&timer, &QTimer::timeout,
             std::bind(&read_image, input, &slam));

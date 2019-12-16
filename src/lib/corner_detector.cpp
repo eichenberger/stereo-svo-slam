@@ -16,7 +16,7 @@ void CornerDetector::detect_keypoints(const Mat &image,
         vector<KeyPointInformation> &kp_info,
         int level)
 {
-    Ptr<FastFeatureDetector> detector = FastFeatureDetector::create();
+    Ptr<FastFeatureDetector> detector = FastFeatureDetector::create(6);
     vector<KeyPoint> _keypoints;
 
     detector->detect(image, _keypoints);
@@ -49,7 +49,6 @@ void CornerDetector::detect_keypoints(const Mat &image,
                     info.type = KP_FAST;
                 }
             }
-
             // If not we try to find an edgelet
             if (info.score < 0) {
                 for (int k = left; k < right; k++) {

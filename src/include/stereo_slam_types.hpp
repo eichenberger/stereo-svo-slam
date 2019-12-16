@@ -4,6 +4,8 @@
 #include <vector>
 #include <opencv2/opencv.hpp>
 
+#include "pose_manager.hpp"
+
 struct CameraSettings {
     float baseline;
     float fx;
@@ -41,6 +43,7 @@ struct CameraSettings {
 struct StereoImage {
     std::vector<cv::Mat> left;
     std::vector<cv::Mat> right;
+    std::vector<cv::Mat> opt_flow;
 };
 
 enum KeyPointType {
@@ -71,7 +74,13 @@ struct KeyPointInformation {
     enum KeyPointType type;
     float confidence;
     uint64_t keyframe_id;
+    size_t keypoint_index;
     Color color;
+    bool ignore_during_refinement;
+    bool ignore_completely;
+    int outlier_count;
+    int inlier_count;
+    cv::KalmanFilter kf;
 };
 
 // KeyPoints, each entry has the same index. We try to avaoid mixing
@@ -82,18 +91,9 @@ struct KeyPoints {
     std::vector<KeyPointInformation> info;
 };
 
-struct Pose {
-    float x;
-    float y;
-    float z;
-    float pitch;    // around x
-    float yaw;      // around y
-    float roll;     // around z
-};
-
 struct Frame {
     uint64_t id;
-    struct Pose pose;
+    PoseManager pose;
     struct StereoImage stereo_image;
     struct KeyPoints kps;
 };

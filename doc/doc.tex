@@ -33,16 +33,17 @@
 
 \tableofcontents
 
-\chapter{Planing}
+\chapter{Introduction}
 
-This chapter describes the planing of the master thesis. The first section lists the requirements the second section shows the time planing.
+Humans have different sensors to know the pose of the head inside a room. Everyone who ever tried to stand on one foot and closed the eyes knows that this makes finding the balance harder. From this we can guess that our eyes are an import factor of finding the pose for our brain. In this thesis we try to find a way to use the same optical information from a camera to estimate the pose of the camera inside a room. This is called visual odometry (VO). In this documentation we analyse and reimplement a algorithm which is called Semi-Dens Visual Odometry (SVO). The corresponding paper states that this algorithm is fast and can be used on embedded systems. We try to reimplement this algorithm and use it together with stereo cameras while the original algorithm uses a monocular camera.\\
+Even thought SVO SLAM is open source, the reference implementation is over 4 years old and has a lot of 3th party libraries. There exists a newer version called SVO2. However, this implementation is closed source. The new library written during this project will be completely independent of the original implementation. It will have less dependencies and will run faster. While the original implementation can be used with monocular camera the new library requires stereo cameras.
 
 \section{Requirement Specification}
 
 This section lists the features that must and shall be implemented during the master thesis. The word must means that these are hard requirements. Shall describes nice to have features that aren't hardly required. Can are options that are not required at all. The numbers after \# are IDs found in the Gantt chart of figure \ref{fig:gantt}.
 
 \subsection{SLAM Library \#42}
-A SLAM library must be written which runs at 30 fps on stereo gray scale images at a resolution of 640x480 on two Intel i5-7Y54 CPUs.
+A SLAM library must be written which runs at 30 fps on stereo gray scale images at a resolution of 752x480 on two Intel i5-7Y54 CPUs.
 \subsubsection{SVO based algorithm \#44}
 A first implementation of the library shall be based on SVO. However, it's not mandatory to be the exact SVO algorithm.
 \subsubsection{Plane Detection \#45}
@@ -76,13 +77,158 @@ The master thesis is honored with 27 ECTS. 1 ECTS consumes 30h which results in 
 	\caption{Initial planing}\label{fig:gantt}
 \end{figure}
 
-\chapter{Algorithm}
-In this chapter we analyse an algorithm that can be used to solve the SLAM problem.
+\section{Final timeline}
 
-\section{ORB SLAM}
+Unfortunately not all requirements are available in the final reason. As we will see the main reason for this is that implementing the algorithm took more time than expected. The final version now includes the following features:
+\begin{itemize}
+	\item{SLAM library \#42}
+		\subitem{30 fps are not achieved on an i5-7Y54 but on Quad Core i7 processor}
+	\item{SVO based algorithm \#44}
+	\item{IMU Integration \#47}
+	\item{Language}
+	\item{CPU}
+	\item{Example Application \#43}
+\end{itemize}
 
-\section{SVO SLAM}
-While ORB SLAM is well documented and can do loop closing, it is difficult to optimize the algorithm for realtime applications.
+\chapter{SLAM Evaluation}\label{chap:evaluation}
+
+In this section we analyze different documented SLAMs. This work was not part of this thesis. However, it shows what other algorithms and possibilities are available today. We can split them in two groups, indirect and direct SLAM (figure \ref{fig:slammodes}). Indirect methods analyze an image and try to extract features. This feature points are matched directly to further images. Based on these matches we can estimate the pose of the camera. Direct methods operate on intensity variances. The goal is to find a pose that minimizes the intensity difference between two images. Because minimizing the intensity difference over the whole image is computational expensive most methods operated only on edges or corners of the image. We call such methods direct semi dense or direct sparse. In the next sections we will have a discussion about these different approaches.
+
+\begin{figure}[H]
+	\includegraphics[width=1.0\textwidth]{img/slam_modes.png}
+	\caption{SLAM Modes}\label{fig:slammodes}
+\end{figure}
+
+
+\section{Indirect method}
+
+A well documented indirect method is ORB SLAM \cite{orbslam}. ORB SLAM extracts ORB keypoints which are then matched with a known 3D point cloud. Based on these matches it can do PnP with RANSAC \cite{ransac} to estimate the current pose and position. Indirect methods can estimate the pose through PnP which isn’t computationally expensive. On the other side computing descriptors costs CPU time. ORB was explained in greater detail in the project work 2 of this thesis TODO cite.
+
+\section{Direct method}
+
+In this section we will analyze two direct approaches a dense and a sparse approach. Dense methods use all pixels on the image for tracking while sparse methods only use a subset. Figure \ref{fig:sparse_dense} shows a comparison of dense sparse and semi-dense approaches. We don't dig into semi-dense approaches they work similar to sparse methods but with more keypoints.
+
+\begin{figure}[H]
+  \begin{center}
+		\includegraphics[width=1.0\textwidth]{img/sparse_dense.png}
+  \end{center}
+	\caption{Comparison of sparse, dense and semi-dense approaches \cite{svo}}\label{fig:sparse_dense}
+\end{figure}
+
+\subsection{Dense}
+
+There are not that many dense SLAM algorithms. One is DTAM \cite{dtam} which uses the intensity values of the whole image to estimating the pose. The idea is to minimize the intensity difference (energy) between two images by optimizing the camera pose. The energy defined at one pixel position is defined as shown in equation \ref{eq:pixel_energy}. To estimate the pose and position it tries to find a projection matrix that minimizes $E_{t}$ as shown in equation \ref{eq:total_energy}.
+\begin{equation}\label{eq:pixel_energy}
+\begin{aligned}
+  E_{xy}=I_1(x,y)-I_2(x',y')\\
+	\begin{pmatrix}
+	x'*s'\\
+	y'*s'\\
+	s'\\
+	\end{pmatrix}=P*XYZ
+\end{aligned}
+\end{equation}
+Where:
+\begin{align*}
+  E_{xy}	&: \text{Energy at a specific position}\\
+  I_1			&: \text{Previous image}\\
+  I_2			&: \text{Current image}\\
+  x,y			&: \text{Point position in previous image} \\
+  x',y'		&: \text{Point position in current image} \\
+	s'			&: \text{Scaling value}\\
+  P				&: \text{Projection matrix}\\
+  XYZ			&: \text{Point position in 3D cloud}
+\end{align*}
+\begin{equation}\label{eq:total_energy}
+  E_{t}=\min(\sum_{x=0}^C\sum_{y=0}^RE_{xy})
+\end{equation}
+Where:
+\begin{align*}
+  E_{t}		&: \text{Total energy}\\
+  E_{xy}	&: \text{Energy at pixel position x/y in image}\\
+	C				&: \text{Image columns}\\
+	R				&: \text{Image rows}\\
+\end{align*}
+
+Direct dense methods deliver a dense point cloud which we can use directly to create maps and 3D objects. However, they are computational expensive. Therefore, they are not appropriate for embedded devices.
+
+\subsection{Sparse}
+
+Sparse direct SLAMs like SVO \cite{svo} don’t optimize the Energy over the whole image but the energy at sparse points instead. One possibility of a sparse point is e.g. a corner point found by FAST \cite{fast}. Similar to sparse methods there are semi dense methods which try to minimize the energy on several points laying on edges. Canny Edge detection or DoG can for example find such edges. The advantage of sparse and semi dense methods is that they are less computationally expensive than dense methods.\\\\
+Sparse direct methods don’t create dense clouds immediately however they can work on weaker keypoints than indirect methods. Therefore, they can create denser clouds than e.g. ORB SLAM. They can also be computational less expensive than indirect methods because they don’t have to calculate expensive features \cite{svo}.
+
+\section{Stereo and Monocular SLAM}
+
+In this project, the focus is on stereo SLAM. A lot of today's paper focus on monocular SLAM. The reasons are that monocular cameras are cheaper and monocular cameras are available in Smartphones. Monocular SLAM has two problems we don’t have with stereo SLAM. First an initialization process has to estimate the movement between two frames. We can only create a 3D point cloud based on two images with known position, in the monocular case the position of two images is random. Therefore, the algorithm needs to guess the pose and transformation over a few images until it knows the poses. It does that by making assumptions on the world or by trying to optimizing the point positions over several images. However, even when successfully initialized the second problem persists. Monocular SLAM is not able to guess the scale of the point cloud. The intuition for this issue is that we can’t distinguish between the movement of the camera on a small model close to the scene or the movement of the camera on the original model further away from the scene. With stereo SLAM we don’t have this issue. For each camera pose we get two images with a known distance between the two camera sensors (baseline). Therefore, we can calculate the depth of each pixel in real world distance. From this we can generate a point cloud assuming that the initial camera pose is at origin. We therefore have an instantaneous initialization and can calculate the real world position in a known unit e.g. meters. Tracking between two camera poses is however the same on monocular and stereo SLAM. However we can again insert new keypoints immediately on stereo cameras without the need of using a second camera pose.
+
+\section{Decision}
+
+In our previous project works we used ORB SLAM for pose estimation and SLAM. While ORB SLAM is powerful it has some performance limitations when running on embedded systems. The CPVR lab uses ORB SLAM heavily in different projects but there is no experience with direct or semi direct approaches yet. Therefore, we try to reimplement SVO SLAM in this thesis. It should have less dependencies and run faster than the open source version available on Github. The decision for SVO SLAM was taken because of:
+\begin{itemize}
+	\item Open source implementation available
+	\item According to SVO paper it's faster than ORB SLAM
+	\item Approach seems to be ``simpler'' than ORB SLAM
+	\item The CPVR lab already has experience with ORB, an alternative solution may be interesting.
+\end{itemize}
+
+\chapter{Camera Evaluation}
+
+To do stereo computer vision, we need a stereo camera. There are a few stereo cameras available on the market. It is also possible to build a stereo camera with two monocular cameras. However, we decided against that because it would require a mechanism to synchronize the images from both streams. We analyze three stereo cameras available on the market.
+
+\section{ZED}
+The ZED camera \cite{zed} is a stereo camera from Stereo Labs. Here the specification of this camera:
+\begin{itemize}
+	\item Full HD color images with 30fps
+	\item USB3.0
+	\item UVC compliant
+	\item Linux SDK
+	\item Baseline 120mm
+	\item IMU sensor with 6DoF
+	\item Price: 449\$
+\end{itemize}
+
+To run their SDK a Dual Core CPU with 2.3 GHz and CUDA > 3.0 is required. However, it's also possible to use the camera without their SDK.
+
+\section{ECON Tara}
+The Tara camera \cite{tara} from Econ is another stereo camera. In comparison to the ZED camera it delivers a reduced resolution and only gray scale images.
+\begin{itemize}
+	\item 752x480 gray scale images with 60fps
+	\item USB3.0
+	\item Global Shutter Camera
+	\item UVC compliant
+	\item Baseline 60mm
+	\item IMU sensor with 6DoF
+	\item Open Source SDK
+	\item Price: 149\$
+\end{itemize}
+
+It has a small OpenCV based SDK with open source software. In comparison to the ZED SDK it is less powerful.
+
+\section{Intel RealSense D435}
+The Intel RealSense camera \cite{realsense} is a infrared stereo camera. In comparison to RGB stereo cameras it uses infrared images for stereo vision. It seems that this sensors are less prone to reflections. A third camera delivers RGB images in full HD.
+\begin{itemize}
+	\item 1280x720 with 90fps (IR), 1920x1080 with 30fps (RGB)
+	\item USB3.0
+	\item Global Shutter Camera
+	\item UVC compilant (kernel patch required)
+	\item Baseline 50mm
+	\item Open Source SDK (librealsense)
+	\item Price: 179\$
+\end{itemize}
+
+The Intel SDK seems quite powerful and is open source as well. However, the indepth details of the camera are not publicly available.
+
+\section{Decision}
+
+We decided to use the Econ Tara because it has an outstanding price ratio and because it is a conventional stereo camera. However, the Intel RealSense camera is also a great fit because it delivers depth images directly. This reduces the CPU load on the iMX8. If we require Full HD, we should use the ZED camera. Another advantage of the ZED camera is the bigger baseline of 120mm. This allows depth estimation with higher range. We decided against this camera mainly because of the high price and because of the closed source SDK. We can't benefit from Full HD sensors because embedded systems only have limited CPU resources.
+
+
+
+\chapter{SVO}
+In this chapter we describe SVO SLAM.
+
+\section{SVO SLAM idea}
+As described in chapter \ref{chap:evaluation} there are two main ideas on how SLAM algorithms can estimate the current pose. SVO is part of the sparse direct algorithms. This means it tries to update the current camera pose based on intensity differences. To make it fast it compares only keypoints that were extracted earlier. This makes the algorithm faster and more efficient.
 
 \subsection{Initialization}\label{sec:initialization}
 In this project we use a stereo camera therefore the initialization step is simpler than in the monocular case. The algorithm performs the following steps.
@@ -97,11 +243,11 @@ In this project we use a stereo camera therefore the initialization step is simp
 		\subitem{The difference between these two points is the disparity (1/depth)}
 \end{enumerate}
 
-This step is described in \cite{svo2} section IX.A. We use a multi camera approach. We need to do the initialization step when we get the first frame as well as when we insert a new keyframe.
+This step is different compared to what SVO SLAM describes in \cite{svo2} section IX.A. The reason is that we focus on stereo cameras. Therefore, we can already estimate a point cloud from the first image without any movement. We calculate the 3D points for each keyframe. However, we try to keep as many kepoints from previous keyframes as possible to make the algorithm more robust.
 
 \subsection{Sparse Image Alignment}\label{sec:sia}
 
-From the initialization step we optain a initial point cloud. We use this point cloud to estimate the pose and motion of the camera. We try to find a Pose that minimizes the photometric error of small patches around the keypoints found in section \ref{sec:initialization}. We do that by minimizing the formula shown in equation \ref{eq:intensity}. We use equation \ref{eq:cm} to project the 3D point cloud to the current frame. By using Levenberg-Marquardt we can minimize the intensity difference by changing the values of the extrinsic matrix $r_{ij}$ and $t_{x,y,z}$. As initial guess for the pose we use the current pose and add the motion model. The motion model is the difference between the pose in the previous frame ($t-1$) and frame $t-2$.
+From the initialization step we optain an initial point cloud. We use this point cloud to estimate the pose and motion of the camera. We try to find a Pose that minimizes the photometric error of small patches around the keypoints found in section \ref{sec:initialization}. We do that by minimizing the formula shown in equation \ref{eq:intensity}. We use equation \ref{eq:cm} to project the 3D point cloud to the current frame. By using Levenberg-Marquardt we can minimize the intensity difference by changing the values of the extrinsic matrix $r_{ij}$ and $t_{x,y,z}$. As initial guess for the pose we use the current pose and add the motion model. The motion model is the difference between the pose in the previous frame ($t-1$) and frame $t-2$.
 
 \begin{equation}\label{eq:intensity}
 	I_{TD}=\sum_{i=0}^{i=N}I_{F-1}(x_{F-1,i},y_{F-1,i})-I_{F}(x_{F,i},y_{F,i})
@@ -190,11 +336,39 @@ Where:
 	x',y' &: \text{x,y reprojection of 3D point by using \ref{eq:cm}}
 \end{align*}
 
-\subsection{Finding gradient for optimization}
+\subsection{Point refinement}
+Because of the stereo camera approach we use in this work it's not necessary to follow the same mapping as described in \cite{svo2}. However, specially the depth estimation of points farer away is not accurate because we have a maximum resolution of 1 pixel. When moving the camera along the x axis we could gain higher precision because this is comparable to a higher baseline. We therefore use a Kalman filter to fuse depth estimations from different poses. This is efficient and can therefore be done for each frame. 
+
+\section{Optical Flow}
 To speed up the optimization a predefined gradient can be calculated. The method to find such a gradient is related to the Lucas-Kanade optical flow method. Instead of searching a Warp matrix we search a transformation matrix in this scenario. We have two images $I_{k-1}$ and $I_{k}$. We know the pose of image k-1 $T_{k-1}$ . We search the pose $T_k$.\\
 While the inverse compositional Lucas Kanade algorithm tries to find the optimal Warp matrix. We try to find the optimal pose.
-\subsubsection{Lucas Kanade Algorithm}
-Lets assume we have a warp matrix in the following form:
+\subsection{Lucas Kanade Intuitive}
+
+As mentioned in the previous section Lucas Kanade is an algorithm to estimate the optical flow. In the simplest case it just tells us where a certain pixel was in the image before and where it is now. It does that in a efficient way by using the intensity gradients. This section tries to describe how this works in an intuitive but simplified way while the next section will describe it in a more mathematical way.\\
+Let's assume the simplest scenario where we can only move in one direction (left or right). Figure \ref{fig:optical_flow_intuitive} shows this simple scenario. Let's first focus on the case where we have a small movement (a). We first calculate the intensity gradients in the template (first row). Then we calculate the intensity difference (last row) between the current image (second row) and the first image. Now we multiply the gradient times the intensity difference this will give us the direction in which we have to move. Here we assume that moving the current image to left means - and moving it to right +. Now we move in the direction of the gradient and will calculate the intensity difference again. If it increases we moved too much and we have to reduce the step size if it decreases we are fine and we can calculate the new gradient again based on the new intensity difference. After some iterations the intensity change from one iteration to the other should be minimal. We have found the horizontal movement of our image. We already describe the inverse compositional Lucas Kanade algorithm because we calculate the gradients on the template. The ``normal'' Lucas Kanade would calculate the gradients on the current image. This has the disadvantage that we need to calculate the gradients after each iteration and it's therefore less computational efficient.\\
+What we can see in \ref{fig:optical_flow_intuitive} (b) that it's impossible to track movements over bigger distances. If the patch we compare does not connect to the area where the new image has moved, we are unable to move in the right direction. As we can see it's even possible that we move in the wrong direction (b). To overcome this problem we can downsample the image as shown in (c). We only downsampled in horizontal direction for visability. In reality the whole image would be downsampled by factor 2,4,8,16, etc. This is called an optical pyramid. As we can see in (c) after we downsampled the image by factor two we have again a valid gradient which points in the right direction. The idea is that we start to optimized in the lowest level if we converge we optimize again one level higher and so on. With this idea it is possible to track flows over higher distances while still being efficient.
+
+\begin{figure}[H]
+	\centering
+	\subfloat[Lucas Kanade small move]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_1.png}}
+	\subfloat[Lucas Kanade big move]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_2.png}}
+	\subfloat[Lucas Kanade big move down sampled]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_3.png}}
+	\caption{Optical Flow Intuitive}\label{fig:optical_flow_intuitive}
+\end{figure}
+
+We can extend the above scenario from a movement in one dimension easily to two dimensions as shown in figure \ref{fig:optical_flow_2d}. We simply calculate the gradient in the vertical direction as well. By doing this we can track movements in x and y direction. We easily see that not all values in the patch help to find the right gradient. Some gradients in the patch point in the wrong direction. However, in total the gradient points in the right direction. By using image pyramids we can reduce the influence of such miss matches.
+\begin{figure}[H]
+	\includegraphics[width=1.0\textwidth]{img/optical_flow_2d.png}
+	\caption{Optical Flow Intuitive 2D: +: current-previous intensity > 0, -: current-previous intensity < 0, u: gradient points up, d: gradient points down, l: gradient points left, r: gradient points right, red: wrong direction, green: right direction, blue: no influence, yellow arrow: final gradient}\label{fig:optical_flow_2d}
+\end{figure}
+
+We showed that optical flow can track two dimensional movements. However, it doesn't track rotations and shearing. This will introduce dependencies between x and y movements which become non-linear. In the next section we extend the intuitive approach so that we can solve non-linear problems.
+
+\subsection{Lucas Kanade Mathematical}
+
+In the previous section we showed the basic idea of optical flow. It is oversimplified and can only track movements in x and y direction. In this section we extend this idea so that more complicated movements can be tracked.\\
+
+Instead of linear movements in x and y direction we want to find a warp matrix which describes a affine transformation of a patch from one image to the other (equation \ref{eq:lk_warp}).
 \begin{equation}\label{eq:lk_warp}
 	p=\begin{pmatrix}
 		p_{11} & p_{12} & p_{13} \\
@@ -205,9 +379,8 @@ Lets assume we have a warp matrix in the following form:
 	p				&:	\text{warp matrix}\\
 	p_{ij}	&:	\text{parameter of warp matrix}
 \end{align*}
+This warp matrix describes movements along the x and y axis($p_{11},p_{22}$, a rotation ($p_{13},p_{21}$) and shearing ($p_{13},p_{23}$). The goal of Lucas Kanade is to find this warp matrix. It does that by minimizing the Intensity difference between patch of pixels in a template (reference image) and a patch of pixels with the same size in the current image as shown in equation \ref{eq:lk_problem}. 
 
-
-Lucas Kanade tries to optimize the following problem \cite{inverse_compositional}:
 \begin{equation}\label{eq:lk_problem}
 	\sum_x\sum_y(I_{k}(x',y')-I_{k-1}(x,y))^2
 \end{equation}
@@ -217,6 +390,8 @@ Lucas Kanade tries to optimize the following problem \cite{inverse_compositional
 	I_{k-1}		&:	\text{Template image}\\
 	I_{k}			&:	\text{Current image}
 \end{align*}
+
+We describe the transformation of a pixel from the reference image to the current image as a matrix multiplication as shown in equation \ref{eq:lk_warped}.
 
 \begin{equation}\label{eq:lk_warped}
 	W=
@@ -245,7 +420,7 @@ Lucas Kanade tries to optimize the following problem \cite{inverse_compositional
 	p_{ij}		&:	\text{parameter of warp matrix}
 \end{align*}
 
-Because \ref{eq:lk_problem} is a nonlinear problem we have to solve it with a nonlinear solver (e.g. Gauss-Newton or Gradient Descent). The problem is solved by iteratively changing the Warpmatrix in the direction of a gradient until the difference of the intensities are minimal:
+Because \ref{eq:lk_problem} is a nonlinear problem we have to solve it with a nonlinear solver (e.g. Gauss-Newton or Gradient Descent). The problem is solved by iteratively changing the warp matrix in the direction of a gradient until the difference of the intensities are minimal:
 \begin{equation}
 	\begin{pmatrix}
 		x' \\
@@ -269,8 +444,7 @@ Because \ref{eq:lk_problem} is a nonlinear problem we have to solve it with a no
 \end{align*}
 
 
-After each iteration we set $p=p_{i-1}+\Delta p$.\\
-We can solve this problem by approximating the gradient. However it would slow down the calculation. Therefore, Lucas Kanade calculates the gradient by doing a first order Taylor approximation of the problem:
+After each iteration we set $p=p_{i-1}+\Delta p$. We can solve this problem by approximating the gradient heuristically. However, it would slow down the calculation. Therefore, Lucas Kanade calculates the gradient by doing a first order Taylor approximation of the problem:
 \begin{equation}\label{eq:lk_taylor}
 	\sum_x\sum_y(I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k}*\frac{\sigma W}{\sigma p}*\Delta p-I_{k-1}(x,y))^2
 \end{equation}
