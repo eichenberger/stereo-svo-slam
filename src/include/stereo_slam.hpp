@@ -19,6 +19,11 @@ public:
     void get_keyframes(std::vector<KeyFrame> &keyframes);
     void get_frame(Frame &frame);
     void get_trajectory(std::vector<Pose> &trajectory);
+    void update_pose(const Pose &pose, const cv::Vec6f &speed,
+        const cv::Vec6f &pose_variance, const cv::Vec6f &speed_variance,
+        double current_time);
+    double get_last_update() const;
+    double get_current_time();
 
 private:
     void new_keyframe();
@@ -32,6 +37,10 @@ private:
     cv::Ptr<Frame> frame;
     std::vector<Pose> trajectory;
     cv::Vec6f motion;
+
+    double last_update;
+    cv::KalmanFilter kf;
+    cv::TickMeter time_measure;
 };
 
 #endif

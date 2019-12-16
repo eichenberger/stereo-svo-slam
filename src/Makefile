@@ -1,9 +1,9 @@
 CXX      ?= gcc
-#CXXFLAGS  ?= -O3 #-fopt-info-vec-missed -fopt-info-vec # -fopt-info-vec-all
-#LDFLAGS ?= -O3
+CXXFLAGS  ?= -O3 #-fopt-info-vec-missed -fopt-info-vec # -fopt-info-vec-all
+LDFLAGS ?= -O3
 
-CXXFLAGS  ?= -O0 -ggdb
-LDFLAGS ?= -O0 -ggdb
+#CXXFLAGS  ?= -O0 -ggdb
+#LDFLAGS ?= -O0 -ggdb
 
 
 QMAKE ?= qmake
@@ -12,7 +12,7 @@ QMAKE ?= qmake
 
 export
 
-all: lib app
+all: lib app ar-app
 
 lib:
 	$(MAKE) -C lib lib
@@ -35,3 +35,4 @@ clean:
 	$(MAKE) -C python clean
 	$(MAKE) -C test clean
 	$(MAKE) -C app clean
+	$(MAKE) -C ar-app clean

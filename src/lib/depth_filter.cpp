@@ -49,8 +49,6 @@ void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
     update_kps3d(frame, updated_kps3d);
 }
 
-
-
 void DepthFilter::outlier_check(Frame &frame, const vector<float> &disparities)
 {
     const float &fx = camera_settings.fx;

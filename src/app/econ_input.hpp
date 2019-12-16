@@ -19,7 +19,7 @@ class EconInput: public ImageInput
 {
 public:
     EconInput(const std::string &camera_path, const std::string &hidraw_path,
-            const std::string &hidraw_imu_path, const std::string &settings);
+            const std::string &settings, const std::string &hidraw_imu_path = "");
 
     virtual bool read(cv::Mat &left, cv::Mat &right);
     virtual void get_camera_settings(CameraSettings &camera_settings);
@@ -28,6 +28,9 @@ public:
     virtual bool get_imu_data(ImuData &imu_data);
     virtual bool set_hdr(bool hdr);
     virtual bool read_temperature(float &temperature);
+    float get_freqency() { return frequency; }
+    void calibrate_imu();
+    bool imu_available();
 
 private:
     const std::string &hidraw;
@@ -35,9 +38,14 @@ private:
     cv::Ptr<cv::VideoCapture> cap;
     float gyro_sensitivity;
     float acc_sensitivity;
+    float frequency;
+    ImuData imu_calibration;
 
+    std::fstream fhidraw;
+    std::ifstream fhidraw_imu;
 
 };
 
+std::ostream& operator<<(std::ostream& os, const ImuData& imu);
 
 #endif

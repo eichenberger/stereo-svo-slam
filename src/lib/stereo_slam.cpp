@@ -30,6 +30,14 @@ StereoSlam::StereoSlam(const CameraSettings &camera_settings) :
     camera_settings(camera_settings), keyframe_manager(camera_settings),
     motion(0, 0, 0, 0, 0, 0)
 {
+    kf.init(12,12);
+    setIdentity(kf.transitionMatrix);
+    setIdentity(kf.measurementMatrix);
+    // We don't trust the prediction becasue the measurement is much more accurate
+    setIdentity(kf.processNoiseCov, Scalar::all(1000.0));
+    setIdentity(kf.errorCovPost, Scalar::all(1.0));
+    kf.statePost = Mat::zeros(12, 1, CV_32F);
+    time_measure.start();
 }
 
 void StereoSlam::remove_outliers(Frame *frame)
@@ -54,7 +62,7 @@ void StereoSlam::estimate_pose(Frame *previous_frame)
 
     PoseManager estimated_pose;
     START_MEASUREMENT();
-    float cost = estimator.estimate_pose(previous_frame->pose, estimated_pose);
+    float cost = estimator.estimate_pose(frame->pose, estimated_pose);
     END_MEASUREMENT("estimator");
 
     cout << "Estimation cost (intensity diff): " << cost << endl;
@@ -117,6 +125,9 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
     Ptr<Frame> previous_frame = frame;
     frame = new Frame;
 
+    // Add a pseudo timestamp
+    frame->time_stamp = get_current_time();
+
     START_MEASUREMENT();
     // Unfortunately we can't use buildOpticalFlowPyramid because
     // it does some heavy gauss filtering which doesen't work well
@@ -157,8 +168,18 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
     else {
         frame->id = previous_frame->id + 1;
 
-        Vec6f motion_applied = frame->pose.get_vector() + motion;
-        frame->pose.set_vector(motion_applied);
+        kf.predict();
+        Pose predicted_pose;
+        predicted_pose.x = kf.statePre.at<float>(0);
+        predicted_pose.y = kf.statePre.at<float>(1);
+        predicted_pose.z = kf.statePre.at<float>(2);
+        predicted_pose.pitch = kf.statePre.at<float>(3);
+        predicted_pose.yaw = kf.statePre.at<float>(4);
+        predicted_pose.roll = kf.statePre.at<float>(5);
+
+        cout << "Previous pose: " << previous_frame->pose;
+        frame->pose.set_pose(predicted_pose);
+        cout << " Predicted pose: " << frame->pose << endl;
 
         remove_outliers(previous_frame);
         estimate_pose(previous_frame);
@@ -197,20 +218,38 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
         }
     }
 
-    trajectory.push_back(frame->pose.get_pose());
 
     if (!previous_frame.empty()) {
+        double dt = frame->time_stamp - previous_frame->time_stamp;
         const Vec6f current_pose(frame->pose.get_vector());
         const Vec6f previous_pose(previous_frame->pose.get_vector());
-        motion = current_pose - previous_pose;
+        motion = (current_pose - previous_pose)/dt;
+        Vec6f pose_variance(0.1,0.1,0.1,0.1,0.1,0.1);
+        Vec6f motion_variance(1.0,1.0,1.0,1.0,1.0,1.0);
+        update_pose(frame->pose.get_pose(), motion, pose_variance, motion_variance, frame->time_stamp);
+
+        Pose filtered_pose;
+        filtered_pose.x = kf.statePost.at<float>(0);
+        filtered_pose.y = kf.statePost.at<float>(1);
+        filtered_pose.z = kf.statePost.at<float>(2);
+        filtered_pose.pitch = kf.statePost.at<float>(3);
+        filtered_pose.yaw = kf.statePost.at<float>(4);
+        filtered_pose.roll = kf.statePost.at<float>(5);
+
+        cout << "Pose before KF filtering: " << frame->pose;
+        frame->pose.set_pose(filtered_pose);
+        cout << "Pose after KF filtering: " << frame->pose << endl;
 
         previous_frame->kps.kps2d.clear();
         previous_frame->kps.kps3d.clear();
         previous_frame->kps.info.clear();
         previous_frame->stereo_image.left.clear();
         previous_frame->stereo_image.right.clear();
+        previous_frame->stereo_image.opt_flow.clear();
         previous_frame.release();
     }
+
+    trajectory.push_back(frame->pose.get_pose());
 }
 
 void StereoSlam::get_keyframe(KeyFrame &keyframe)
@@ -233,3 +272,59 @@ void StereoSlam::get_trajectory(std::vector<Pose> &trajectory)
     trajectory = this->trajectory;
 }
 
+void StereoSlam::update_pose(const Pose &pose, const Vec6f &speed,
+        const Vec6f &pose_variance, const Vec6f &speed_variance, double current_time)
+{
+    float dt = current_time - last_update;
+    kf.transitionMatrix.at<float>(0, 6) = dt;
+    kf.transitionMatrix.at<float>(1, 7) = dt;
+    kf.transitionMatrix.at<float>(2, 8) = dt;
+    kf.transitionMatrix.at<float>(3, 9) = dt;
+    kf.transitionMatrix.at<float>(4, 10) = dt;
+    kf.transitionMatrix.at<float>(5, 11) = dt;
+
+    kf.predict();
+
+    kf.measurementNoiseCov.at<float>(0, 0) = pose_variance(0);
+    kf.measurementNoiseCov.at<float>(1, 1) = pose_variance(1);
+    kf.measurementNoiseCov.at<float>(2, 2) = pose_variance(2);
+    kf.measurementNoiseCov.at<float>(3, 3) = pose_variance(3);
+    kf.measurementNoiseCov.at<float>(4, 4) = pose_variance(4);
+    kf.measurementNoiseCov.at<float>(5, 5) = pose_variance(5);
+    kf.measurementNoiseCov.at<float>(6, 6) = speed_variance(0);
+    kf.measurementNoiseCov.at<float>(7, 7) = speed_variance(1);
+    kf.measurementNoiseCov.at<float>(8, 8) = speed_variance(2);
+    kf.measurementNoiseCov.at<float>(9, 9) = speed_variance(3);
+    kf.measurementNoiseCov.at<float>(10, 10) = speed_variance(4);
+    kf.measurementNoiseCov.at<float>(11, 11) = speed_variance(5);
+
+    Matx<float, 12, 1> measurement(
+            pose.x,
+            pose.y,
+            pose.z,
+            pose.pitch,
+            pose.yaw,
+            pose.roll,
+            speed(0),
+            speed(1),
+            speed(2),
+            speed(3),
+            speed(4),
+            speed(5));
+
+    kf.correct(Mat(measurement));
+
+    last_update = current_time;
+}
+
+double StereoSlam::get_last_update() const {
+    return last_update;
+}
+
+double StereoSlam::get_current_time() {
+    // TODO: This is a hack because we can't call getTimeSec without stop...
+    time_measure.stop();
+    double current_time = time_measure.getTimeSec();
+    time_measure.start();
+    return current_time;
+}

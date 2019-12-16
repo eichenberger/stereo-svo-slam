@@ -106,6 +106,7 @@ int main(int argc, char **argv)
             {{"r", "hidraw"}, "econ: HID device to control the camera (/dev/hidrawX)", "hidraw"},
             {{"i", "hidrawimu"}, "econ: HID device to read the imu values(/dev/hidrawX)", "hidrawimu"},
             {{"e", "exposure"}, "econ: The exposure for the camera 1-30000", "exposure"},
+            {{"d", "hdr"}, "econ: Use HDR video"},
             });
 
 
@@ -117,7 +118,6 @@ int main(int argc, char **argv)
     if (camera_type == "econ") {
         if (!parser.isSet("video") ||
                 !parser.isSet("hidraw") ||
-                !parser.isSet("hidrawimu") ||
                 !parser.isSet("settings") ||
                 !parser.isSet("exposure")) {
             cout << "Please set all inputs for econ" << endl;
@@ -127,10 +127,11 @@ int main(int argc, char **argv)
 
         EconInput *econ = new EconInput(parser.value("video").toStdString(),
                 parser.value("hidraw").toStdString(),
-                parser.value("hidrawimu").toStdString(),
-                parser.value("settings").toStdString());
+                parser.value("settings").toStdString(),
+                parser.value("hidrawimu").toStdString());
+        econ->set_hdr(parser.isSet("hdr"));
         econ->set_manual_exposure(parser.value("exposure").toInt());
-        econ->set_hdr(true);
+
         input = econ;
     }
     else {

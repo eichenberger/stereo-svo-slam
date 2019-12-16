@@ -40,7 +40,6 @@ static void read_data(EconInput *econ)
         imu_data.gyro_z << endl;
 
     cout << endl;
-
 }
 
 
@@ -73,12 +72,13 @@ int main(int argc, char **argv)
 
     EconInput *econ = new EconInput(parser.value("video").toStdString(),
             parser.value("hidraw").toStdString(),
-            parser.value("hidrawimu").toStdString(),
-            parser.value("settings").toStdString());
+            parser.value("settings").toStdString(),
+            parser.value("hidrawimu").toStdString());
     econ->configure_imu();
+    econ->calibrate_imu();
 
     QTimer timer;
-    timer.setInterval(100);
+    timer.setInterval(5);
 
     QObject::connect(&timer, &QTimer::timeout,
             std::bind(&read_data, econ));

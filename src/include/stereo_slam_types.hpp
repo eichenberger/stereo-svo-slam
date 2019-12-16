@@ -96,6 +96,7 @@ struct Frame {
     PoseManager pose;
     struct StereoImage stereo_image;
     struct KeyPoints kps;
+    double time_stamp;
 };
 
 struct KeyFrame : Frame{

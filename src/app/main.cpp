@@ -117,8 +117,38 @@ static void draw_frame(KeyFrame &keyframe, Frame &frame)
         QApplication::quit();
 }
 
+static void update_pose_from_imu(EconInput *econ, StereoSlam *slam)
+{
+    if (!econ->imu_available())
+        return;
+    ImuData imu_data;
+
+    Frame frame;
+    slam->get_frame(frame);
+
+    double dt = slam->get_current_time() - frame.time_stamp;
+    size_t n_values = 1 + econ->get_freqency()*dt;
+
+    Vec6f pose_variance(10.0, 10.0, 10.0, 10.0, 10.0, 10.0);
+    Vec6f speed_variance(100.0, 100.0, 100.0, 0.1, 0.1, 0.1);
+    double measurement_time = frame.time_stamp;
+    for (size_t i = 0; i < n_values; i++) {
+        econ->get_imu_data(imu_data);
+        Vec6f speed(0,0,0,imu_data.gyro_x, imu_data.gyro_y, imu_data.gyro_z);
+
+        measurement_time += 1.0/econ->get_freqency();
+        slam->update_pose(frame.pose.get_pose(), speed, pose_variance, speed_variance, measurement_time);
+    }
+}
+
 static void read_image(ImageInput *input, StereoSlam *slam)
 {
+    EconInput *econ = nullptr;
+    try {
+        econ = dynamic_cast<EconInput*>(input);
+    }
+    catch(...) {
+    }
     Mat image;
 
     Mat gray_r, gray_l;
@@ -137,6 +167,8 @@ static void read_image(ImageInput *input, StereoSlam *slam)
     slam->get_keyframe(keyframe);
     draw_frame(keyframe, frame);
     cout << "Current pose: " << frame.pose << endl;
+    if (econ)
+        update_pose_from_imu(econ, slam);
 
 }
 
@@ -157,6 +189,7 @@ int main(int argc, char **argv)
             {{"e", "exposure"}, "econ: The exposure for the camera 1-30000", "exposure"},
             {{"t", "trajectory"}, "File to store trajectory", "trajectory"},
             {{"m", "move"}, "video: skip first n frames", "move"},
+            {{"d", "hdr"}, "econ: Use HDR video"},
             });
 
 
@@ -177,10 +210,13 @@ int main(int argc, char **argv)
 
         EconInput *econ = new EconInput(parser.value("video").toStdString(),
                 parser.value("hidraw").toStdString(),
-                parser.value("hidrawimu").toStdString(),
-                parser.value("settings").toStdString());
+                parser.value("settings").toStdString(),
+                parser.value("hidrawimu").toStdString());
+        econ->set_hdr(parser.isSet("hdr"));
         econ->set_manual_exposure(parser.value("exposure").toInt());
-        econ->set_hdr(true);
+        if (econ->imu_available()) {
+            econ->calibrate_imu();
+        }
         input = econ;
     }
     else if (camera_type == "video") {

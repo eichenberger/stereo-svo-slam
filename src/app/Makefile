@@ -27,9 +27,9 @@ test_imu: $(IMU_OBJ_FILES)
 	$(CXX) -o test_imu $(IMU_OBJ_FILES) $(LDFLAGS)
 
 clean:
-	rm -f $(LIB_NAME) $(OBJ_FILES)
+	rm -f $(LIB_NAME) $(OBJ_FILES) $(IMU_OBJ_FILES)
 	rm -f *.gch *.tmp
-	rm -f $(PROG_NAME)
+	rm -f $(PROG_NAME) test_imu
 
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
