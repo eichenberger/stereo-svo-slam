@@ -7,17 +7,18 @@ using namespace cv;
 
 #define ARRAY_SIZE(x) (sizeof(x)/sizeof(x[0]))
 
-#define BUFFER_LENGTH				65
+#define BUFFER_LENGTH                       65
 
 #define HIDRAW_CAMERA_CONTROL_STEREO        0x78
 
 #define HIDRAW_SEND_IMU_VAL_BUFF            0x06
-#define HIDRAW_CONTROL_IMU_VAL				0x05
+#define HIDRAW_CONTROL_IMU_VAL              0x05
 #define HIDRAW_SET_SUCCESS                  0x01
 #define HIDRAW_GET_SUCCESS                  0x01
-#define HIDRAW_GET_IMU_TEMP_DATA			0x0D
+#define HIDRAW_GET_IMU_TEMP_DATA            0x0D
+#define HIDRAW_SET_HDR_MODE_STEREO          0x0E
 
-#define HIDRAW_IMU_NUM_OF_VAL				0xFF
+#define HIDRAW_IMU_NUM_OF_VAL               0xFF
 
 #define HIDRAW_IMU_ACC_VAL                  0xFE
 #define HIDRAW_IMU_GYRO_VAL                 0xFD
@@ -220,4 +221,27 @@ bool EconInput::read_temperature(float &temperature)
 
     temperature = (read_buffer[2]) + (0.5*read_buffer[3]);
     return true;
+}
+bool EconInput::set_hdr(bool hdr)
+{
+    uint8_t _hdr = hdr ? 1 : 0;
+    uint8_t buffer[] {
+        0,
+        HIDRAW_CAMERA_CONTROL_STEREO,
+        HIDRAW_SET_HDR_MODE_STEREO,
+        _hdr
+    };
+
+    fstream f;
+    f.open(hidraw, ios::binary | ios::in | ios::out);
+    if (!f.is_open()) {
+        cout << "Set HDR: Can't open hidraw device: " << hidraw << endl;
+        return false;
+    }
+    f.write((char*)buffer, sizeof(buffer));
+
+    f.close();
+
+    return true;
+
 }

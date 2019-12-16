@@ -180,9 +180,7 @@ int main(int argc, char **argv)
                 parser.value("hidrawimu").toStdString(),
                 parser.value("settings").toStdString());
         econ->set_manual_exposure(parser.value("exposure").toInt());
-        float temperature;
-        econ->read_temperature(temperature);
-        cout << "Temperature: " << temperature << endl;
+        econ->set_hdr(true);
         input = econ;
     }
     else if (camera_type == "video") {

@@ -26,6 +26,7 @@ public:
     virtual bool set_manual_exposure(int exposure);
     virtual bool configure_imu();
     virtual bool get_imu_data(ImuData &imu_data);
+    virtual bool set_hdr(bool hdr);
     virtual bool read_temperature(float &temperature);
 
 private:
