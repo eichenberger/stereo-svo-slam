@@ -18,7 +18,7 @@ LIBDIRS = -L/usr/local/lib -L../lib
 LIBS = -lstereosvo -lopencv_core -lopencv_videoio -lopencv_imgproc \
 	   -lopencv_highgui -lQt5WebSockets -lQt5Core -lQt5Network -lQt5Widgets
 CXXFLAGS += -std=c++17 -pedantic -Wall -fopenmp -fPIC $(INCLUDEDIRS)
-LDFLAGS += -fPIC $(LIBDIRS) $(LIBS) -Wl,-rpath,/usr/local/lib,-rpath,../lib/,-rpath,.
+LDFLAGS += -fPIC $(LIBDIRS) $(LIBS) -pthread -Wl,-rpath,/usr/local/lib,-rpath,../lib/,-rpath,.
 
 all: $(OBJ_FILES) test_imu
 	$(CXX) $(LDFLAGS) -o $(PROG_NAME) $(OBJ_FILES) $(LDFLAGS)

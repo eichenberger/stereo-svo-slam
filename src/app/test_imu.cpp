@@ -25,6 +25,7 @@ using namespace std;
 
 static void read_data(EconInput *econ)
 {
+    static float angle_x = 0, angle_y = 0, angle_z = 0;
     float temperature;
     econ->read_temperature(temperature);
 
@@ -32,12 +33,17 @@ static void read_data(EconInput *econ)
 
     ImuData imu_data;
     econ->get_imu_data(imu_data);
-    cout << "Acceleration: " << imu_data.acceleration_x << ", " <<
-        imu_data.acceleration_y << ", " <<
-        imu_data.acceleration_z << endl;
-    cout << "Gyro: " << imu_data.gyro_x << ", " <<
-        imu_data.gyro_y << ", " <<
-        imu_data.gyro_z << endl;
+    cout << "IMU Data: " << imu_data<< endl;
+
+
+    float f = econ->get_freqency();
+    angle_x += imu_data.gyro_x/f;
+    angle_y += imu_data.gyro_y/f;
+    angle_z += imu_data.gyro_z/f;
+
+    cout << "Angle: " << angle_x << ", " <<
+        angle_y << ", " <<
+        angle_z << endl;
 
     cout << endl;
 }

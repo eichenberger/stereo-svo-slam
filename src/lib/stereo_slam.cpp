@@ -34,7 +34,7 @@ StereoSlam::StereoSlam(const CameraSettings &camera_settings) :
     setIdentity(kf.transitionMatrix);
     setIdentity(kf.measurementMatrix);
     // We don't trust the prediction becasue the measurement is much more accurate
-    setIdentity(kf.processNoiseCov, Scalar::all(1000.0));
+    setIdentity(kf.processNoiseCov, Scalar::all(100.0));
     setIdentity(kf.errorCovPost, Scalar::all(1.0));
     kf.statePost = Mat::zeros(12, 1, CV_32F);
     time_measure.start();
@@ -275,7 +275,14 @@ void StereoSlam::get_trajectory(std::vector<Pose> &trajectory)
 void StereoSlam::update_pose(const Pose &pose, const Vec6f &speed,
         const Vec6f &pose_variance, const Vec6f &speed_variance, double current_time)
 {
+    //cout << "Previous state: ";
+    //for (size_t i = 0; i < 12; i++) {
+    //    cout << kf.statePost.at<float>(i, 0) << ",";
+    //}
+    //cout << endl;
+
     float dt = current_time - last_update;
+    //cout << current_time << "-" << last_update << ": " << dt << endl;
     kf.transitionMatrix.at<float>(0, 6) = dt;
     kf.transitionMatrix.at<float>(1, 7) = dt;
     kf.transitionMatrix.at<float>(2, 8) = dt;
@@ -284,6 +291,8 @@ void StereoSlam::update_pose(const Pose &pose, const Vec6f &speed,
     kf.transitionMatrix.at<float>(5, 11) = dt;
 
     kf.predict();
+
+    cout << "Transition matrix: " << endl << kf.transitionMatrix << endl;
 
     kf.measurementNoiseCov.at<float>(0, 0) = pose_variance(0);
     kf.measurementNoiseCov.at<float>(1, 1) = pose_variance(1);
@@ -312,7 +321,10 @@ void StereoSlam::update_pose(const Pose &pose, const Vec6f &speed,
             speed(4),
             speed(5));
 
+
     kf.correct(Mat(measurement));
+
+    cout << "Post error cov: " << endl << kf.errorCovPost << endl;
 
     last_update = current_time;
 }

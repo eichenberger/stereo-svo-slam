@@ -105,7 +105,7 @@ bool EconInput::configure_imu()
         0x00,
         0x00,
         0x07,  // Enable all accelerormeter axis
-        0x04,  // Accelerometer at 104Hz
+        0x04,  // Read at 104Hz
         0x00,  // 2G senstivity
 
         0x00,
@@ -113,7 +113,7 @@ bool EconInput::configure_imu()
 
         0x07, // Gyro all axes enable
         0x00,
-        0x01 // 245 DGPS
+        0x04 // 245 DGPS
     };
 
     frequency = 104.0;
@@ -184,10 +184,10 @@ bool EconInput::get_imu_data(ImuData &imu_data)
         cout << "No Acceleration data received" << endl;
         return false;
     }
-    imu_data.acceleration_x = (((int16_t)((read_buffer[6]) | (read_buffer[5]<<8))) * acc_sensitivity) -
-        imu_calibration.acceleration_x;
-    imu_data.acceleration_y = (((int16_t)((read_buffer[8]) | (read_buffer[7]<<8))) * acc_sensitivity) -
+    imu_data.acceleration_y = (((int16_t)((read_buffer[6]) | (read_buffer[5]<<8))) * acc_sensitivity) -
         imu_calibration.acceleration_y;
+    imu_data.acceleration_x = (((int16_t)((read_buffer[8]) | (read_buffer[7]<<8))) * acc_sensitivity) -
+        imu_calibration.acceleration_x;
     imu_data.acceleration_z = (((int16_t)((read_buffer[10]) | (read_buffer[9]<<8))) * acc_sensitivity) -
         imu_calibration.acceleration_z;
 
@@ -195,12 +195,20 @@ bool EconInput::get_imu_data(ImuData &imu_data)
         cout << "No Gyro data received" << endl;
         return false;
     }
-    imu_data.gyro_x = (((int16_t)((read_buffer[17]) | (read_buffer[16]<<8))) * gyro_sensitivity) -
-        imu_calibration.gyro_x;
-    imu_data.gyro_y = (((int16_t)((read_buffer[19]) | (read_buffer[18]<<8))) * gyro_sensitivity) -
-        imu_calibration.gyro_y;
-    imu_data.gyro_z = (((int16_t)((read_buffer[21]) | (read_buffer[20]<<8))) * gyro_sensitivity) -
-        imu_calibration.gyro_z;
+    imu_data.gyro_y = (((int16_t)((read_buffer[17]) | (read_buffer[16]<<8))) * gyro_sensitivity);
+    imu_data.gyro_x = (((int16_t)((read_buffer[19]) | (read_buffer[18]<<8))) * gyro_sensitivity);
+    imu_data.gyro_z = (((int16_t)((read_buffer[21]) | (read_buffer[20]<<8))) * gyro_sensitivity);
+
+    // We need radians/s not degrees/s
+    imu_data.gyro_x *= -1;
+    imu_data.gyro_y *= -1;
+    imu_data.gyro_z *= -1;
+
+    imu_data.gyro_x -= imu_calibration.gyro_x;
+    imu_data.gyro_y -= imu_calibration.gyro_y;
+    imu_data.gyro_z -= imu_calibration.gyro_z;
+
+
 
     return true;
 }
@@ -265,7 +273,7 @@ void EconInput::calibrate_imu()
     Vec6f calib(0,0,0,0,0,0);
 
     TickMeter tick_meter;
-#define CALIB_LOOPS 100
+#define CALIB_LOOPS 200
     for (size_t i = 0; i < CALIB_LOOPS; i++) {
         ImuData cur_data;
         get_imu_data(cur_data);

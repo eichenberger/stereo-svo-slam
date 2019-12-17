@@ -10,6 +10,8 @@
 #include <QtCore/QCommandLineOption>
 #include <QtCore/QFile>
 #include <QtCore/QTextStream>
+#include <QtCore/QThread>
+#include <QtCore/QMutex>
 
 #include "stereo_slam_types.hpp"
 #include "stereo_slam.hpp"
@@ -117,48 +119,101 @@ static void draw_frame(KeyFrame &keyframe, Frame &frame)
         QApplication::quit();
 }
 
-static void update_pose_from_imu(EconInput *econ, StereoSlam *slam)
-{
-    if (!econ->imu_available())
-        return;
-    ImuData imu_data;
+static bool running = true;
 
+static QMutex imu_data_lock;
+static vector<ImuData> imu_data;
+static void read_imu_data(EconInput *econ)
+{
+    Mat image;
+
+    while (running) {
+        cout << "read imu data" << endl;
+        ImuData _imu_data;
+        econ->get_imu_data(_imu_data);
+
+        imu_data_lock.lock();
+        imu_data.push_back(_imu_data);
+        imu_data_lock.unlock();
+
+        QThread::msleep(5);
+    }
+
+}
+
+static void update_pose_from_imu(StereoSlam *slam)
+{
     Frame frame;
     slam->get_frame(frame);
 
-    double dt = slam->get_current_time() - frame.time_stamp;
-    size_t n_values = 1 + econ->get_freqency()*dt;
+    float f = 104.0;
+
+    imu_data_lock.lock();
+    vector<ImuData> _imu_data = imu_data;
+    imu_data.clear();
+    imu_data_lock.unlock();
 
     Vec6f pose_variance(10.0, 10.0, 10.0, 10.0, 10.0, 10.0);
     Vec6f speed_variance(100.0, 100.0, 100.0, 0.1, 0.1, 0.1);
     double measurement_time = frame.time_stamp;
-    for (size_t i = 0; i < n_values; i++) {
-        econ->get_imu_data(imu_data);
-        Vec6f speed(0,0,0,imu_data.gyro_x, imu_data.gyro_y, imu_data.gyro_z);
+    float y_angle = frame.pose.get_pose().yaw;
+    for (size_t i = 0; i < _imu_data.size(); i++) {
+        ImuData &imu_data = _imu_data[i];
 
-        measurement_time += 1.0/econ->get_freqency();
+        cout << "IMU Data: " << imu_data << endl;
+        Vec6f speed(0,0,0,imu_data.gyro_x/180.0*M_PI, imu_data.gyro_y/180.0*M_PI, imu_data.gyro_z/180.0*M_PI);
+        y_angle += imu_data.gyro_y/180.0*M_PI/104.0;
+
+        measurement_time += 1.0/f;
         slam->update_pose(frame.pose.get_pose(), speed, pose_variance, speed_variance, measurement_time);
     }
+
+    cout << "Angle withouth KF: " << y_angle << endl;
 }
 
-static void read_image(ImageInput *input, StereoSlam *slam)
+static QMutex image_lock;
+static Mat gray_r, gray_l;
+static bool image_avalilable = false;
+
+static void read_image(ImageInput *input)
 {
-    EconInput *econ = nullptr;
-    try {
-        econ = dynamic_cast<EconInput*>(input);
-    }
-    catch(...) {
-    }
     Mat image;
 
-    Mat gray_r, gray_l;
-    if (!input->read(gray_l, gray_r)) {
-        QApplication::quit();
-        return;
+    while (running) {
+        cout << "read image" << endl;
+        Mat _gray_r, _gray_l;
+        if (!input->read(_gray_l, _gray_r)) {
+            QApplication::quit();
+            return;
+        }
+        image_lock.lock();
+        gray_r = _gray_r.clone();
+        gray_l = _gray_l.clone();
+        image_avalilable = true;
+        image_lock.unlock();
+        QThread::msleep(10);
     }
 
+}
+
+static void process_image(bool use_imu, StereoSlam *slam)
+{
+    Mat _gray_r, _gray_l;
+
+    image_lock.lock();
+    if (!image_avalilable) {
+        image_lock.unlock();
+        return;
+    }
+    _gray_r = gray_r.clone();
+    _gray_l = gray_l.clone();
+    image_avalilable = false;
+    image_lock.unlock();
+
+    cout << "Process image" << endl;
     START_MEASUREMENT();
-    slam->new_image(gray_l, gray_r);
+    slam->new_image(_gray_l, _gray_r);
+    cout << "End process image" << endl;
     END_MEASUREMENT("Stereo SLAM");
 
     Frame frame;
@@ -167,8 +222,8 @@ static void read_image(ImageInput *input, StereoSlam *slam)
     slam->get_keyframe(keyframe);
     draw_frame(keyframe, frame);
     cout << "Current pose: " << frame.pose << endl;
-    if (econ)
-        update_pose_from_imu(econ, slam);
+    if (use_imu)
+        update_pose_from_imu(slam);
 
 }
 
@@ -198,6 +253,8 @@ int main(int argc, char **argv)
 
     QString camera_type = parser.positionalArguments().at(0);
     ImageInput *input;
+    bool imu_available = false;
+    QThread* read_imu_thread = nullptr;
     if (camera_type == "econ") {
         if (!parser.isSet("video") ||
                 !parser.isSet("hidraw") ||
@@ -215,7 +272,10 @@ int main(int argc, char **argv)
         econ->set_hdr(parser.isSet("hdr"));
         econ->set_manual_exposure(parser.value("exposure").toInt());
         if (econ->imu_available()) {
+            econ->configure_imu();
             econ->calibrate_imu();
+            read_imu_thread = QThread::create(read_imu_data, econ);
+            imu_available = true;
         }
         input = econ;
     }
@@ -251,11 +311,18 @@ int main(int argc, char **argv)
     timer.setInterval(1.0/60.0*1000.0);
 
     QObject::connect(&timer, &QTimer::timeout,
-            std::bind(&read_image, input, &slam));
+            std::bind(&process_image, imu_available, &slam));
     timer.start();
 
     SvoSlamBackend backend(&slam);
     WebSocketServer server("svo", 8001, backend);
+
+    QThread* read_image_thread = QThread::create(read_image, input);
+
+    read_image_thread->start();
+    if (read_imu_thread)
+        read_imu_thread->start();
+
 
     app.exec();
 
@@ -272,5 +339,11 @@ int main(int argc, char **argv)
         trajectory_file.close();
     }
 
+    running = false;
+    read_image_thread->wait(100);
+    if (read_imu_thread)
+        read_imu_thread->wait(100);
+
     delete input;
+    return 0;
 }
