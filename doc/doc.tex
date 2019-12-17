@@ -28,14 +28,14 @@
 
 \maketitle
 \begin{abstract}
-  Simultaneous location and mapping (SLAM) is a technology used for robot navigation and augmented reality. Today most SLAM libraries are either proprietary or not meant for embedded systems. In this thesis we write a library which is open source and achieves frame rates of above 30 fps when running on embedded devices.
+  Simultaneous location and mapping (SLAM) is a technology used for robot navigation and augmented reality. Today most SLAM libraries are either proprietary or not ready for embedded systems. In this thesis we try to write a library which is open source and achieves frame rates of above 30 fps when running on an embedded devices.
 \end{abstract}
 
 \tableofcontents
 
 \chapter{Introduction}
 
-Humans have different sensors to know the pose of the head inside a room. Everyone who ever tried to stand on one foot and closed the eyes knows that this makes finding the balance harder. From this we can guess that our eyes are an import factor of finding the pose for our brain. In this thesis we try to find a way to use the same optical information from a camera to estimate the pose of the camera inside a room. This is called visual odometry (VO). In this documentation we analyse and reimplement a algorithm which is called Semi-Dens Visual Odometry (SVO). The corresponding paper states that this algorithm is fast and can be used on embedded systems. We try to reimplement this algorithm and use it together with stereo cameras while the original algorithm uses a monocular camera.\\
+Humans use different sensors to estimate the pose of the head inside a room. Everyone ever tried to stand on one foot and closed the eyes knows that closing eyes makes finding the balance harder. From this we can guess that our eyes are an import factor for finding the pose for our brain. In this thesis we try to find a way to use the same optical information from a camera to estimate the pose of the camera inside a room. This is called visual odometry (VO). In this documentation we analyse and reimplement an algorithm which is called Semi-Dens Visual Odometry (SVO). The corresponding paper states that this algorithm is fast and can be used on embedded systems. We try to reimplement this algorithm and use it together with stereo cameras while the original algorithm uses a monocular camera.\\
 Even thought SVO SLAM is open source, the reference implementation is over 4 years old and has a lot of 3th party libraries. There exists a newer version called SVO2. However, this implementation is closed source. The new library written during this project will be completely independent of the original implementation. It will have less dependencies and will run faster. While the original implementation can be used with monocular camera the new library requires stereo cameras.
 
 \section{Requirement Specification}
@@ -221,8 +221,6 @@ The Intel SDK seems quite powerful and is open source as well. However, the inde
 \section{Decision}
 
 We decided to use the Econ Tara because it has an outstanding price ratio and because it is a conventional stereo camera. However, the Intel RealSense camera is also a great fit because it delivers depth images directly. This reduces the CPU load on the iMX8. If we require Full HD, we should use the ZED camera. Another advantage of the ZED camera is the bigger baseline of 120mm. This allows depth estimation with higher range. We decided against this camera mainly because of the high price and because of the closed source SDK. We can't benefit from Full HD sensors because embedded systems only have limited CPU resources.
-
-
 
 \chapter{SVO}
 In this chapter we describe SVO SLAM.
