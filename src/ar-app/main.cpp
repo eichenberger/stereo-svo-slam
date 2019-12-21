@@ -81,13 +81,14 @@ static OpenCVImageProvider *opencvImageProvider;
 static void read_image(ImageInput *input, Slam *slam)
 {
     Mat image;
+    float time_stamp;
 
     Mat gray_r, gray_l;
-    if (!input->read(gray_l, gray_r)) {
+    if (!input->read(gray_l, gray_r, time_stamp)) {
         QApplication::quit();
         return;
     }
-    slam->new_image(gray_l, gray_r);
+    slam->new_image(gray_l, gray_r, time_stamp);
     opencvImageProvider->setImage(gray_l);
 }
 

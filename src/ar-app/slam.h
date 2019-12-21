@@ -17,7 +17,7 @@ public:
     explicit Slam(CameraSettings &cameraSettings, QObject *parent = nullptr);
     ~Slam();
 
-    void new_image(cv::Mat &left, cv::Mat &right);
+    void new_image(cv::Mat &left, cv::Mat &right, float time_stamp);
 
 signals:
     void pose(QVector3D position, QVector3D rotation);

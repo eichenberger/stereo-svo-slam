@@ -5,7 +5,8 @@ using namespace cv;
 
 
 VideoInput::VideoInput(const std::string &video_path,
-            const std::string &settings)
+            const std::string &settings) :
+    time_stamp(0)
 {
     read_settings(settings);
 
@@ -13,6 +14,7 @@ VideoInput::VideoInput(const std::string &video_path,
 
     cap->set(CAP_PROP_FRAME_WIDTH, camera_settings.image_width);
     cap->set(CAP_PROP_FRAME_HEIGHT, camera_settings.image_height);
+    fps = cap->get(CAP_PROP_FPS);
 }
 
 void VideoInput::get_camera_settings(CameraSettings &camera_settings)
@@ -20,7 +22,7 @@ void VideoInput::get_camera_settings(CameraSettings &camera_settings)
     camera_settings = this->camera_settings;
 }
 
-bool VideoInput::read(cv::Mat &left, cv::Mat &right)
+bool VideoInput::read(cv::Mat &left, cv::Mat &right, float &time_stamp)
 {
     Mat image;
     if (!cap->read(image))
@@ -32,6 +34,9 @@ bool VideoInput::read(cv::Mat &left, cv::Mat &right)
 
     right = image(Rect(0, 0, camera_settings.image_width, camera_settings.image_height));
     left = image(Rect(camera_settings.image_width, 0, camera_settings.image_width, camera_settings.image_height));
+
+    this->time_stamp += 1.0/fps;
+    time_stamp = this->time_stamp;
 
     return true;
 }

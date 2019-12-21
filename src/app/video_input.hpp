@@ -12,12 +12,13 @@ public:
     VideoInput(const std::string &video_path, const std::string &settings);
 
 
-    virtual bool read(cv::Mat &left, cv::Mat &right);
+    virtual bool read(cv::Mat &left, cv::Mat &right, float &time_stamp);
     virtual void get_camera_settings(CameraSettings &camera_settings);
     void jump_to(int frame_number);
 
 private:
     cv::Ptr<cv::VideoCapture> cap;
+    float time_stamp;
 };
 
 

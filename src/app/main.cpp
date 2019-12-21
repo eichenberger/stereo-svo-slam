@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <algorithm>
 
 #include <opencv2/opencv.hpp>
 
@@ -128,7 +129,6 @@ static void read_imu_data(EconInput *econ)
     Mat image;
 
     while (running) {
-        cout << "read imu data" << endl;
         ImuData _imu_data;
         econ->get_imu_data(_imu_data);
 
@@ -141,10 +141,12 @@ static void read_imu_data(EconInput *econ)
 
 }
 
-static void update_pose_from_imu(StereoSlam *slam)
+static void update_pose_from_imu(StereoSlam *slam, float dt)
 {
     Frame frame;
-    slam->get_frame(frame);
+    // No frame yet
+    if (!slam->get_frame(frame))
+        return;
 
     float f = 104.0;
 
@@ -153,43 +155,42 @@ static void update_pose_from_imu(StereoSlam *slam)
     imu_data.clear();
     imu_data_lock.unlock();
 
-    Vec6f pose_variance(10.0, 10.0, 10.0, 10.0, 10.0, 10.0);
+    Vec6f pose_variance(1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0);
     Vec6f speed_variance(100.0, 100.0, 100.0, 0.1, 0.1, 0.1);
-    double measurement_time = frame.time_stamp;
+    Pose filtered_pose = frame.pose.get_pose();
     float y_angle = frame.pose.get_pose().yaw;
-    for (size_t i = 0; i < _imu_data.size(); i++) {
+    for (size_t i = 0; i < std::min<size_t>(_imu_data.size(), f*dt); i++) {
         ImuData &imu_data = _imu_data[i];
 
-        cout << "IMU Data: " << imu_data << endl;
         Vec6f speed(0,0,0,imu_data.gyro_x/180.0*M_PI, imu_data.gyro_y/180.0*M_PI, imu_data.gyro_z/180.0*M_PI);
         y_angle += imu_data.gyro_y/180.0*M_PI/104.0;
 
-        measurement_time += 1.0/f;
-        slam->update_pose(frame.pose.get_pose(), speed, pose_variance, speed_variance, measurement_time);
+        // frae pose is wrong. We need kf.statePost
+        filtered_pose = slam->update_pose(filtered_pose, speed, pose_variance, speed_variance, 1.0/f);
     }
-
-    cout << "Angle withouth KF: " << y_angle << endl;
 }
 
 static QMutex image_lock;
 static Mat gray_r, gray_l;
-static bool image_avalilable = false;
+static int images_read = 0;
+static float time_stamp = 0.0;
 
 static void read_image(ImageInput *input)
 {
     Mat image;
 
     while (running) {
-        cout << "read image" << endl;
         Mat _gray_r, _gray_l;
-        if (!input->read(_gray_l, _gray_r)) {
+        float _time_stamp;
+        if (!input->read(_gray_l, _gray_r, _time_stamp)) {
             QApplication::quit();
             return;
         }
         image_lock.lock();
         gray_r = _gray_r.clone();
         gray_l = _gray_l.clone();
-        image_avalilable = true;
+        time_stamp = _time_stamp;
+        images_read ++;
         image_lock.unlock();
         QThread::msleep(10);
     }
@@ -199,20 +200,28 @@ static void read_image(ImageInput *input)
 static void process_image(bool use_imu, StereoSlam *slam)
 {
     Mat _gray_r, _gray_l;
+    float _time_stamp;
+    int _images_read = 0;
 
     image_lock.lock();
-    if (!image_avalilable) {
+    if (!images_read) {
         image_lock.unlock();
         return;
     }
     _gray_r = gray_r.clone();
     _gray_l = gray_l.clone();
-    image_avalilable = false;
+    _time_stamp = time_stamp;
+    _images_read = images_read;
+    images_read = 0;
     image_lock.unlock();
+
+
+    if (use_imu)
+        update_pose_from_imu(slam, _images_read/30.0);
 
     cout << "Process image" << endl;
     START_MEASUREMENT();
-    slam->new_image(_gray_l, _gray_r);
+    slam->new_image(_gray_l, _gray_r, _time_stamp);
     cout << "End process image" << endl;
     END_MEASUREMENT("Stereo SLAM");
 
@@ -222,8 +231,6 @@ static void process_image(bool use_imu, StereoSlam *slam)
     slam->get_keyframe(keyframe);
     draw_frame(keyframe, frame);
     cout << "Current pose: " << frame.pose << endl;
-    if (use_imu)
-        update_pose_from_imu(slam);
 
 }
 
@@ -269,8 +276,8 @@ int main(int argc, char **argv)
                 parser.value("hidraw").toStdString(),
                 parser.value("settings").toStdString(),
                 parser.value("hidrawimu").toStdString());
-        econ->set_hdr(parser.isSet("hdr"));
         econ->set_manual_exposure(parser.value("exposure").toInt());
+        econ->set_hdr(parser.isSet("hdr"));
         if (econ->imu_available()) {
             econ->configure_imu();
             econ->calibrate_imu();

@@ -28,7 +28,7 @@ static TickMeter tick_meter;
 
 StereoSlam::StereoSlam(const CameraSettings &camera_settings) :
     camera_settings(camera_settings), keyframe_manager(camera_settings),
-    motion(0, 0, 0, 0, 0, 0)
+    frame(nullptr), motion(0, 0, 0, 0, 0, 0)
 {
     kf.init(12,12);
     setIdentity(kf.transitionMatrix);
@@ -120,13 +120,13 @@ static void createImgPyramid(const cv::Mat& img_level_0, int n_levels, vector<Ma
     }
 }
 
-void StereoSlam::new_image(const Mat &left, const Mat &right) {
+void StereoSlam::new_image(const Mat &left, const Mat &right, const float time_stamp) {
     // Size window_size = Size(3, 3);
     Ptr<Frame> previous_frame = frame;
     frame = new Frame;
 
     // Add a pseudo timestamp
-    frame->time_stamp = get_current_time();
+    frame->time_stamp = time_stamp;
 
     START_MEASUREMENT();
     // Unfortunately we can't use buildOpticalFlowPyramid because
@@ -168,7 +168,6 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
     else {
         frame->id = previous_frame->id + 1;
 
-        kf.predict();
         Pose predicted_pose;
         predicted_pose.x = kf.statePre.at<float>(0);
         predicted_pose.y = kf.statePre.at<float>(1);
@@ -226,19 +225,9 @@ void StereoSlam::new_image(const Mat &left, const Mat &right) {
         motion = (current_pose - previous_pose)/dt;
         Vec6f pose_variance(0.1,0.1,0.1,0.1,0.1,0.1);
         Vec6f motion_variance(1.0,1.0,1.0,1.0,1.0,1.0);
-        update_pose(frame->pose.get_pose(), motion, pose_variance, motion_variance, frame->time_stamp);
+        Pose filtered_pose = update_pose(frame->pose.get_pose(), motion, pose_variance, motion_variance, 0.0);
 
-        Pose filtered_pose;
-        filtered_pose.x = kf.statePost.at<float>(0);
-        filtered_pose.y = kf.statePost.at<float>(1);
-        filtered_pose.z = kf.statePost.at<float>(2);
-        filtered_pose.pitch = kf.statePost.at<float>(3);
-        filtered_pose.yaw = kf.statePost.at<float>(4);
-        filtered_pose.roll = kf.statePost.at<float>(5);
-
-        cout << "Pose before KF filtering: " << frame->pose;
         frame->pose.set_pose(filtered_pose);
-        cout << "Pose after KF filtering: " << frame->pose << endl;
 
         previous_frame->kps.kps2d.clear();
         previous_frame->kps.kps3d.clear();
@@ -257,9 +246,12 @@ void StereoSlam::get_keyframe(KeyFrame &keyframe)
     keyframe = *this->keyframe;
 }
 
-void StereoSlam::get_frame(Frame &frame)
+bool StereoSlam::get_frame(Frame &frame)
 {
+    if (this->frame == nullptr)
+        return false;
     frame = *this->frame;
+    return true;
 }
 
 void StereoSlam::get_keyframes(std::vector<KeyFrame> &keyframes)
@@ -272,8 +264,8 @@ void StereoSlam::get_trajectory(std::vector<Pose> &trajectory)
     trajectory = this->trajectory;
 }
 
-void StereoSlam::update_pose(const Pose &pose, const Vec6f &speed,
-        const Vec6f &pose_variance, const Vec6f &speed_variance, double current_time)
+Pose StereoSlam::update_pose(const Pose &pose, const Vec6f &speed,
+        const Vec6f &pose_variance, const Vec6f &speed_variance, double dt)
 {
     //cout << "Previous state: ";
     //for (size_t i = 0; i < 12; i++) {
@@ -281,7 +273,6 @@ void StereoSlam::update_pose(const Pose &pose, const Vec6f &speed,
     //}
     //cout << endl;
 
-    float dt = current_time - last_update;
     //cout << current_time << "-" << last_update << ": " << dt << endl;
     kf.transitionMatrix.at<float>(0, 6) = dt;
     kf.transitionMatrix.at<float>(1, 7) = dt;
@@ -292,7 +283,7 @@ void StereoSlam::update_pose(const Pose &pose, const Vec6f &speed,
 
     kf.predict();
 
-    cout << "Transition matrix: " << endl << kf.transitionMatrix << endl;
+//    cout << "State Pre: " << endl << kf.statePre << endl;
 
     kf.measurementNoiseCov.at<float>(0, 0) = pose_variance(0);
     kf.measurementNoiseCov.at<float>(1, 1) = pose_variance(1);
@@ -321,16 +312,21 @@ void StereoSlam::update_pose(const Pose &pose, const Vec6f &speed,
             speed(4),
             speed(5));
 
-
     kf.correct(Mat(measurement));
 
-    cout << "Post error cov: " << endl << kf.errorCovPost << endl;
+    Pose filtered_pose;
+    filtered_pose.x = kf.statePost.at<float>(0);
+    filtered_pose.y = kf.statePost.at<float>(1);
+    filtered_pose.z = kf.statePost.at<float>(2);
+    filtered_pose.pitch = kf.statePost.at<float>(3);
+    filtered_pose.yaw = kf.statePost.at<float>(4);
+    filtered_pose.roll = kf.statePost.at<float>(5);
 
-    last_update = current_time;
-}
+    //cout << "Post error cov: " << endl << kf.errorCovPost << endl;
+    //cout << "dt: " << dt << endl;
+    //cout << "After correction: " << endl << kf.statePost << endl;
 
-double StereoSlam::get_last_update() const {
-    return last_update;
+    return filtered_pose;
 }
 
 double StereoSlam::get_current_time() {

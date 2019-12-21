@@ -17,10 +17,10 @@ Slam::~Slam()
     delete slam;
 }
 
-void Slam::new_image(cv::Mat &left, cv::Mat &right)
+void Slam::new_image(cv::Mat &left, cv::Mat &right, float time_stamp)
 {
 
-    slam->new_image(left, right);
+    slam->new_image(left, right, time_stamp);
     Frame frame;
     slam->get_frame(frame);
 

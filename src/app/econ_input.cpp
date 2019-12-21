@@ -18,6 +18,7 @@ using namespace cv;
 #define HIDRAW_GET_SUCCESS                  0x01
 #define HIDRAW_GET_IMU_TEMP_DATA            0x0D
 #define HIDRAW_SET_HDR_MODE_STEREO          0x0E
+#define HIDRAW_SET_EXPOSURE_VALUE           0x02
 
 #define HIDRAW_IMU_NUM_OF_VAL               0xFF
 
@@ -30,10 +31,12 @@ EconInput::EconInput(const std::string &camera_path, const std::string &hidraw_p
 {
     read_settings(settings);
 
+    fps = 30;
     cap = new VideoCapture(camera_path);
 
     cap->set(CAP_PROP_FRAME_WIDTH, 752);
     cap->set(CAP_PROP_FRAME_HEIGHT, 480);
+    cap->set(CAP_PROP_FPS, fps);
     fhidraw.open(hidraw, ios::binary |ios::in | ios::out);
     if (!fhidraw.is_open())
         cout << "Can't open hidraw device: " << hidraw << endl;
@@ -63,11 +66,12 @@ bool EconInput::set_manual_exposure(int exposure)
     uint8_t buffer[] = {
         0x00,
         HIDRAW_CAMERA_CONTROL_STEREO,
-        0x02,
+        HIDRAW_SET_EXPOSURE_VALUE,
         (uint8_t)((exposure >> 24)&0xFF),
         (uint8_t)((exposure >> 16)&0xFF),
         (uint8_t)((exposure>>8)&0xFF),
-        (uint8_t)(exposure&0xFF)};
+        (uint8_t)(exposure&0xFF),
+        0x00};
 
 
     fhidraw.write((char*)buffer, ARRAY_SIZE(buffer));
@@ -80,7 +84,7 @@ void EconInput::get_camera_settings(CameraSettings &camera_settings)
     camera_settings = this->camera_settings;
 }
 
-bool EconInput::read(cv::Mat &left, cv::Mat &right)
+bool EconInput::read(cv::Mat &left, cv::Mat &right, float &time_stamp)
 {
     Mat image;
     if (!cap->read(image))
@@ -88,6 +92,9 @@ bool EconInput::read(cv::Mat &left, cv::Mat &right)
 
     extractChannel(image, right, 1);
     extractChannel(image, left, 2);
+
+    this->time_stamp += 1.0/fps;
+    time_stamp = this->time_stamp;
 
     return true;
 }
@@ -256,7 +263,8 @@ bool EconInput::set_hdr(bool hdr)
         0,
         HIDRAW_CAMERA_CONTROL_STEREO,
         HIDRAW_SET_HDR_MODE_STEREO,
-        _hdr
+        _hdr,
+        0
     };
 
     if (!fhidraw.is_open()) {
@@ -264,6 +272,7 @@ bool EconInput::set_hdr(bool hdr)
         return false;
     }
     fhidraw.write((char*)buffer, sizeof(buffer));
+    fhidraw.flush();
 
     return true;
 }

@@ -21,7 +21,7 @@ public:
     EconInput(const std::string &camera_path, const std::string &hidraw_path,
             const std::string &settings, const std::string &hidraw_imu_path = "");
 
-    virtual bool read(cv::Mat &left, cv::Mat &right);
+    virtual bool read(cv::Mat &left, cv::Mat &right, float &time_stamp);
     virtual void get_camera_settings(CameraSettings &camera_settings);
     virtual bool set_manual_exposure(int exposure);
     virtual bool configure_imu();
@@ -39,6 +39,7 @@ private:
     float gyro_sensitivity;
     float acc_sensitivity;
     float frequency;
+    float time_stamp;
     ImuData imu_calibration;
 
     std::fstream fhidraw;

@@ -9,10 +9,12 @@ public:
     ImageInput();
     virtual ~ImageInput() = 0;
 
-    virtual bool read(cv::Mat &left, cv::Mat &right) = 0;
+    virtual bool read(cv::Mat &left, cv::Mat &right, float &time_stamp) = 0;
     virtual void get_camera_settings(CameraSettings &camera_settings) = 0;
+    uint32_t get_fps() const { return fps; }
 
 protected:
+    uint32_t fps;
     CameraSettings camera_settings;
 
     virtual void read_settings(const std::string &settings);

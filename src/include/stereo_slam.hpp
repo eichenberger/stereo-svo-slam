@@ -13,16 +13,15 @@ class StereoSlam
 public:
     StereoSlam(const CameraSettings &camera_settings);
 
-    void new_image(const cv::Mat &left, const cv::Mat &right);
+    void new_image(const cv::Mat &left, const cv::Mat &right, const float dt);
 
     void get_keyframe(KeyFrame &keyframe);
     void get_keyframes(std::vector<KeyFrame> &keyframes);
-    void get_frame(Frame &frame);
+    bool get_frame(Frame &frame);
     void get_trajectory(std::vector<Pose> &trajectory);
-    void update_pose(const Pose &pose, const cv::Vec6f &speed,
+    Pose update_pose(const Pose &pose, const cv::Vec6f &speed,
         const cv::Vec6f &pose_variance, const cv::Vec6f &speed_variance,
         double current_time);
-    double get_last_update() const;
     double get_current_time();
 
 private:
@@ -38,7 +37,6 @@ private:
     std::vector<Pose> trajectory;
     cv::Vec6f motion;
 
-    double last_update;
     cv::KalmanFilter kf;
     cv::TickMeter time_measure;
 };
