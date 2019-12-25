@@ -389,60 +389,42 @@ This warp matrix describes movements along the x and y axis($p_{11},p_{22}$, a r
 	I_{k}			&:	\text{Current image}
 \end{align*}
 
-We describe the transformation of a pixel from the reference image to the current image as a matrix multiplication as shown in equation \ref{eq:lk_warped}.
-
+We describe the transformation of a pixel from the reference image to the current image as a matrix multiplication as shown in equation \ref{eq:lk_warped}. Because \ref{eq:lk_problem} is a nonlinear problem we have to solve it with a nonlinear solver (e.g. Gauss-Newton or Gradient Descent). The problem is solved by iteratively changing the warp matrix in the direction of a gradient until the difference of the intensities are minimal:
 \begin{equation}\label{eq:lk_warped}
-	W=
-	\begin{pmatrix}
-		x' \\
-		y'
-	\end{pmatrix}=
-	\begin{pmatrix}
-		p_{11} & p_{12} & p_{13} \\
-		p_{21} & p_{22} & p_{23}
-	\end{pmatrix}*
-	\begin{pmatrix}
-		x\\
-		y\\
-		1
-	\end{pmatrix}=
-	\begin{pmatrix}
-		p_{11}*x + p_{12}*y + p_{13} \\
-		p_{21}*x + p_{22}*y + p_{23}
-	\end{pmatrix}
+	\begin{gathered}
+		\begin{pmatrix}
+			x' \\
+			y'
+		\end{pmatrix}=
+		W(x;p+\Delta p)\\
+		=>
+		\begin{pmatrix}
+			p_{11}+\Delta p_{11} & p_{12}+\Delta p_{12} & p_{13}+\Delta p_{13} \\
+			p_{21}+\Delta p_{21} & p_{22}+\Delta p_{22} & p_{23}+\Delta p_{23}
+		\end{pmatrix}
+		\begin{pmatrix}
+			x\\
+			y\\
+			1
+		\end{pmatrix}\\
+		=>
+		\begin{pmatrix}
+			x(p_{11}+\Delta p_{11}) + y(p_{12}+\Delta p_{12}) + p_{13}+\Delta p_{13} \\
+			x(p_{21}+\Delta p_{21}) + y(p_{22}+\Delta p_{22}) + p_{23}+\Delta p_{23}
+		\end{pmatrix}
+	\end{gathered}
 \end{equation}
 \begin{align*}
-	W					&:	\text{Warp}\\
-	x',y'			&:	\text{Pixel position in current image}\\
-	x,y				&:	\text{Pixel position in template}\\
-	p_{ij}		&:	\text{parameter of warp matrix}
+	W(x;p+\Delta p)	&:	\text{Warp function}\\
+	x',y'						&:	\text{Pixel position in current image}\\
+	x,y							&:	\text{Pixel position in template}\\
+	p_{ij}					&:	\text{parameter of warp matrix}\\
+	\Delta p_{ij}		&:	\text{change of $p_{ij}$ per iteration}
 \end{align*}
 
-Because \ref{eq:lk_problem} is a nonlinear problem we have to solve it with a nonlinear solver (e.g. Gauss-Newton or Gradient Descent). The problem is solved by iteratively changing the warp matrix in the direction of a gradient until the difference of the intensities are minimal:
-\begin{equation}
-	\begin{pmatrix}
-		x' \\
-		y'
-	\end{pmatrix}=
-	\begin{pmatrix}
-		p_{11}+\Delta p_{11} & p_{12}+\Delta p_{12} & p_{13}+\Delta p_{13} \\
-		p_{21}+\Delta p_{21} & p_{22}+\Delta p_{22} & p_{23}+\Delta p_{23}
-	\end{pmatrix}*
-	\begin{pmatrix}
-		x\\
-		y\\
-		1
-	\end{pmatrix}
-\end{equation}
-\begin{align*}
-	x',y'					&:	\text{Pixel position in current image}\\
-	x,y						&:	\text{Pixel position in template}\\
-	p_{ij}				&:	\text{parameter of warp matrix}\\
-	\Delta p_{ij}	&:	\text{change of $p_{ij}$ per iteration}
-\end{align*}
+After each iteration we set $p=p_{n-1}+\Delta p$ where p stands for all $p_{ij}$. We can solve this problem by approximating the gradient heuristically. However, this is slow. Therefore, we need a direct computational approach to find the gradient. This is what Lucas Kanade describes. \\
+Equation \ref{eq:lk_problem} describes the Lucas Kanade problem which is non linear. It's not possible to find $\Delta p$ algebraicly which would be our gradient. Therefore, we need to linearise the problem by doing a first order Taylor approximation as shown in equation \ref{eq:lk_taylor}. $\nabla I$ corresponds here to the exterior derivative when using the chain rule while $\frac{\sigma W}{\sigma p}$ corresponds to the inner derivative. $\Delta p$ is the factor used for Taylor series (see \cite{taylor_series}).
 
-
-After each iteration we set $p=p_{i-1}+\Delta p$. We can solve this problem by approximating the gradient heuristically. However, it would slow down the calculation. Therefore, Lucas Kanade calculates the gradient by doing a first order Taylor approximation of the problem:
 \begin{equation}\label{eq:lk_taylor}
 	\sum_x\sum_y(I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k}*\frac{\sigma W}{\sigma p}*\Delta p-I_{k-1}(x,y))^2
 \end{equation}
@@ -458,13 +440,15 @@ We want to find $\Delta p$ which is our gradient. To make this work we have to d
 	2*\sum_x\sum_y\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k}*\frac{\sigma W}{\sigma p}*\Delta p-I_{k-1}(x,y)\end{bmatrix}
 \end{equation}
 We can now find $\Delta p$ by moving it to the left:
+\tiny
 \begin{equation}\label{eq:lk_dp}
-	\Delta p=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix})^{-1}
-	*\sum_x\sum_y\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}I_{k-1}(x,y) - I_{k}(x_{i-1}',y_{i-1}'\end{bmatrix}
+	\Delta p=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k}\frac{\sigma W}{\sigma p}\end{bmatrix})^{-1}
+	\sum_x\sum_y\begin{bmatrix}\nabla I_{k}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}I_{k-1}(x,y) - I_{k}(x_{i-1}',y_{i-1}'\end{bmatrix}
 \end{equation}
+\normalsize
 
-$\frac{\sigma W}{\sigma p}$ is the Jacobian matrix and looks as follows:
-\begin{equation}
+To  get $\frac{\sigma W}{\sigma p}$ we take equation \ref{eq:lk_warped} and do a partial derivation for each p which gives us equation \ref{eq:lk_warped_derivative}.
+\begin{equation}\label{eq:lk_warped_derivative}
 	\frac{\sigma W}{\sigma p}=
 	\begin{pmatrix}
 		x & y & 1 & 0 & 0 & 0 \\
@@ -480,7 +464,7 @@ H is called the Hessian matrix. Unfortunately we need to calculate this matrix i
 
 \subsection{Inverse compositional Lucas Kanade}
 
-The inverse compositional Lucase Kanade algorithm does more or less the same as the normal Lucas Kanade algorithm but it searches the inverse wrap update at each iteration. The problem basically stays the same but we switch the role of the template with the one of the image which first doesn't have any effect:
+The inverse compositional Lucase Kanade algorithm does more or less the same as the normal Lucas Kanade algorithm but it searches the inverse warp update at each iteration. The problem basically stays the same but we switch the role of the template with the one of the image which first doesn't have any effect:
 \begin{equation}\label{eq:iclk_problem}
 	\sum_x\sum_y(I_{k-1}(x'',y'')-I_{k}(x',y'))^2
 \end{equation}
@@ -491,21 +475,24 @@ The inverse compositional Lucase Kanade algorithm does more or less the same as 
 	I_{k}			&:	\text{Current image}
 \end{align*}
 
-What is different this time is that we wrap the template with $\Delta p$:
-\begin{equation}
-	\begin{pmatrix}
-		x'' \\
-		y''
-	\end{pmatrix}=
-	\begin{pmatrix}
-		\Delta p_{11} & \Delta p_{12} & \Delta p_{13} \\
-		\Delta p_{21} & \Delta p_{22} & \Delta p_{23}
-	\end{pmatrix}*
-	\begin{pmatrix}
-		x\\
-		y\\
-		1
-	\end{pmatrix}
+What is different this time is that we warp the template with $\Delta p$ as shown in equation \ref{eq:inv_lk_warp}. 
+\begin{equation}\label{eq:inv_lk_warp}
+	\begin{gathered}
+		\begin{pmatrix}
+			x'' \\
+			y''
+		\end{pmatrix}=
+		W(x;\Delta p)\\
+		\begin{pmatrix}
+			1 + \Delta p_{11} & 0 + \Delta p_{12} & 0 + \Delta p_{13} \\
+			0 + \Delta p_{21} & 1 + \Delta p_{22} & 0 + \Delta p_{23}
+		\end{pmatrix}*
+		\begin{pmatrix}
+			x\\
+			y\\
+			1
+		\end{pmatrix}
+	\end{gathered}
 \end{equation}
 \begin{align*}
 	x,y						&:	\text{Original pixel position in template}\\
@@ -534,8 +521,28 @@ What is different this time is that we wrap the template with $\Delta p$:
 	p_{ij}				&:	\text{parameter of warp matrix}\\
 \end{align*}
 
-With this we separate the update step from the wrapping of the image. The update step will then be $p=p_{i-1}+(\Delta p)^{-1}$. If we do the first order taylor approximation again we get:
+With this we separate the update step from the warping of the image. The update step is now shown in equation \ref{eq:iclk_update}. Note that this time the update step is not additive as for normal Lucas Kanade. This is where the word compositional comes from. We can argue that this time the new warp depends on the old warps rotation because the template is always free from rotation. This can be expressed with a matrix multiplication also shown in equation \ref{eq:iclk_update}.
+\begin{equation}\label{eq:iclk_update}
+	\begin{gathered}
+		W(x;p)=W(W(x;\Delta p)^{-1}; p)\\
+		=>
+		\begin{pmatrix}
+		p_{11} & p_{12} & p_{13} \\
+		p_{21} & p_{22} & p_{23}
+		\end{pmatrix}
+		\begin{pmatrix}
+			\Delta p_{11} & \Delta p_{12} & \Delta p_{13} \\
+			\Delta p_{21} & \Delta p_{22} & \Delta p_{23}
+		\end{pmatrix}
+		\begin{pmatrix}
+			x\\
+			y\\
+			1
+		\end{pmatrix}
+	\end{gathered}
+\end{equation}
 
+From equation \ref{eq:iclk_problem} we need to do the first order Taylor approximation as we did for the normal Lucas Kanade algorithm. This is shown in equation \ref{eq:iclk_taylor}.
 \begin{equation}\label{eq:iclk_taylor}
 	\sum_x\sum_y(I_{k-1}(x,y)+\nabla I_{k-1}*\frac{\sigma W}{\sigma p}*\Delta p-I_{k}(x',y'))^2
 \end{equation}
@@ -547,28 +554,53 @@ With this we separate the update step from the wrapping of the image. The update
 	\nabla I	&:	\text{Gradient in image I at position x',y'}
 \end{align*}
 
-This gives us for $\Delta p$:
-\begin{equation}\label{eq:iclk_dp}
-	\Delta p=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}\nabla I_{k-1}*\frac{\sigma W}{\sigma p}\end{bmatrix})^{-1}
-	*\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}') - I_{k-1}(x,y)\end{bmatrix}
+We derive the Taylor approximation so that we can minimize the problem (equation \ref{eq:iclk_derivative}).
+\begin{equation}\label{eq:iclk_derivative}
+	2\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k-1}\frac{\sigma W}{\sigma p}\Delta p-I_{k-1}(x,y)\end{bmatrix}
 \end{equation}
+
+This allows us to find the gradient $\Delta p$ (equation \ref{eq:iclk_dp}) for the non linear optimization.
+\tiny
+\begin{equation}\label{eq:iclk_dp}
+	\Delta p=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma p}\end{bmatrix})^{-1}
+	\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}') - I_{k-1}(x,y)\end{bmatrix}
+\end{equation}
+\normalsize
 
 Compared to the normal Lucas-Kanade algorithm the Hessian Matrix H is now constant for all iterations and we don't have to do the expensive calculation at every iteration:
 \begin{equation}
 	\Delta H=\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}\nabla I_{k-1}*\frac{\sigma W}{\sigma p}\end{bmatrix}
 \end{equation}
 
-Because we only have to calculate the Hessian matrix once, the inverse computational Lucas Kanade is more efficient then the Lucas Kanade algorithm.
+Because we only have to calculate the Hessian matrix once, the inverse computational Lucas Kanade is more efficient then the Lucas Kanade algorithm.\\
+In this chapter we saw how we calculate the optical flow by using a warp matrix. As we will later see this is used by SVO in the pose refinement step. In the next section we describe how optical flow can be used to find a 3D pose instead of a warp matrix.
 
 \subsection{Pose estimation}
-For a first estimate of the pose we use some kind of Lucas Kanade algorithm. However, we don't have the point position in the new image directly but we know the 3d position of the point. We now optimize the projection matrix so that the intensity difference is minimized again. So instead of having equation \ref{eq:lk_warped} we have:
+For a first estimate of the pose we use some kind of optical flow algorithm. However, we directly try to find the 3D pose instead of the warp matrix. Also we don't try to find a warp matrix for each individual patch but for all patches in the image. We start again with the idea of minimizing the intensity differences over a patch of pixels shown in equation \ref{eq:pe_problem}.
+\begin{equation}\label{eq:pe_problem}
+	\sum_x\sum_y(I_{k-1}(x'',y'')-I_{k}(x',y'))^2
+\end{equation}
+\begin{align*}
+	x'',y''		&:	\text{Warped pixel position in the template}\\
+	x',y'			&:	\text{Pixel position in the current image}\\
+	I_{k-1}				&:	\text{Template image}\\
+	I_{k}					&:	\text{Current image}
+\end{align*}
+
+This time we use 3D points instead of pixel posiitons. Therefore, we use a projection matrix instead of a warp matrix. The projection matrix $p$ is shown in equation \ref{eq:pe_warped}. 
 
 \begin{equation}\label{eq:pe_warped}
+	\begin{split}
 	\begin{pmatrix}
 		u \\
 		v \\
 		s
 	\end{pmatrix}=
+	\begin{pmatrix}
+		f_x & 0 & c_x \\
+		0 & f_y & c_y \\
+		0 & 0 & 1
+	\end{pmatrix}*
 	\begin{pmatrix}
 		r_{11} & r_{12} & r_{13} & t_{1} \\
 		r_{21} & r_{22} & r_{23} & t_{2} \\
@@ -578,76 +610,89 @@ For a first estimate of the pose we use some kind of Lucas Kanade algorithm. How
 		X\\
 		Y\\
 		Z
-	\end{pmatrix}=
+	\end{pmatrix}\\
+	=>\begin{pmatrix}
+		p_{11} & p_{12} & p_{13} & p_{14} \\
+		p_{21} & p_{22} & p_{23} & p_{24} \\
+		p_{31} & p_{32} & p_{33} & p_{34}
+	\end{pmatrix}*
 	\begin{pmatrix}
-		r_{11}*X + r_{12}*Y + r_{13}*Z + t_{1} \\
-		r_{21}*X + r_{22}*Y + r_{23}*Z + t_{2} \\
-		r_{31}*X + r_{32}*Y + r_{33}*Z + t_{3} \\
+		X\\
+		Y\\
+		Z
 	\end{pmatrix}
+\end{split}
 \end{equation}
-\begin{equation}
-	\begin{pmatrix}
-		x \\
-		y 
-	\end{pmatrix}=
-	\begin{pmatrix}
-		\frac{u}{s} \\
-		\frac{v}{s} 
-	\end{pmatrix}=
-	\begin{pmatrix}
-		\frac{r_{11}*X + r_{12}*Y + r_{13}*Z + t_{1}}{r_{31}*X + r_{32}*Y + r_{33}*Z + t_{3}}  \\
-		\frac{r_{21}*X + r_{22}*Y + r_{23}*Z + t_{2}}{r_{31}*X + r_{32}*Y + r_{33}*Z + t_{3}}
-	\end{pmatrix}
-\end{equation}
-
 \begin{align*}
 	u,v,s			&:	\text{Pixel position scaled with s}\\
 	X,Y,Z			&:	\text{3D Pixel position}\\
-	r_{ij}		&:	\text{Rotation matrix}\\
-	t_{i}			&:	\text{translation vector}\\
+	p_{ij}		&:	\text{Projection matrix}\\
 \end{align*}
 
-We would need to find 12 gradients if we use the formulation in equation \ref{eq:pe_optimization} for the inverse compositional Lucas Kanade. However, we could express the $r_{ij}$ components based on roll, pitch and yaw which are our 6 DoF. It is easy to see that this formulation gets rather complex and it's nearly impossible to find the Jacobian for such a matrix.
-\begin{equation}\label{eq:pe_optimization}
-	\begin{pmatrix}
-		x'' \\
-		y''
-	\end{pmatrix}=
-	\begin{pmatrix}
-		\frac{\Delta r_{11}*X + \Delta r_{12}*Y + \Delta r_{13}*Z + \Delta t_{1}}{ \Delta r_{31}*X + \Delta r_{32}*Y + \Delta r_{33}*Z + \Delta t_{3}}  \\
-		\frac{\Delta r_{21}*X + \Delta r_{22}*Y + \Delta r_{23}*Z + \Delta t_{2}}{ \Delta r_{31}*X + \Delta r_{32}*Y + \Delta r_{33}*Z + \Delta t_{3}}
-	\end{pmatrix}
-	\begin{pmatrix}
-		x\\
-		y\\
-		1
-	\end{pmatrix}
+We would need to find 12 gradients if we use the formulation in equation \ref{eq:pe_projection} for the inverse compositional Lucas Kanade. However, the rotational factors $r_{nm}$ in equation \ref{eq:pe_warped} depend on each other. We could express the whole matrix based on 6 unknowns which are 3 times rotation and 3 times translation. Unfortunately it is easy to see that this formulation gets rather complex and it's nearly impossible to find a Jacobian for such a matrix.\\
+
+\begin{equation}\label{eq:pe_projection}
+	\begin{gathered}
+		\begin{pmatrix}
+			x' \\
+			y' 
+		\end{pmatrix}=
+		\begin{pmatrix}
+			\frac{u}{s} \\
+			\frac{v}{s} 
+		\end{pmatrix}=
+		\begin{pmatrix}
+			\frac{p_{11}*X + p_{12}*Y + p_{13}*Z + p_{14}}{p_{31}*X + p_{32}*Y + p_{33}*Z + p_{34}}  \\
+			\frac{p_{21}*X + p_{22}*Y + p_{23}*Z + p_{24}}{p_{31}*X + p_{32}*Y + p_{33}*Z + p_{34}}
+		\end{pmatrix}\\
+		\begin{pmatrix}
+			x'' \\
+			y'' 
+		\end{pmatrix}=
+		\begin{pmatrix}
+			\frac{u'}{s'} \\
+			\frac{v'}{s'} 
+		\end{pmatrix}=
+		\begin{pmatrix}
+			\frac{\Delta p_{11}*X + \Delta p_{12}*Y + \Delta p_{13}*Z + \Delta p_{14}}{\Delta p_{31}*X + \Delta p_{32}*Y + \Delta p_{33}*Z + \Delta p_{34}}  \\
+			\frac{\Delta p_{21}*X + \Delta p_{22}*Y + \Delta p_{23}*Z + \Delta p_{24}}{\Delta p_{31}*X + \Delta p_{32}*Y + \Delta p_{33}*Z + \Delta p_{34}}
+		\end{pmatrix}\\
+	\end{gathered}
 \end{equation}
 \begin{align*}
-	x,y						&:	\text{Original pixel position in template}\\
-	x'',y''				&:	\text{Warped pixel position in template}\\
-	\Delta p_{ij}	&:	\text{change of $p_{ij}$ per iteration}
+	u,v,s			&:	\text{Pixel position scaled with s}\\
+	X,Y,Z			&:	\text{3D Pixel position}\\
+	p_{ij}		&:	\text{Projection matrix}\\
 \end{align*}
 
-To make finding the Jacobian for this matrix possible we use Lie algebra. The whole idea is to transform the angles and translations into another space where it's easier to find the Jacobian. The optimization is then done with Lie algebra. The result from the optimization needs to be transformed from Lie algebra back to a Lie group which will give us pose and angles. The problem we need to solve stays the same as in equation \ref{eq:iclk_problem}. However we need to find $x''$ and $y''$ differently. We use the following formulation:
+We reformulate the problem by using Lie algebra. The idea is to transform the angles and translations into another space where we can find a Jacobian. The optimization is done in this space. The result of the optimization is transformed from Lie algebra back to angles and translations which we can use to update the pose for the next iteration. The problem we need to solve stays the same as in equation \ref{eq:pe_problem}. However we need to find $x''$ and $y''$ differently. We use the following formulation:
 \begin{equation}
-	W=e^{\xi}*P*p
+	\begin{pmatrix}
+		x''\\
+		y''
+	\end{pmatrix}
+	=e^{\xi}*P*p
 \end{equation}
 \begin{align*}
 	e			&:	\text{Exponential map}\\
-	\xi		&:	\text{Pose change between reference frame and current frame as SE(3) vector}\\
+	\xi		&:	\text{Pose change between reference frame and current frame as vector in SE(3)}\\
 	P			&:	\text{Pose of the reference frame}\\
 	p			&:	\text{point in 3D cloud}
 \end{align*}
 
-We want to find $\xi$ so that the intensity difference gets minimal. $P*p$ can be calculated and gives us the following Jacobian matrix for $\frac{W}{\delta \xi}$ (see \cite{se3_explain}).
-\begin{equation}
-	\frac{e^{\xi}*P*p}{\delta \xi}=\begin{pmatrix}
+Because equation \ref{eq:pe_problem} is the same as for the inverse compositional problem it is clear that also the taylor approximation stays the same shown equation \ref{eq:iclk_taylor}. However, it is clear that this time our warp $W$ must be different. We therfore write 
+
+We want to find $\xi$ which now represents our pose change so that the intensity difference gets minimal. We therefore deviate along $\xi$ which leads us to \ref{eq:se3_jacobian}.
+\begin{equation}\label{eq:se3_jacobian}
+	\frac{e^{\xi}*P*p}{\delta \xi}=
+	\begin{pmatrix}
+		f_x & f_y
+	\end{pmatrix}
+	\begin{pmatrix}
 		\frac{1}{z} & 0 & -\frac{x}{z^2} & -\frac{x*y}{z^2} & 1 + \frac{x^2}{z^2} & -\frac{y}{z} \\
 		0 & \frac{1}{z}  & -\frac{y}{z^2} & -1 - \frac{y^2}{z^2} & \frac{x*y}{z^2} &  \frac{x}{z}
 	\end{pmatrix}
 \end{equation}
-
 
 
 \subsubsection{3D cloud refinement}
@@ -680,13 +725,15 @@ Mapping can be solved in a separate thread. The mapping thread decides if a new 
 	\textit{Lucas-kanade 20 years on: A unifying framework}
 	Int. J. Comput. Vis., 56(3):221–255, 2004.
 
-
 	\bibitem{se3_explain}
 	José Luis Blanco Claraco\\
 	\textit{A tutorial on SE(3) transformation parameterizations and on-manifold optimization José Luis Blanco Claraco}
 	https://w3.ual.es/personal/jlblanco/, Last update 18/03/2019
 
-
+	\bibitem{taylor_series}
+	Wikipedia\\
+	\textit{Taylor series}
+	https://en.wikipedia.org/wiki/Taylor\_series
 
 \end{thebibliography}
 
