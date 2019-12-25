@@ -15,7 +15,7 @@
 
 \title{ORB Slam Point Cloud generation on Apalis iMX8}
 \author{Stefan Eichenberger}
-\date{February 2019}
+\date{January 2020}
 \advisors{Marcus Hudritsch}
 \department{TSM CPVR Lab}
 
@@ -483,10 +483,10 @@ What is different this time is that we warp the template with $\Delta p$ as show
 			y''
 		\end{pmatrix}=
 		W(x;\Delta p)\\
-		\begin{pmatrix}
+		=>\begin{pmatrix}
 			1 + \Delta p_{11} & 0 + \Delta p_{12} & 0 + \Delta p_{13} \\
 			0 + \Delta p_{21} & 1 + \Delta p_{22} & 0 + \Delta p_{23}
-		\end{pmatrix}*
+		\end{pmatrix}
 		\begin{pmatrix}
 			x\\
 			y\\
@@ -648,8 +648,8 @@ We would need to find 12 gradients if we use the formulation in equation \ref{eq
 		\begin{pmatrix}
 			x'' \\
 			y'' 
-		\end{pmatrix}=
-		\begin{pmatrix}
+		\end{pmatrix}=W(x,y,z;\Delta p)\\
+		=>\begin{pmatrix}
 			\frac{u'}{s'} \\
 			\frac{v'}{s'} 
 		\end{pmatrix}=
@@ -666,25 +666,65 @@ We would need to find 12 gradients if we use the formulation in equation \ref{eq
 \end{align*}
 
 We reformulate the problem by using Lie algebra. The idea is to transform the angles and translations into another space where we can find a Jacobian. The optimization is done in this space. The result of the optimization is transformed from Lie algebra back to angles and translations which we can use to update the pose for the next iteration. The problem we need to solve stays the same as in equation \ref{eq:pe_problem}. However we need to find $x''$ and $y''$ differently. We use the following formulation:
-\begin{equation}
-	\begin{pmatrix}
-		x''\\
-		y''
-	\end{pmatrix}
-	=e^{\xi}*P*p
+\begin{equation}\label{eq:pe_lie}
+	\begin{gathered}
+		\begin{pmatrix}
+			x''\\
+			y''
+		\end{pmatrix}
+		=e^{\xi}*p\\
+		\xi=\begin{pmatrix}
+			v_x\\
+			v_y\\
+			v_z\\
+			\omega_x\\
+			\omega_y\\
+			\omega_z
+		\end{pmatrix}
+	\end{gathered}
 \end{equation}
 \begin{align*}
 	e			&:	\text{Exponential map}\\
 	\xi		&:	\text{Pose change between reference frame and current frame as vector in SE(3)}\\
-	P			&:	\text{Pose of the reference frame}\\
 	p			&:	\text{point in 3D cloud}
 \end{align*}
 
-Because equation \ref{eq:pe_problem} is the same as for the inverse compositional problem it is clear that also the taylor approximation stays the same shown equation \ref{eq:iclk_taylor}. However, it is clear that this time our warp $W$ must be different. We therfore write 
+$\xi$ in \ref{eq:pe_lie} is the change in angle and position in Lie algebra. We can transfer from Lie algebra back to SE(3) which is our ``normal'' space by using the exponential map $e$. The exponential map is the pendant to the Euler function for matrices. In our case it hast  the closed form solution shown in \ref{eq:pe_closed_form} \cite{rvc}.
 
-We want to find $\xi$ which now represents our pose change so that the intensity difference gets minimal. We therefore deviate along $\xi$ which leads us to \ref{eq:se3_jacobian}.
+\begin{equation}\label{eq:pe_closed_form}
+	\begin{gathered}
+		\omega_{skew}=\begin{pmatrix}
+			0 && -\omega_z && \omega_y \\
+			\omega_z && 0 && -\omega_x \\
+			-\omega_y && \omega_x && 0
+		\end{pmatrix}\\
+		\begin{pmatrix}
+			\Delta t_x\\
+			\Delta t_y\\
+			\Delta t_z
+		\end{pmatrix}=
+		I+(1-cos(1))w_{skew}+(1-sin(1))*w_{skew}^2*\begin{pmatrix}
+			v_x\\
+			v_y\\
+			v_z
+		\end{pmatrix}\\
+		\begin{pmatrix}
+			\Delta r_x\\
+			\Delta r_y\\
+			\Delta r_z
+		\end{pmatrix}=
+		\begin{pmatrix}
+			\omega_x\\
+			\omega_y\\
+			\omega_z
+		\end{pmatrix}
+	\end{gathered}
+\end{equation}
+
+So instead of searching the gradient for our pose we now try to find $\xi$. We then transform it with the exponential map to get the gradient we need to update the pose for the next iteration. We can derive $e^{\xi}*p$ as shown in equation \ref{eq:se3_jacobian}.
+
 \begin{equation}\label{eq:se3_jacobian}
-	\frac{e^{\xi}*P*p}{\delta \xi}=
+	\frac{e^{\xi}*p}{\delta \xi}=
 	\begin{pmatrix}
 		f_x & f_y
 	\end{pmatrix}
@@ -734,6 +774,12 @@ Mapping can be solved in a separate thread. The mapping thread decides if a new 
 	Wikipedia\\
 	\textit{Taylor series}
 	https://en.wikipedia.org/wiki/Taylor\_series
+
+	\bibitem{rvc}
+	Peter Corke\\
+	\textit{Robotics, Vision and Control}\\
+	Springer, ISBN 978-3-319-54413-7, chapter 11+12, page 319+
+
 
 \end{thebibliography}
 
