@@ -64,7 +64,7 @@ void DepthFilter::outlier_check(Frame &frame, const vector<float> &disparities)
 
     const Matx33f rot_mat(frame.pose.get_rotation_matrix());
     const Vec3f translation(frame.pose.get_translation());
-#pragma omp parallel for default(none) shared(disparities, kps3d, kps2d, rot_mat, translation) firstprivate(fx, fy, cx, cy, baseline)
+#pragma omp parallel for shared(disparities, kps3d, kps2d) firstprivate(fx, fy, cx, cy, baseline)
     for (size_t i = 0; i < disparities.size(); i++) {
         const KeyPoint2d &kp2d = kps2d[i];
         KeyPoint3d &kp3d = kps3d[i];

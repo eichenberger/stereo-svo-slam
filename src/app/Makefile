@@ -11,14 +11,14 @@ IMU_OBJ_FILES = $(patsubst %.cpp, %.o, $(IMU_FILES))
 
 PROG_NAME = slam_app
 
-INCLUDEDIRS = -I../include -I/usr/local/include/opencv4 \
-			  -I/usr/include/x86_64-linux-gnu/qt5
+INCLUDEDIRS = -I../include -I$(OPENCV_INC_DIR) \
+			  -I$(QT_INC_DIR)
 
-LIBDIRS = -L/usr/local/lib -L../lib
+LIBDIRS = -L$(OPENCV_LIB_DIR) -L../lib
 LIBS = -lstereosvo -lopencv_core -lopencv_videoio -lopencv_imgproc \
 	   -lopencv_highgui -lQt5WebSockets -lQt5Core -lQt5Network -lQt5Widgets
 CXXFLAGS += -std=c++17 -pedantic -Wall -fopenmp -fPIC $(INCLUDEDIRS)
-LDFLAGS += -fPIC $(LIBDIRS) $(LIBS) -pthread -Wl,-rpath,/usr/local/lib,-rpath,../lib/,-rpath,.
+LDFLAGS += -fPIC $(LIBDIRS) $(LIBS) -pthread -Wl,-rpath,$(OPENCV_LIB_DIR),-rpath,../lib/,-rpath,.
 
 all: $(OBJ_FILES) test_imu
 	$(CXX) $(LDFLAGS) -o $(PROG_NAME) $(OBJ_FILES) $(LDFLAGS)

@@ -23,8 +23,8 @@ DISTFILES += \
     AnimatedEntity.qml \
     ObjectEntity.qml
 
-LIBS += -L/usr/local/lib -lopencv_core -lopencv_videoio -lopencv_imgproc -L../lib -lstereosvo -Wl,-rpath,../lib
+LIBS += -L$$(OPENCV_LIB_DIR) -lopencv_core -lopencv_videoio -lopencv_imgproc -L../lib -lstereosvo -Wl,-rpath,../lib
 
-INCLUDEPATH += /usr/local/include/opencv4 \
+INCLUDEPATH += $$(OPENCV_INC_DIR) \
     ../include \
     ../app

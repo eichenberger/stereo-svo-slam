@@ -28,7 +28,7 @@ static TickMeter tick_meter;
 
 StereoSlam::StereoSlam(const CameraSettings &camera_settings) :
     camera_settings(camera_settings), keyframe_manager(camera_settings),
-    frame(nullptr), motion(0, 0, 0, 0, 0, 0)
+    motion(0, 0, 0, 0, 0, 0)
 {
     kf.init(12,12);
     setIdentity(kf.transitionMatrix);

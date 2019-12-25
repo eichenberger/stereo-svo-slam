@@ -1,10 +1,14 @@
 CXX      ?= gcc
-CXXFLAGS  ?= -O3 #-fopt-info-vec-missed -fopt-info-vec # -fopt-info-vec-all
-LDFLAGS ?= -O3 
+#CXXFLAGS  ?= -O3 #-fopt-info-vec-missed -fopt-info-vec # -fopt-info-vec-all
+#LDFLAGS ?= -O3 
 
-#CXXFLAGS  ?= -O0 -ggdb
-#LDFLAGS ?= -O0 -ggdb
+CXXFLAGS  ?= -O0 -ggdb
+LDFLAGS ?= -O0 -ggdb
 
+OPENCV_INC_DIR ?= /usr/local/include/opencv4
+OPENCV_LIB_DIR ?= /usr/local/lib
+QT_INC_DIR ?= /usr/include/x86_64-linux-gnu/qt5
+OMP_LIB ?= omp5
 
 QMAKE ?= qmake
 

@@ -20,13 +20,13 @@ OBJ_FILES = $(patsubst %.cpp, %.o, $(SRC_FILES))
 
 LIB_NAME = libstereosvo.so
 
-INCLUDEDIRS = -I../include -I/usr/local/include/opencv4
+INCLUDEDIRS = -I../include -I$(OPENCV_INC_DIR)
 
-LIBDIRS = -L/usr/local/lib
-LIBS = -lm -lopencv_core -lomp5 -lopencv_features2d -lopencv_imgproc -lopencv_calib3d -lopencv_video -lopencv_highgui
+LIBDIRS = -L$(OPENCV_LIB_DIR)
+LIBS = -lm -lopencv_core -l$(OMP_LIB) -lopencv_features2d -lopencv_imgproc -lopencv_calib3d -lopencv_video -lopencv_highgui
 
 CXXFLAGS += -std=c++17 -pedantic -Wall -fopenmp -fPIC $(INCLUDEDIRS)
-LDFLAGS += -fPIC $(LIBDIRS) $(LIBS) -Wl,-rpath,/usr/local/lib,-rpath,.
+LDFLAGS += -fPIC $(LIBDIRS) $(LIBS) -Wl,-rpath,$(OPENCV_LIB_DIR),-rpath,.
 
 all: lib
 

@@ -22,7 +22,8 @@ static inline void exponential_map(const cv::Mat &twist, cv::Mat &pose)
     // Note: This exponential map doesn't give the exact same value as expm
     // from Matlab or Numpy. It is different up to a scaling. It seems that
     // expm uses norm set to 1.0. However, this differs from the closed form
-    // solution written in robotics vision and control.
+    // solution written in robotics vision and control. We set norm = 1.0 to
+    // make sure we get the same as in Numpy/Matlab.
     translation = (_eye*_norm + (1-cos(_norm))*w_skew+(_norm-sin(_norm))*(w_skew*w_skew))*v;
 
     memcpy(pose.ptr<float>(), &translation[0], 3*sizeof(float));

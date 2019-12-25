@@ -59,7 +59,7 @@ private:
     int level;
 
     cv::Ptr<Mat> hessian;
-    Mat inv_hessian;
+    Matx66f inv_hessian;
     cv::Ptr<vector<Matx16f>> gradient_times_jacobians;
 
     const static int PATCH_SIZE;
@@ -287,7 +287,7 @@ void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
     gradient_times_jacobians.reset(new vector<Matx16f>);
     gradient_times_jacobians->resize(level_keypoints2d.size()*PATCH_SIZE*PATCH_SIZE);
 
-#pragma omp parallel for default(none) shared(pose, gradient_times_jacobians, current_image, previous_image)
+#pragma omp parallel for shared(gradient_times_jacobians, current_image, previous_image)
     for (size_t i = 0; i < level_keypoints2d.size(); i++) {
         // For OMP
         const auto fx = level_camera_settings.fx;
@@ -311,9 +311,8 @@ void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
 
         // See A tutorial on SE(3) transformation parameterizations and on-manifold optimization page 58
         // for the jaccobian. Take - because we want to minimize
-        Mat jacobian = -(Mat_<float>(2,6) <<
-            fx/z, 0, -fx*x/(z*z), -fx*x*y/(z*z), fx*(1+(x*x)/(z*z)), -fx*y/z,
-            0, fy/z, -fy*y/(z*z), -fy*(1+(y*y)/(z*z)), fy*x*y/(z*z), fy*x/z);
+        Matx<float, 2,6> jacobian (-fx/z, 0, fx*x/(z*z), fx*x*y/(z*z), -fx*(1+(x*x)/(z*z)), fx*y/z,
+            0, -fy/z, fy*y/(z*z), fy*(1+(y*y)/(z*z)), -fy*x*y/(z*z), -fy*x/z);
 
         vector<Matx16f>::iterator it = gradient_times_jacobians->begin() + i*PATCH_SIZE*PATCH_SIZE;
 
@@ -355,7 +354,7 @@ void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
 #endif
                 Matx12f _grad (diff1, diff2);
 
-                Mat _grad_times_jac = _grad*jacobian;
+                Matx<float, 1, 6> _grad_times_jac = _grad*jacobian;
                 // Store the result of grad*jacobian for further usage
                 *it = _grad_times_jac;
 
@@ -368,13 +367,13 @@ void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
     }
 
 
-    hessian = new Mat(Mat::zeros(6,6, CV_32F));
+    Matx66f hessian;
     // avoid problems with omp -> do it outside of omp loop
     for (auto it: *gradient_times_jacobians) {
-        *hessian += (it.t()*it);
+        hessian += (it.t()*it);
     }
 
-    inv_hessian = hessian->inv(DECOMP_SVD);
+    inv_hessian = hessian.inv(DECOMP_SVD);
 #ifdef SUPER_VERBOSE
     std::cout << "Hessian matrix: " << std::endl;
     for (size_t i = 0; i < 6; i++) {
@@ -487,12 +486,17 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
 
     Mat delta_pos;
     // solve(*hessian, residual, delta_pos, DECOMP_SVD);
-    delta_pos = inv_hessian * residual;
+    delta_pos = Mat(inv_hessian * residual);
     Mat pose_gradient(6, 1, CV_32F);
     exponential_map(delta_pos, pose_gradient);
 
     Vec3f translation_grad(pose_gradient.ptr<float>(0));
     Vec3f rotation_gradient(pose_gradient.ptr<float>(3));
+
+    // Here we calculate delta t and delta r from compositional lk
+    // Basically we just calculate W(W(x;dp),p) which are two matrix
+    // multiplications and then get dt and dr
+    // This gives us the aditivie gradient
     Matx33f rot_mat(pose.get_rotation_matrix());
     translation_grad = rot_mat*translation_grad;
     rotation_gradient = rot_mat*rotation_gradient;
@@ -565,6 +569,6 @@ void PoseEstimatorCallback::setLevel(int level)
 
 void PoseEstimatorCallback::reset_hessian()
 {
-    hessian.reset();
+    hessian.release();
     cout << "Reset hessian empty: " << hessian.empty() << endl;
 }

@@ -183,6 +183,7 @@ static void read_image(ImageInput *input)
         Mat _gray_r, _gray_l;
         float _time_stamp;
         if (!input->read(_gray_l, _gray_r, _time_stamp)) {
+            cout << "No video data received" << endl;
             QApplication::quit();
             return;
         }
@@ -192,7 +193,7 @@ static void read_image(ImageInput *input)
         time_stamp = _time_stamp;
         images_read ++;
         image_lock.unlock();
-        QThread::msleep(10);
+        QThread::msleep(300);
     }
 
 }
