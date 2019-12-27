@@ -8,6 +8,10 @@
 \usepackage{subfig}
 \usepackage{listings}
 \usepackage[hidelinks]{hyperref}
+\usepackage{url}
+\usepackage[backend=biber]{biblatex}
+
+\addbibresource{bibtex.bib}
 
 \input{layout}
 
@@ -223,29 +227,37 @@ The Intel SDK seems quite powerful and is open source as well. However, the inde
 We decided to use the Econ Tara because it has an outstanding price ratio and because it is a conventional stereo camera. However, the Intel RealSense camera is also a great fit because it delivers depth images directly. This reduces the CPU load on the iMX8. If we require Full HD, we should use the ZED camera. Another advantage of the ZED camera is the bigger baseline of 120mm. This allows depth estimation with higher range. We decided against this camera mainly because of the high price and because of the closed source SDK. We can't benefit from Full HD sensors because embedded systems only have limited CPU resources.
 
 \chapter{SVO}
-In this chapter we describe SVO SLAM.
+In this chapter we see the basic idea behind SVO SLAM. We don't dive into the mathematical details yet. As we will see most parts of the algorithm is heavily based on ideas of optical flow. Therefore we will handle this topic in a separate chapter.
 
-\section{SVO SLAM idea}
-As described in chapter \ref{chap:evaluation} there are two main ideas on how SLAM algorithms can estimate the current pose. SVO is part of the sparse direct algorithms. This means it tries to update the current camera pose based on intensity differences. To make it fast it compares only keypoints that were extracted earlier. This makes the algorithm faster and more efficient.
+\section{Architecture}
 
-\subsection{Initialization}\label{sec:initialization}
-In this project we use a stereo camera therefore the initialization step is simpler than in the monocular case. The algorithm performs the following steps.
+Figure \ref{fig:svo_slam} shows a lot of differences beteween the orignal SVO SLAM implementation and what we implmented. However, the two main steps which are sparse model based image alginemnt and pose refinement are the same. Our implementation does not use threadings everything is done sequential. This first may surprise but has the advantage of not needing to synchronize and is also more deterministic. However, it's not the whole truth. By using OpenMP we use multiprocessing a lot but on a finer level. The idea is that the main steps are executed sequential but they use the features of multicore processors just for each step. Using this approach we hope to spread the computitional load more equally over all processors on modern systems instead of using separated huge tasks which may not scale. Further, because we focus on stereo cameras the mapping task is not required in the same depth as SVO did it. We will describe this difference in a later section.
+
+\begin{figure}[H]
+	\centering
+	\subfloat[Original SVO]{\includegraphics[height=0.25\textheight]{img/svo1_flow.png}}
+	\subfloat[Our SVO]{\includegraphics[height=0.25\textheight]{img/our_svo_slam.png}}
+	\caption{Orignal SVO SLAM vs modified version}\label{fig:svo_slam}
+\end{figure}
+
+
+\section{Keyframe Generation}\label{sec:initialization}
+The original SVO implementation uses a monocular camera. It's therefore not possible to estimate depth in the first picture. There must at least be a slight movement so that the algorithm can estimate the depth of keypoints. However, here we use a stereo camera with a known baseline. Therefore, we can estimate the depth of a keepoint from the first image. To generate a new keyframe we perform the following steps:
 \begin{enumerate}
-	\item{Search FAST keypoints on the whole image}
-	\item{Do Sobel filtering in horizontal direction}
+	\item{Search FAST keypoints in the image}
+	\item{Do Sobel filtering of the image in horizontal direction}
 	\item{Divide image in 16x16 blocks}
 	\item{Select one FAST corner in each block}
-		\subitem{If no FAST corner can be found, use point with highest gradient as keypoint}
-	\item{Calculate depth fore each keypoint}
-		\subitem{Find the smallest intensity difference along the epipolar line}
-		\subitem{The difference between these two points is the disparity (1/depth)}
+		\subitem{If no FAST corner can be found, use point with biggest gradient as keypoint}
+	\item{Calculate depth for each keypoint}
+	\item{Transform the keypoint depth to world coordinates by using the camera pose}
 \end{enumerate}
 
-This step is different compared to what SVO SLAM describes in \cite{svo2} section IX.A. The reason is that we focus on stereo cameras. Therefore, we can already estimate a point cloud from the first image without any movement. We calculate the 3D points for each keyframe. However, we try to keep as many kepoints from previous keyframes as possible to make the algorithm more robust.
+How the depth is calculated 
 
-\subsection{Sparse Image Alignment}\label{sec:sia}
+\section{Sparse Image Alignment}\label{sec:sia}
 
-From the initialization step we optain an initial point cloud. We use this point cloud to estimate the pose and motion of the camera. We try to find a Pose that minimizes the photometric error of small patches around the keypoints found in section \ref{sec:initialization}. We do that by minimizing the formula shown in equation \ref{eq:intensity}. We use equation \ref{eq:cm} to project the 3D point cloud to the current frame. By using Levenberg-Marquardt we can minimize the intensity difference by changing the values of the extrinsic matrix $r_{ij}$ and $t_{x,y,z}$. As initial guess for the pose we use the current pose and add the motion model. The motion model is the difference between the pose in the previous frame ($t-1$) and frame $t-2$.
+From the keyframe generation step we optain an initial point cloud. We use this point cloud to estimate the pose and motion of the camera. We try to find a Pose that minimizes the photometric error of small patches around the keypoints found in section \ref{sec:initialization}. We do that by minimizing the formula shown in equation \ref{eq:intensity}. We use equation \ref{eq:cm} to project the 3D point cloud to the current frame. By using Levenberg-Marquardt we can minimize the intensity difference by changing the values of the extrinsic matrix $r_{ij}$ and $t_{x,y,z}$. As initial guess for the pose we use the current pose and add the motion model. The motion model is the difference between the pose in the previous frame ($t-1$) and frame $t-2$.
 
 \begin{equation}\label{eq:intensity}
 	I_{TD}=\sum_{i=0}^{i=N}I_{F-1}(x_{F-1,i},y_{F-1,i})-I_{F}(x_{F,i},y_{F,i})
@@ -307,7 +319,7 @@ Where:
 This step is described in \cite{svo2} in section IV.A. We get a first estimate for the pose. However, because we estimate the current pose by using the previous frame we will get a drift in the long term. Therefore, we need to refine the pose by using the keyframe as reference.\\
 If less than 80\% of the keypoints are trackable we need to insert a new keyframe based on the previous frame. In comparison SVO inserts a new keyframe if the movement is more than 12\% of the average depth. In a first step we try to do it as described, however maybe this needs to change in the future. See \cite{svo2} section X.D for the implementation details.
 
-\subsection{Refinement}\label{sec:refinement}
+\section{Refinement}\label{sec:refinement}
 
 The refinement step is necessary to reduce the drift over time by taking the information of the keyframe into account. We use the Lucas-Kanade algorithm to find an Affine transformation Matrix that minimizes the photometric error between all keypoints of the keyframe and the current frame. This will give us a reprojection error. We try to minimize this reprojection error by do ing a bundle adjustment over the pose (motion only) and over the 3D point cloud (structure only).\\
 
@@ -323,7 +335,7 @@ Where:
 
 Lucas Kanade tries to solve this equation by assuming that the intensity gradient at a keypoint will point in the direction of the movement \cite{lucas_kanade}. The SVO paper doesn't use Lucas Kanade to do the 2d point adjustment. They use the Inverse Compositional method instead. In comparison to Lucas Kanade they will find one Affine Warp matrix that describes the movement of all points. Lucas Kanade as implemented in OpenCV will move each point separate. However, because no Inverse Compositional method is available in OpenCV Lucas Kanade was used as a first implementation. This will be less efficient than using the Inverse Compositional method.
 
-\subsubsection{Pose refinement}
+\subsection{Pose refinement}
 In section \ref{sec:sia} we estimated the pose of the current frame by using the 3D point cloud and the previous image. Based on the estimated pose we then refined the 2D point position as described in section \ref{sec:refinement}. Now we need to update the estimated pose in regards to the new 2D point position. This is done by minimizing the reprojection error when changing the pose. We use Levenberg-Marquardt to minimize the pose in this step.
 \begin{equation}\label{eq:pose_refinement}
 	min((x - x')^2 + (y -y')^2)
@@ -334,13 +346,13 @@ Where:
 	x',y' &: \text{x,y reprojection of 3D point by using \ref{eq:cm}}
 \end{align*}
 
-\subsection{Point refinement}
+\section{Point refinement}
 Because of the stereo camera approach we use in this work it's not necessary to follow the same mapping as described in \cite{svo2}. However, specially the depth estimation of points farer away is not accurate because we have a maximum resolution of 1 pixel. When moving the camera along the x axis we could gain higher precision because this is comparable to a higher baseline. We therefore use a Kalman filter to fuse depth estimations from different poses. This is efficient and can therefore be done for each frame. 
 
-\section{Optical Flow}
+\chapter{Optical Flow}
 To speed up the optimization a predefined gradient can be calculated. The method to find such a gradient is related to the Lucas-Kanade optical flow method. Instead of searching a Warp matrix we search a transformation matrix in this scenario. We have two images $I_{k-1}$ and $I_{k}$. We know the pose of image k-1 $T_{k-1}$ . We search the pose $T_k$.\\
 While the inverse compositional Lucas Kanade algorithm tries to find the optimal Warp matrix. We try to find the optimal pose.
-\subsection{Lucas Kanade Intuitive}
+\section{Lucas Kanade Intuitive}
 
 As mentioned in the previous section Lucas Kanade is an algorithm to estimate the optical flow. In the simplest case it just tells us where a certain pixel was in the image before and where it is now. It does that in a efficient way by using the intensity gradients. This section tries to describe how this works in an intuitive but simplified way while the next section will describe it in a more mathematical way.\\
 Let's assume the simplest scenario where we can only move in one direction (left or right). Figure \ref{fig:optical_flow_intuitive} shows this simple scenario. Let's first focus on the case where we have a small movement (a). We first calculate the intensity gradients in the template (first row). Then we calculate the intensity difference (last row) between the current image (second row) and the first image. Now we multiply the gradient times the intensity difference this will give us the direction in which we have to move. Here we assume that moving the current image to left means - and moving it to right +. Now we move in the direction of the gradient and will calculate the intensity difference again. If it increases we moved too much and we have to reduce the step size if it decreases we are fine and we can calculate the new gradient again based on the new intensity difference. After some iterations the intensity change from one iteration to the other should be minimal. We have found the horizontal movement of our image. We already describe the inverse compositional Lucas Kanade algorithm because we calculate the gradients on the template. The ``normal'' Lucas Kanade would calculate the gradients on the current image. This has the disadvantage that we need to calculate the gradients after each iteration and it's therefore less computational efficient.\\
@@ -362,7 +374,7 @@ We can extend the above scenario from a movement in one dimension easily to two 
 
 We showed that optical flow can track two dimensional movements. However, it doesn't track rotations and shearing. This will introduce dependencies between x and y movements which become non-linear. In the next section we extend the intuitive approach so that we can solve non-linear problems.
 
-\subsection{Lucas Kanade Mathematical}
+\section{Lucas Kanade Mathematical}
 
 In the previous section we showed the basic idea of optical flow. It is oversimplified and can only track movements in x and y direction. In this section we extend this idea so that more complicated movements can be tracked.\\
 
@@ -462,7 +474,7 @@ All parameters in equation \ref{eq:lk_dp} are known and can be calculated for a 
 \end{equation}
 H is called the Hessian matrix. Unfortunately we need to calculate this matrix in each iteration. The inverse compositional Lucas Kanade algorithm tries to solve this problem by wrapping the template to the current image instead of the current image to the template.
 
-\subsection{Inverse compositional Lucas Kanade}
+\section{Inverse compositional Lucas Kanade}
 
 The inverse compositional Lucase Kanade algorithm does more or less the same as the normal Lucas Kanade algorithm but it searches the inverse warp update at each iteration. The problem basically stays the same but we switch the role of the template with the one of the image which first doesn't have any effect:
 \begin{equation}\label{eq:iclk_problem}
@@ -575,7 +587,7 @@ Compared to the normal Lucas-Kanade algorithm the Hessian Matrix H is now consta
 Because we only have to calculate the Hessian matrix once, the inverse computational Lucas Kanade is more efficient then the Lucas Kanade algorithm.\\
 In this chapter we saw how we calculate the optical flow by using a warp matrix. As we will later see this is used by SVO in the pose refinement step. In the next section we describe how optical flow can be used to find a 3D pose instead of a warp matrix.
 
-\subsection{Pose estimation}
+\section{Pose estimation}
 For a first estimate of the pose we use some kind of optical flow algorithm. However, we directly try to find the 3D pose instead of the warp matrix. Also we don't try to find a warp matrix for each individual patch but for all patches in the image. We start again with the idea of minimizing the intensity differences over a patch of pixels shown in equation \ref{eq:pe_problem}.
 \begin{equation}\label{eq:pe_problem}
 	\sum_x\sum_y(I_{k-1}(x'',y'')-I_{k}(x',y'))^2
@@ -689,7 +701,7 @@ We reformulate the problem by using Lie algebra. The idea is to transform the an
 	p			&:	\text{point in 3D cloud}
 \end{align*}
 
-$\xi$ in \ref{eq:pe_lie} is the change in angle and position in Lie algebra. We can transfer from Lie algebra back to SE(3) which is our ``normal'' space by using the exponential map $e$. The exponential map is the pendant to the Euler function for matrices. In our case it hast  the closed form solution shown in \ref{eq:pe_closed_form} \cite{rvc}.
+$\xi$ in \ref{eq:pe_lie} is the change in angle and position in Lie algebra. We can transfer from Lie algebra back to SE(3) which is our ``normal'' space by using the exponential map $e$. The exponential map is the pendant to the Euler function for matrices. In our case it has the closed form solution shown in \ref{eq:pe_closed_form} \cite{rvc}.
 
 \begin{equation}\label{eq:pe_closed_form}
 	\begin{gathered}
@@ -721,10 +733,39 @@ $\xi$ in \ref{eq:pe_lie} is the change in angle and position in Lie algebra. We 
 	\end{gathered}
 \end{equation}
 
-So instead of searching the gradient for our pose we now try to find $\xi$. We then transform it with the exponential map to get the gradient we need to update the pose for the next iteration. We can derive $e^{\xi}*p$ as shown in equation \ref{eq:se3_jacobian}.
+We use $\Delta t_x,\Delta t_y,\Delta t_z,\Delta r_x,\Delta r_y,\Delta r_z$ as our gradient for optimizing the pose. To get $\xi$ we again do the first order Taylor approximation as shown in equation \ref{eq:pe_taylor}).
+\begin{equation}\label{eq:pe_taylor}
+	\sum_x\sum_y(I_{k-1}(x,y)+\nabla I_{k-1}*\frac{\sigma e^{\xi}*p}{\sigma \xi}*\xi-I_{k}(x',y'))^2
+\end{equation}
+\begin{align*}
+	x,y				&: \text{Original pixel position in template}\\
+	x',y'			&: \text{Pixel position in current image}\\
+	I_{k-1}		&: \text{Template image}\\
+	I_{k}			&: \text{Current image}\\
+	\nabla I	&: \text{Gradient in image I at position x',y'}\\
+	\xi				&: \text{Twist formulated in Lie algebra}\\
+	p					&: \text{point in 3D space}  
+\end{align*}
+
+We again derive the Taylor approximation shown in equation \ref{eq:pe_derivative}
+
+\begin{equation}\label{eq:pe_derivative}
+	2\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma e^{\xi}p}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k-1}\frac{\sigma e^{\xi} p}{\sigma \xi}\xi-I_{k-1}(x,y)\end{bmatrix}
+\end{equation}
+
+We want to find $\xi$ which leads us to equation \ref{eq:pe_xi}.
+
+\tiny
+\begin{equation}\label{eq:pe_xi}
+	\xi=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma e^{\xi}p}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k-1}\frac{\sigma e^{\xi}p}{\sigma \xi}\end{bmatrix})^{-1}
+	\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma e^{\xi}p}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}') - I_{k-1}(x,y)\end{bmatrix}
+\end{equation}
+\normalsize
+
+We now only have to find a solution for $\frac{\sigma e^{\xi}p}{\sigma \xi}$ to be able to caclulate $\xi$. This Jacobian matrix is shown in equation \ref{eq:se3_jacobian} \cite{se3_explain}.
 
 \begin{equation}\label{eq:se3_jacobian}
-	\frac{e^{\xi}*p}{\delta \xi}=
+	\frac{e^{\xi}p}{\delta \xi}=
 	\begin{pmatrix}
 		f_x & f_y
 	\end{pmatrix}
@@ -733,54 +774,67 @@ So instead of searching the gradient for our pose we now try to find $\xi$. We t
 		0 & \frac{1}{z}  & -\frac{y}{z^2} & -1 - \frac{y^2}{z^2} & \frac{x*y}{z^2} &  \frac{x}{z}
 	\end{pmatrix}
 \end{equation}
+\begin{align*}
+	f_x,f_y	&:	\text{Focal length}\\
+	x,y,z		&:	\text{3D point position}\\
+\end{align*}
+
+Given the Jacobian, all 3D points we can now calculate the gradient for a given pose and then iteratively optimize the pose pased on the gradient. Becasue we again use the Inverse Compositional Lucas Kanade approach, the Hessian only needs to be calculated once per optimization step and not for each iteration.
 
 
-\subsubsection{3D cloud refinement}
-After refining the pose we still have a small reprojection error. We can try to minimize this error by adjusting the 3D position for each point. Here we do the same thing as in equation \ref{eq:pose_refinement} but we now change the 3D point position instead of the pose. Because we need to do that for all point this is more computational expensive than the previous step. Instead of Levenberg-Marquardt we use normal Gradient-Descent in this step, because the here described problem is an underdeterminated problem. However, we can still find a local minimum. This step follows section V.B in \cite{svo2}. However, pose and 3D cloud is only updated for the last camera frame. We do not bundle adjust the whole trajectory.
+\chapter{Implementation}
 
-\subsection{Mapping}
+In this chapter we discuss the implementation that was written during this thesis. It shows which parts of the algorithm are implemented where to give an overall picture of the implementation.
 
-Mapping can be solved in a separate thread. The mapping thread decides if a new keyframe must be insert. If no keyframe is required, we can use the current frame to update the depth of the 3D cloud by adjusting the inverse depth with a Kalman Filter. Mapping is not solved yet.
+\chapter{Results}
 
-\begin{thebibliography}{1}
+\printbibliography
 
-	\bibitem{svo}
-	Christian Forster et al\\
-	\textit{SVO: Semi-Direct Visual Odometry for Monocular and Multi-Camera Systems}\\
-	doi:10.1109/TRO.2016.2623335
-
-	\bibitem{svo2}
-	Christian Forster et al\\
-	\textit{SVO: Semi-Direct Visual Odometry for Monocular and Multi-Camera Systems}\\
-	doi:10.1109/TRO.2016.2623335
-
-	\bibitem{lucas_kandae}
-	OpenCV\\
-	\textit{Optical Flow}\\
-	https://docs.opencv.org/4.0.1/d7/d8b/tutorial\_py\_lucas\_kanade.html
-
-
-	\bibitem{inverse_compositional}
-	S. Baker and I. Matthews\\
-	\textit{Lucas-kanade 20 years on: A unifying framework}
-	Int. J. Comput. Vis., 56(3):221–255, 2004.
-
-	\bibitem{se3_explain}
-	José Luis Blanco Claraco\\
-	\textit{A tutorial on SE(3) transformation parameterizations and on-manifold optimization José Luis Blanco Claraco}
-	https://w3.ual.es/personal/jlblanco/, Last update 18/03/2019
-
-	\bibitem{taylor_series}
-	Wikipedia\\
-	\textit{Taylor series}
-	https://en.wikipedia.org/wiki/Taylor\_series
-
-	\bibitem{rvc}
-	Peter Corke\\
-	\textit{Robotics, Vision and Control}\\
-	Springer, ISBN 978-3-319-54413-7, chapter 11+12, page 319+
-
-
-\end{thebibliography}
+%\subsubsection{3D cloud refinement}
+%After refining the pose we still have a small reprojection error. We can try to minimize this error by adjusting the 3D position for each point. Here we do the same thing as in equation \ref{eq:pose_refinement} but we now change the 3D point position instead of the pose. Because we need to do that for all point this is more computational expensive than the previous step. Instead of Levenberg-Marquardt we use normal Gradient-Descent in this step, because the here described problem is an underdeterminated problem. However, we can still find a local minimum. This step follows section V.B in \cite{svo2}. However, pose and 3D cloud is only updated for the last camera frame. We do not bundle adjust the whole trajectory.
+%
+%\subsection{Mapping}
+%
+%Mapping can be solved in a separate thread. The mapping thread decides if a new keyframe must be insert. If no keyframe is required, we can use the current frame to update the depth of the 3D cloud by adjusting the inverse depth with a Kalman Filter. Mapping is not solved yet.
+%
+%\begin{thebibliography}{1}
+%
+%	\bibitem{svo}
+%	Christian Forster et al\\
+%	\textit{SVO: Semi-Direct Visual Odometry for Monocular and Multi-Camera Systems}\\
+%	doi:10.1109/TRO.2016.2623335
+%
+%	\bibitem{svo2}
+%	Christian Forster et al\\
+%	\textit{SVO: Semi-Direct Visual Odometry for Monocular and Multi-Camera Systems}\\
+%	doi:10.1109/TRO.2016.2623335
+%
+%	\bibitem{lucas_kandae}
+%	OpenCV\\
+%	\textit{Optical Flow}\\
+%	https://docs.opencv.org/4.0.1/d7/d8b/tutorial\_py\_lucas\_kanade.html
+%
+%
+%	\bibitem{inverse_compositional}
+%	S. Baker and I. Matthews\\
+%	\textit{Lucas-kanade 20 years on: A unifying framework}
+%	Int. J. Comput. Vis., 56(3):221–255, 2004.
+%
+%	\bibitem{se3_explain}
+%	José Luis Blanco Claraco\\
+%	\textit{A tutorial on SE(3) transformation parameterizations and on-manifold optimization José Luis Blanco Claraco}
+%	https://w3.ual.es/personal/jlblanco/, Last update 18/03/2019
+%
+%	\bibitem{taylor_series}
+%	Wikipedia\\
+%	\textit{Taylor series}
+%	https://en.wikipedia.org/wiki/Taylor\_series
+%
+%	\bibitem{rvc}
+%	Peter Corke\\
+%	\textit{Robotics, Vision and Control}\\
+%	Springer, ISBN 978-3-319-54413-7, chapter 11+12, page 319+
+%
+%\end{thebibliography}
 
 \end{document}
