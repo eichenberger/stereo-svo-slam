@@ -109,7 +109,6 @@ static float get_patch_sum(const Mat &image,const Point2f &center)
                       x1*y2*(*src3) + y2*(*(src3+1)) + x2*y2*(*(src3+2));
 
     return intensity;
-
 }
 
 

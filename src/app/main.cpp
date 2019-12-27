@@ -13,6 +13,7 @@
 #include <QtCore/QTextStream>
 #include <QtCore/QThread>
 #include <QtCore/QMutex>
+#include <QtCore/QSemaphore>
 
 #include "stereo_slam_types.hpp"
 #include "stereo_slam.hpp"
@@ -171,17 +172,20 @@ static void update_pose_from_imu(StereoSlam *slam, float dt)
 }
 
 static QMutex image_lock;
+static QSemaphore images_available(1);
 static Mat gray_r, gray_l;
 static int images_read = 0;
 static float time_stamp = 0.0;
 
-static void read_image(ImageInput *input)
+static void read_image(ImageInput *input, bool realtime)
 {
     Mat image;
 
     while (running) {
         Mat _gray_r, _gray_l;
         float _time_stamp;
+        if (!realtime)
+            images_available.acquire(1);
         if (!input->read(_gray_l, _gray_r, _time_stamp)) {
             cout << "No video data received" << endl;
             QApplication::quit();
@@ -193,7 +197,6 @@ static void read_image(ImageInput *input)
         time_stamp = _time_stamp;
         images_read ++;
         image_lock.unlock();
-        QThread::msleep(300);
     }
 
 }
@@ -215,6 +218,8 @@ static void process_image(bool use_imu, StereoSlam *slam)
     _images_read = images_read;
     images_read = 0;
     image_lock.unlock();
+    if (images_available.available() == 0)
+        images_available.release(1);
 
 
     if (use_imu)
@@ -258,6 +263,12 @@ int main(int argc, char **argv)
 
     parser.process(arguments);
     arguments.pop_back();
+
+    if (parser.positionalArguments().size() != 1) {
+        cout << "You need to specify a camera type!" << endl;
+        cout << parser.helpText().toStdString() << endl;
+        return -1;
+    }
 
     QString camera_type = parser.positionalArguments().at(0);
     ImageInput *input;
@@ -325,7 +336,7 @@ int main(int argc, char **argv)
     SvoSlamBackend backend(&slam);
     WebSocketServer server("svo", 8001, backend);
 
-    QThread* read_image_thread = QThread::create(read_image, input);
+    QThread* read_image_thread = QThread::create(read_image, input, camera_type == "econ");
 
     read_image_thread->start();
     if (read_imu_thread)
