@@ -54,6 +54,9 @@ static inline float _get_intensity_diff(const Mat &image1, Mat image2,
     float m23 = x21*y22;
     float m24 = x22*y22;
 
+    Vec4f m1(m11, m12, m13, m14);
+    Vec4f m2(m21, m22, m23, m24);
+
     float intensity = 0;
 
     if (ip1.y >= 0 && (int)(ip1.y+ patch_size) < image1.rows &&
@@ -67,10 +70,18 @@ static inline float _get_intensity_diff(const Mat &image1, Mat image2,
             const uint8_t *src21 = image2.ptr<uint8_t>(ip2.y, ip2.x);
             const uint8_t *src22 = image2.ptr<uint8_t>(ip2.y+1, ip2.x);
             for (size_t j = 0; j < patch_size; j++) {
-                float i1 = m11*(*src11) + m12*(*(src11+1)) +
-                    m13*(*src12) + m14*(*(src12+1));
-                float i2 = m21*(*src21) + m22*(*(src21+1)) +
-                    m23*(*src22) + m24*(*(src22+1));
+                Vec4f px1 (*(src11+0),
+                           *(src11+1),
+                           *(src12+0),
+                           *(src12+1));
+                Vec4f px2 (*(src21+0),
+                           *(src21+1),
+                           *(src22+0),
+                           *(src22+1));
+
+                float i1 = (m1.t()*px1)[0];
+                float i2 = (m2.t()*px2)[0];
+
                 intensity += fabs(i1-i2);
                 src11++; src12++; src21++; src22++;
             }
@@ -100,13 +111,7 @@ float get_intensity_diff(const cv::Mat &image1, const cv::Mat &image2,
     Mat diff;
     absdiff(patch1, patch2, diff);
 
-    float test = sum(diff)[0];
-    cout << "Value: " << test << endl;
-    cout << "diff: " << diff << endl;
-    cout << "patch1: " << patch1 << endl;
-    cout << "patch2: " << patch2 << endl;
-    return test;
-
+    return sum(diff)[0];
 #else
     return _get_intensity_diff(image1, image2, keypoint1, keypoint2, patch_size);
 #endif
