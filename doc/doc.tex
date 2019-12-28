@@ -24,7 +24,7 @@
 \department{TSM CPVR Lab}
 
 \lstset{
-	basicstyle=\ttfamily\scriptsize
+  basicstyle=\ttfamily\scriptsize
 }
 
 \begin{document}
@@ -77,21 +77,21 @@ The application shall have a mechanism to load a pre-generated map that can be u
 The master thesis is honored with 27 ECTS. 1 ECTS consumes 30h which results in a total of 810h. Assuming 8.5 working hours per day, we have to spend 95.29 working days. Because the thesis is done part time a full year can be used. We assume one year has 48 weeks. During the first 16 weeks only 1.5 days can be used for the master thesis (because of additional modules). This means during the first 16 weeks we only work 24 days on the project. 71.29 days are left for the last 32 weeks. This results in 2.228 days work during the 32 weeks. Figure \ref{fig:gantt} shows the initial planing. The first implementation of the algorithm takes longer than the rest because only 1.5 days can be spent for the thesis during this period.
 
 \begin{figure}[H]
-	\includegraphics[width=1.0\textwidth]{img/gantt.png}
-	\caption{Initial planing}\label{fig:gantt}
+  \includegraphics[width=1.0\textwidth]{img/gantt.png}
+  \caption{Initial planing}\label{fig:gantt}
 \end{figure}
 
 \section{Final timeline}
 
 Unfortunately not all requirements are available in the final reason. As we will see the main reason for this is that implementing the algorithm took more time than expected. The final version now includes the following features:
 \begin{itemize}
-	\item{SLAM library \#42}
-		\subitem{30 fps are not achieved on an i5-7Y54 but on Quad Core i7 processor}
-	\item{SVO based algorithm \#44}
-	\item{IMU Integration \#47}
-	\item{Language}
-	\item{CPU}
-	\item{Example Application \#43}
+  \item{SLAM library \#42}
+    \subitem{30 fps are not achieved on an i5-7Y54 but on Quad Core i7 processor}
+  \item{SVO based algorithm \#44}
+  \item{IMU Integration \#47}
+  \item{Language}
+  \item{CPU}
+  \item{Example Application \#43}
 \end{itemize}
 
 \chapter{SLAM Evaluation}\label{chap:evaluation}
@@ -99,8 +99,8 @@ Unfortunately not all requirements are available in the final reason. As we will
 In this section we analyze different documented SLAMs. This work was not part of this thesis. However, it shows what other algorithms and possibilities are available today. We can split them in two groups, indirect and direct SLAM (figure \ref{fig:slammodes}). Indirect methods analyze an image and try to extract features. This feature points are matched directly to further images. Based on these matches we can estimate the pose of the camera. Direct methods operate on intensity variances. The goal is to find a pose that minimizes the intensity difference between two images. Because minimizing the intensity difference over the whole image is computational expensive most methods operated only on edges or corners of the image. We call such methods direct semi dense or direct sparse. In the next sections we will have a discussion about these different approaches.
 
 \begin{figure}[H]
-	\includegraphics[width=1.0\textwidth]{img/slam_modes.png}
-	\caption{SLAM Modes}\label{fig:slammodes}
+  \includegraphics[width=1.0\textwidth]{img/slam_modes.png}
+  \caption{SLAM Modes}\label{fig:slammodes}
 \end{figure}
 
 
@@ -114,9 +114,9 @@ In this section we will analyze two direct approaches a dense and a sparse appro
 
 \begin{figure}[H]
   \begin{center}
-		\includegraphics[width=1.0\textwidth]{img/sparse_dense.png}
+    \includegraphics[width=1.0\textwidth]{img/sparse_dense.png}
   \end{center}
-	\caption{Comparison of sparse, dense and semi-dense approaches \cite{svo}}\label{fig:sparse_dense}
+  \caption{Comparison of sparse, dense and semi-dense approaches \cite{svo}}\label{fig:sparse_dense}
 \end{figure}
 
 \subsection{Dense}
@@ -125,33 +125,33 @@ There are not that many dense SLAM algorithms. One is DTAM \cite{dtam} which use
 \begin{equation}\label{eq:pixel_energy}
 \begin{aligned}
   E_{xy}=I_1(x,y)-I_2(x',y')\\
-	\begin{pmatrix}
-	x'*s'\\
-	y'*s'\\
-	s'\\
-	\end{pmatrix}=P*XYZ
+  \begin{pmatrix}
+  x'*s'\\
+  y'*s'\\
+  s'\\
+  \end{pmatrix}=P*XYZ
 \end{aligned}
 \end{equation}
 Where:
 \begin{align*}
-  E_{xy}	&: \text{Energy at a specific position}\\
-  I_1			&: \text{Previous image}\\
-  I_2			&: \text{Current image}\\
-  x,y			&: \text{Point position in previous image} \\
-  x',y'		&: \text{Point position in current image} \\
-	s'			&: \text{Scaling value}\\
-  P				&: \text{Projection matrix}\\
-  XYZ			&: \text{Point position in 3D cloud}
+  E_{xy}  &: \text{Energy at a specific position}\\
+  I_1      &: \text{Previous image}\\
+  I_2      &: \text{Current image}\\
+  x,y      &: \text{Point position in previous image} \\
+  x',y'    &: \text{Point position in current image} \\
+  s'      &: \text{Scaling value}\\
+  P        &: \text{Projection matrix}\\
+  XYZ      &: \text{Point position in 3D cloud}
 \end{align*}
 \begin{equation}\label{eq:total_energy}
   E_{t}=\min(\sum_{x=0}^C\sum_{y=0}^RE_{xy})
 \end{equation}
 Where:
 \begin{align*}
-  E_{t}		&: \text{Total energy}\\
-  E_{xy}	&: \text{Energy at pixel position x/y in image}\\
-	C				&: \text{Image columns}\\
-	R				&: \text{Image rows}\\
+  E_{t}    &: \text{Total energy}\\
+  E_{xy}  &: \text{Energy at pixel position x/y in image}\\
+  C        &: \text{Image columns}\\
+  R        &: \text{Image rows}\\
 \end{align*}
 
 Direct dense methods deliver a dense point cloud which we can use directly to create maps and 3D objects. However, they are computational expensive. Therefore, they are not appropriate for embedded devices.
@@ -169,10 +169,10 @@ In this project, the focus is on stereo SLAM. A lot of today's paper focus on mo
 
 In our previous project works we used ORB SLAM for pose estimation and SLAM. While ORB SLAM is powerful it has some performance limitations when running on embedded systems. The CPVR lab uses ORB SLAM heavily in different projects but there is no experience with direct or semi direct approaches yet. Therefore, we try to reimplement SVO SLAM in this thesis. It should have less dependencies and run faster than the open source version available on Github. The decision for SVO SLAM was taken because of:
 \begin{itemize}
-	\item Open source implementation available
-	\item According to SVO paper it's faster than ORB SLAM
-	\item Approach seems to be ``simpler'' than ORB SLAM
-	\item The CPVR lab already has experience with ORB, an alternative solution may be interesting.
+  \item Open source implementation available
+  \item According to SVO paper it's faster than ORB SLAM
+  \item Approach seems to be ``simpler'' than ORB SLAM
+  \item The CPVR lab already has experience with ORB, an alternative solution may be interesting.
 \end{itemize}
 
 \chapter{Camera Evaluation}
@@ -182,13 +182,13 @@ To do stereo computer vision, we need a stereo camera. There are a few stereo ca
 \section{ZED}
 The ZED camera \cite{zed} is a stereo camera from Stereo Labs. Here the specification of this camera:
 \begin{itemize}
-	\item Full HD color images with 30fps
-	\item USB3.0
-	\item UVC compliant
-	\item Linux SDK
-	\item Baseline 120mm
-	\item IMU sensor with 6DoF
-	\item Price: 449\$
+  \item Full HD color images with 30fps
+  \item USB3.0
+  \item UVC compliant
+  \item Linux SDK
+  \item Baseline 120mm
+  \item IMU sensor with 6DoF
+  \item Price: 449\$
 \end{itemize}
 
 To run their SDK a Dual Core CPU with 2.3 GHz and CUDA > 3.0 is required. However, it's also possible to use the camera without their SDK.
@@ -196,14 +196,14 @@ To run their SDK a Dual Core CPU with 2.3 GHz and CUDA > 3.0 is required. Howeve
 \section{ECON Tara}
 The Tara camera \cite{tara} from Econ is another stereo camera. In comparison to the ZED camera it delivers a reduced resolution and only gray scale images.
 \begin{itemize}
-	\item 752x480 gray scale images with 60fps
-	\item USB3.0
-	\item Global Shutter Camera
-	\item UVC compliant
-	\item Baseline 60mm
-	\item IMU sensor with 6DoF
-	\item Open Source SDK
-	\item Price: 149\$
+  \item 752x480 gray scale images with 60fps
+  \item USB3.0
+  \item Global Shutter Camera
+  \item UVC compliant
+  \item Baseline 60mm
+  \item IMU sensor with 6DoF
+  \item Open Source SDK
+  \item Price: 149\$
 \end{itemize}
 
 It has a small OpenCV based SDK with open source software. In comparison to the ZED SDK it is less powerful.
@@ -211,13 +211,13 @@ It has a small OpenCV based SDK with open source software. In comparison to the 
 \section{Intel RealSense D435}
 The Intel RealSense camera \cite{realsense} is a infrared stereo camera. In comparison to RGB stereo cameras it uses infrared images for stereo vision. It seems that this sensors are less prone to reflections. A third camera delivers RGB images in full HD.
 \begin{itemize}
-	\item 1280x720 with 90fps (IR), 1920x1080 with 30fps (RGB)
-	\item USB3.0
-	\item Global Shutter Camera
-	\item UVC compilant (kernel patch required)
-	\item Baseline 50mm
-	\item Open Source SDK (librealsense)
-	\item Price: 179\$
+  \item 1280x720 with 90fps (IR), 1920x1080 with 30fps (RGB)
+  \item USB3.0
+  \item Global Shutter Camera
+  \item UVC compilant (kernel patch required)
+  \item Baseline 50mm
+  \item Open Source SDK (librealsense)
+  \item Price: 179\$
 \end{itemize}
 
 The Intel SDK seems quite powerful and is open source as well. However, the indepth details of the camera are not publicly available.
@@ -231,125 +231,132 @@ In this chapter we see the basic idea behind SVO SLAM. We don't dive into the ma
 
 \section{Architecture}
 
-Figure \ref{fig:svo_slam} shows a lot of differences beteween the orignal SVO SLAM implementation and what we implmented. However, the two main steps which are sparse model based image alginemnt and pose refinement are the same. Our implementation does not use threadings everything is done sequential. This first may surprise but has the advantage of not needing to synchronize and is also more deterministic. However, it's not the whole truth. By using OpenMP we use multiprocessing a lot but on a finer level. The idea is that the main steps are executed sequential but they use the features of multicore processors just for each step. Using this approach we hope to spread the computitional load more equally over all processors on modern systems instead of using separated huge tasks which may not scale. Further, because we focus on stereo cameras the mapping task is not required in the same depth as SVO did it. We will describe this difference in a later section.
+Figure \ref{fig:svo_slam} shows a lot of differences beteween the orignal SVO SLAM implementation and what we implmented. However, the two main steps which are sparse model based image alginemnt and pose refinement are the same. Our implementation does not use threadings everything is done sequential. This first may surprise but has the advantage of not needing to synchronize and is also more deterministic. However, it's not the whole truth. By using OpenMP we use multiprocessing a lot but on a finer level. The idea is that the main steps are executed sequential but they use the features of multicore processors just for each step. Using this approach we hope to spread the computitional load more equally over all processors on modern systems instead of using separated huge tasks which may not scale. Further, because we focus on stereo cameras the mapping task is not required in the same depth as SVO did it. We will describe this differences in a later section.
 
 \begin{figure}[H]
-	\centering
-	\subfloat[Original SVO]{\includegraphics[height=0.25\textheight]{img/svo1_flow.png}}
-	\subfloat[Our SVO]{\includegraphics[height=0.25\textheight]{img/our_svo_slam.png}}
-	\caption{Orignal SVO SLAM vs modified version}\label{fig:svo_slam}
+  \centering
+  \subfloat[Original SVO]{\includegraphics[height=0.25\textheight]{img/svo1_flow.png}}
+  \subfloat[Our SVO]{\includegraphics[height=0.25\textheight]{img/our_svo_slam.png}}
+  \caption{Orignal SVO SLAM vs modified version}\label{fig:svo_slam}
 \end{figure}
 
 
 \section{Keyframe Generation}\label{sec:initialization}
 The original SVO implementation uses a monocular camera. It's therefore not possible to estimate depth in the first picture. There must at least be a slight movement so that the algorithm can estimate the depth of keypoints. However, here we use a stereo camera with a known baseline. Therefore, we can estimate the depth of a keepoint from the first image. To generate a new keyframe we perform the following steps:
 \begin{enumerate}
-	\item{Search FAST keypoints in the image}
-	\item{Do Sobel filtering of the image in horizontal direction}
-	\item{Divide image in 16x16 blocks}
-	\item{Select one FAST corner in each block}
-		\subitem{If no FAST corner can be found, use point with biggest gradient as keypoint}
-	\item{Calculate depth for each keypoint}
-	\item{Transform the keypoint depth to world coordinates by using the camera pose}
+  \item{Search FAST keypoints in the image \cite{fast}}
+  \item{Do Sobel filtering of the image in horizontal direction}
+  \item{Divide image in 16x16 blocks}
+  \item{Select one FAST corner in each block}
+    \subitem{If no FAST corner can be found, use point with biggest gradient as keypoint}
+  \item{Calculate depth for each keypoint}
+  \item{Transform the keypoint depth to world coordinates by using the camera pose}
 \end{enumerate}
 
-How the depth is calculated 
+The mathematical details on how to calculate the depth and the world coordinates from a stereo camera are described in chapter \ref{ch:depth}.
 
 \section{Sparse Image Alignment}\label{sec:sia}
 
-From the keyframe generation step we optain an initial point cloud. We use this point cloud to estimate the pose and motion of the camera. We try to find a Pose that minimizes the photometric error of small patches around the keypoints found in section \ref{sec:initialization}. We do that by minimizing the formula shown in equation \ref{eq:intensity}. We use equation \ref{eq:cm} to project the 3D point cloud to the current frame. By using Levenberg-Marquardt we can minimize the intensity difference by changing the values of the extrinsic matrix $r_{ij}$ and $t_{x,y,z}$. As initial guess for the pose we use the current pose and add the motion model. The motion model is the difference between the pose in the previous frame ($t-1$) and frame $t-2$.
+From the keyframe generation step we get an initial point cloud. We use this point cloud to estimate the pose and motion of the camera. We try to find a Pose that minimizes the photometric error of small patches around the keypoints. We do this by minimizing the formula shown in equation \ref{eq:intensity}. We use equation \ref{eq:camera_model} to project the 3D point cloud to the current frame. By using Gradient Descent we can minimize the intensity difference by changing the values of the extrinsic matrix $r_{ij}$ and $t_{x,y,z}$. As initial guess for the pose we use the current pose and add the motion model. The motion model is the difference between the pose in the previous frame ($t-1$) and frame $t-2$. If we have an additional IMU available we can also improve the motion model by adding information from this sensor (e.g. angle velocity).
+
+\begin{equation}\label{eq:camera_model}
+  \begin{gathered}
+    \begin{pmatrix}
+      u\\
+      v\\
+      s
+    \end{pmatrix}=
+    \begin{pmatrix}
+      f_x & 0 & c_x \\
+      0 & f_y & c_y \\
+      0 & 0 & 1
+    \end{pmatrix}
+    \begin{pmatrix}
+      r_{11} & r_{12} & r_{13} & t_x\\
+      r_{21} & r_{22} & r_{23} & t_y\\
+      r_{31} & r_{32} & r_{33} & t_z\\
+    \end{pmatrix}
+    \begin{pmatrix}
+      X\\
+      Y\\
+      Z\\
+      1
+    \end{pmatrix}\\
+    \begin{pmatrix}
+      x\\
+      y
+    \end{pmatrix}=
+    \begin{pmatrix}
+      \frac{u}{s}\\
+      \frac{v}{s}
+    \end{pmatrix}
+  \end{gathered}
+\end{equation}
+\begin{align*}
+  f_x,f_y  &:  \text{Focal length}\\
+  c_x,c_y  &:  \text{Principal point (z axis of camera goes through)}\\
+  X,Y,Z     &: \text{Point coordinates with Camera 0,0,0}\\
+  u,v,s     &: \text{Image coordinates with scale s}\\
+  x,y       &: \text{Keypoint projection from 3D cloud}\\
+  r_{ij}    &: \text{Camera rotation matrix}\\
+  t_{x,y,z} &: \text{Camera location}
+\end{align*}
 
 \begin{equation}\label{eq:intensity}
-	I_{TD}=\sum_{i=0}^{i=N}I_{F-1}(x_{F-1,i},y_{F-1,i})-I_{F}(x_{F,i},y_{F,i})
+  \sum_n\sum_x\sum_y(I_{k-1}(x'',y'')-I_{k}(x',y'))^2
 \end{equation}
-Where:
 \begin{align*}
-	I_{TD} &:					\text{Total intensity difference over all keypoints}\\
-	I_{F-1} &:				\text{Previous grayscale image}\\
-	I_{F} &:					\text{Current grayscale image}\\
-	x_{KF},y_{KF} &:	\text{x,y position in keyframe}\\
-	N &:							\text{Total number of keypoints}\\
-	x_{F},y_{F} &:		\text{x,y posiiton in current frame}
+  x'',y''        &: \text{Warped pixel position in the template}\\
+  x',y'          &: \text{Pixel position in the current image}\\
+  I_{k-1}        &: \text{Template image}\\
+  I_{k}          &: \text{Current image}\\
+  n              &: \text{Over all keypoints}  
 \end{align*}
 
-\begin{equation}\label{eq:cm}
-  \begin{pmatrix}
-		f_x & \gamma & c_x \\
-		0 & f_y & c_y \\
-		0 & 0 & 1 \\
-	\end{pmatrix}*
-	\begin{pmatrix}
-		r_{11} & r_{12} & r_{13} & t_x \\
-		r_{21} & r_{22} & r_{23} & t_y \\
-		r_{31} & r_{32} & r_{33} & t_z \\
-	\end{pmatrix}
-	\begin{pmatrix}
-		X \\
-		Y \\
-		Z \\
-		1
-	\end{pmatrix}=
-	\begin{pmatrix}
-		u \\
-		v \\
-		s
-  \end{pmatrix}
+The SVO paper \cite{svo2} describes this step in section IV.A. By performing the sparse image alignment we get a first estimate of the pose. However, because we estimate the current pose by using the previous frame we will get a drift in the long term. Therefore, we need to refine the pose by using the keyframe as reference. This is what we describe in the next section. Section \ref{sec:pose_estimation} will describe the mathematical details on how this optimization works.
+
+\section{Pose Refinement}\label{sec:refinement}
+
+The refinement step is necessary to reduce the drift over time by using the keyframe where a keypoint has first been seen. First we use the inverse compositional Lucas Kanade algorithm to find the new position of the point in the current image. By using the pose of the sparse image alignment we can already get an estimate of the position by doing a projection of the 3D cloud to the current image. Then we use optical flow to get a more accurate point position. We mark points that move more than 3 pixels as outliers because the sparse image alignment and the projection step should already be more accurate. We then optimize the pose so that the reprojection of the 3D point gets minimal (equation \ref{eq:refinement_problem}.
+
+\begin{equation}\label{eq:refinement_problem}
+  minimize(\sum_n ((x'-x)^2+(y'-y)^2))
 \end{equation}
-\begin{equation}\label{eq:cm_normalized}
-	\begin{pmatrix}
-		x \\
-		y
-	\end{pmatrix}=
-	\begin{pmatrix}
-		u/s \\
-		v/s 
-  \end{pmatrix}
-\end{equation}
-Where:
 \begin{align*}
-  X,Y,Z			&: \text{point in the 3D world}\\
-	u,v,s	   	&: \text{point in 2D image not normalize}\\
-	x,y				&: \text{point in 2D image normalized with s}\\
-	f_x,f_y  	&: \text{focal length of the camera}\\
-  c_x,c_y  	&: \text{principal point}\\
-  t_x,t_y,t_z	&: \text{location of the camera}\\
-  r_{ij}	&: \text{part of the rotation matrix}
+  x',y'   &: \text{Keypoint position found by optical flow}\\
+  x,y     &: \text{Keypoint projection from 3D cloud with camera pose see \ref{eq:camera_model}}
 \end{align*}
 
-This step is described in \cite{svo2} in section IV.A. We get a first estimate for the pose. However, because we estimate the current pose by using the previous frame we will get a drift in the long term. Therefore, we need to refine the pose by using the keyframe as reference.\\
-If less than 80\% of the keypoints are trackable we need to insert a new keyframe based on the previous frame. In comparison SVO inserts a new keyframe if the movement is more than 12\% of the average depth. In a first step we try to do it as described, however maybe this needs to change in the future. See \cite{svo2} section X.D for the implementation details.
+Chapter \ref{ch:opt_flow} describes optical flow and Lucas Kanade in more details. Chapter \ref{ch:pose_refinement} describes how we can calculate the gradient for minimizing the reprojection error in equation \ref{eq:refinement_problem}.
 
-\section{Refinement}\label{sec:refinement}
+\section{Keyframe insertion}
+If less than 75\% of the keypoints are tracable we need to insert a new keyframe based on the previous frame. In comparison SVO inserts a new keyframe if the movement is more than 12\% of the average depth. In a first step we try to do it as described, however maybe this needs to change in the future. See \cite{svo2} section X.D for the implementation details.
 
-The refinement step is necessary to reduce the drift over time by taking the information of the keyframe into account. We use the Lucas-Kanade algorithm to find an Affine transformation Matrix that minimizes the photometric error between all keypoints of the keyframe and the current frame. This will give us a reprojection error. We try to minimize this reprojection error by do ing a bundle adjustment over the pose (motion only) and over the 3D point cloud (structure only).\\
+\section{Update 3D Points}
 
-Lucas-Kanade tries to find the movement of points by trying to find a movement (dx, dy) that minimizes the intensity difference as shown in equation \ref{eq:lucaskanade}
-\begin{equation}\label{eq:lucaskanade}
-	I(x,y,t)=I(x+dx, y+dy, t+dt)
+The update of the 3D points is completely different from what SVO \cite{svo} does. The reason is that we can measure the keypoint depth in the first frame by using the stereo images. SVO uses a bayesian filter approach to estimate the keypoint depth over time. We instead use a mechanism to detect outliers and a simple Kalman Filter to update the 3D position of 3D keypoints.
+
+\subsection{Outlier detection}
+The outlier detection has two steps. During refinement the intensity difference returned by optical flow is checked. If it exceeds an empirically determined value of 20 it will mark the point as outlier. This can happen if points get occluded by objects and are therefore not visible in the new image anymore. Another mechanism that doesn't mark a point as outlier but masks it during refinement is if a point moves more than 9pixels. This can happen if there is low texture at the keypoint and it moves therefore more than expected. However, such points can still help to improve the position during sparse image alignment.\\
+A second mechanism to detect outliers is used before point refinement. The mechanism calculates does a depth estimation with the current image and then checks if the new estimated 3D point near the previous estimated 3D point. It uses the variance of 0.5 pixel and transfers this into a difference in point location. If the previous estimated 3D point is within the current estimate +- 5 Tau the point is assumed as inlier. If it's not within this estimate it's estimated as outlier. We count the inlier and outlier. If we see more outlier than inlier for one keypoint we remove it from the list of available keypoints. This helps us to detect points that have a bad estimate or are in areas with low texture.
+
+\subsection{Point Refinement}
+As we saw before SVO \cite{svo} uses monocular cameras. For that it is necessary to have multiple images at multiple positions to get a initial guess of the 3D cloud. The algorithm initializes each keypoint with an average depth, estimates the new pose based on this depths and updates the depth based on the new pose. The keypoints are first threaded as seeds and only if the certainty of the depth is high enough the point is added into the 3D map. The whole 3D point estimation only works if there is movement in x or y direction and for the first n frames there is no point cloud available. Because we use a stereo camera we are not affected by that (as we saw in section \ref{sec:initialization}). However, we can improve the position of a 3D point over time. In section \ref{sec:refinement} we got a better estimate of the keypoint location in the current image by using optical flow. We then refined the pose based on this information. However, because the 3D points are 100\% accurate we still have some error between the point found by optical flow and the point from the reprojection. If the camera moved more than the baseline of the camera we may profit from this movement to get a better estimate of the 3D position. We do this by using a Kalman filter with the update step shown in equation \ref{eq:point_refinement}. The measurement error is smaller as bigger the movement is. For the first measurement we know that the disparity has the size of the baseline of the camera. This means instead of $\sqrt{\Delta x^2+\Delta y^2}$ we just take the baseline in meter.
+\begin{equation}\label{eq:point_refinement}
+  \begin{gathered}
+    z^{-1}(t)=z(t-1)+w(t)\\
+    y(t)=z^{-1}(t)+v(t)\\
+    w(t)=0.01\\
+    v(t)=\frac{0.5}{\sqrt{\Delta x^2 + \Delta y^2}}
+  \end{gathered}
 \end{equation}
-Where:
 \begin{align*}
-	I(x,y,t)						&:	\text{intensity in template}\\
-	I(x+dx, y+dy, t+dt) &:	\text{intensity in new image t+dt, moved by dx and dy}
+  \Delta x, \Delta y  &: \text{Movement of the camera}\\
+  v                   &: \text{New information}\\
+  v                   &: \text{Measurement error/noise}\\
 \end{align*}
 
-Lucas Kanade tries to solve this equation by assuming that the intensity gradient at a keypoint will point in the direction of the movement \cite{lucas_kanade}. The SVO paper doesn't use Lucas Kanade to do the 2d point adjustment. They use the Inverse Compositional method instead. In comparison to Lucas Kanade they will find one Affine Warp matrix that describes the movement of all points. Lucas Kanade as implemented in OpenCV will move each point separate. However, because no Inverse Compositional method is available in OpenCV Lucas Kanade was used as a first implementation. This will be less efficient than using the Inverse Compositional method.
-
-\subsection{Pose refinement}
-In section \ref{sec:sia} we estimated the pose of the current frame by using the 3D point cloud and the previous image. Based on the estimated pose we then refined the 2D point position as described in section \ref{sec:refinement}. Now we need to update the estimated pose in regards to the new 2D point position. This is done by minimizing the reprojection error when changing the pose. We use Levenberg-Marquardt to minimize the pose in this step.
-\begin{equation}\label{eq:pose_refinement}
-	min((x - x')^2 + (y -y')^2)
-\end{equation}
-Where:
-\begin{align*}
-	x,y		&: \text{x,y position in image after refinement}\\
-	x',y' &: \text{x,y reprojection of 3D point by using \ref{eq:cm}}
-\end{align*}
-
-\section{Point refinement}
-Because of the stereo camera approach we use in this work it's not necessary to follow the same mapping as described in \cite{svo2}. However, specially the depth estimation of points farer away is not accurate because we have a maximum resolution of 1 pixel. When moving the camera along the x axis we could gain higher precision because this is comparable to a higher baseline. We therefore use a Kalman filter to fuse depth estimations from different poses. This is efficient and can therefore be done for each frame. 
-
-\chapter{Optical Flow}
+\chapter{Optical Flow}\label{ch:opt_flow}
 To speed up the optimization a predefined gradient can be calculated. The method to find such a gradient is related to the Lucas-Kanade optical flow method. Instead of searching a Warp matrix we search a transformation matrix in this scenario. We have two images $I_{k-1}$ and $I_{k}$. We know the pose of image k-1 $T_{k-1}$ . We search the pose $T_k$.\\
 While the inverse compositional Lucas Kanade algorithm tries to find the optimal Warp matrix. We try to find the optimal pose.
 \section{Lucas Kanade Intuitive}
@@ -359,17 +366,17 @@ Let's assume the simplest scenario where we can only move in one direction (left
 What we can see in \ref{fig:optical_flow_intuitive} (b) that it's impossible to track movements over bigger distances. If the patch we compare does not connect to the area where the new image has moved, we are unable to move in the right direction. As we can see it's even possible that we move in the wrong direction (b). To overcome this problem we can downsample the image as shown in (c). We only downsampled in horizontal direction for visability. In reality the whole image would be downsampled by factor 2,4,8,16, etc. This is called an optical pyramid. As we can see in (c) after we downsampled the image by factor two we have again a valid gradient which points in the right direction. The idea is that we start to optimized in the lowest level if we converge we optimize again one level higher and so on. With this idea it is possible to track flows over higher distances while still being efficient.
 
 \begin{figure}[H]
-	\centering
-	\subfloat[Lucas Kanade small move]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_1.png}}
-	\subfloat[Lucas Kanade big move]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_2.png}}
-	\subfloat[Lucas Kanade big move down sampled]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_3.png}}
-	\caption{Optical Flow Intuitive}\label{fig:optical_flow_intuitive}
+  \centering
+  \subfloat[Lucas Kanade small move]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_1.png}}
+  \subfloat[Lucas Kanade big move]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_2.png}}
+  \subfloat[Lucas Kanade big move down sampled]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_3.png}}
+  \caption{Optical Flow Intuitive}\label{fig:optical_flow_intuitive}
 \end{figure}
 
 We can extend the above scenario from a movement in one dimension easily to two dimensions as shown in figure \ref{fig:optical_flow_2d}. We simply calculate the gradient in the vertical direction as well. By doing this we can track movements in x and y direction. We easily see that not all values in the patch help to find the right gradient. Some gradients in the patch point in the wrong direction. However, in total the gradient points in the right direction. By using image pyramids we can reduce the influence of such miss matches.
 \begin{figure}[H]
-	\includegraphics[width=1.0\textwidth]{img/optical_flow_2d.png}
-	\caption{Optical Flow Intuitive 2D: +: current-previous intensity > 0, -: current-previous intensity < 0, u: gradient points up, d: gradient points down, l: gradient points left, r: gradient points right, red: wrong direction, green: right direction, blue: no influence, yellow arrow: final gradient}\label{fig:optical_flow_2d}
+  \includegraphics[width=1.0\textwidth]{img/optical_flow_2d.png}
+  \caption{Optical Flow Intuitive 2D: +: current-previous intensity > 0, -: current-previous intensity < 0, u: gradient points up, d: gradient points down, l: gradient points left, r: gradient points right, red: wrong direction, green: right direction, blue: no influence, yellow arrow: final gradient}\label{fig:optical_flow_2d}
 \end{figure}
 
 We showed that optical flow can track two dimensional movements. However, it doesn't track rotations and shearing. This will introduce dependencies between x and y movements which become non-linear. In the next section we extend the intuitive approach so that we can solve non-linear problems.
@@ -380,97 +387,97 @@ In the previous section we showed the basic idea of optical flow. It is oversimp
 
 Instead of linear movements in x and y direction we want to find a warp matrix which describes a affine transformation of a patch from one image to the other (equation \ref{eq:lk_warp}).
 \begin{equation}\label{eq:lk_warp}
-	p=\begin{pmatrix}
-		p_{11} & p_{12} & p_{13} \\
-		p_{21} & p_{22} & p_{23}
-	\end{pmatrix}
+  p=\begin{pmatrix}
+    p_{11} & p_{12} & p_{13} \\
+    p_{21} & p_{22} & p_{23}
+  \end{pmatrix}
 \end{equation}
 \begin{align*}
-	p				&:	\text{warp matrix}\\
-	p_{ij}	&:	\text{parameter of warp matrix}
+  p        &:  \text{warp matrix}\\
+  p_{ij}  &:  \text{parameter of warp matrix}
 \end{align*}
 This warp matrix describes movements along the x and y axis($p_{11},p_{22}$, a rotation ($p_{13},p_{21}$) and shearing ($p_{13},p_{23}$). The goal of Lucas Kanade is to find this warp matrix. It does that by minimizing the Intensity difference between patch of pixels in a template (reference image) and a patch of pixels with the same size in the current image as shown in equation \ref{eq:lk_problem}. 
 
 \begin{equation}\label{eq:lk_problem}
-	\sum_x\sum_y(I_{k}(x',y')-I_{k-1}(x,y))^2
+  \sum_x\sum_y(I_{k}(x',y')-I_{k-1}(x,y))^2
 \end{equation}
 \begin{align*}
-	x,y				&:	\text{Pixel position in template}\\
-	x',y'			&:	\text{Pixel position in current image}\\
-	I_{k-1}		&:	\text{Template image}\\
-	I_{k}			&:	\text{Current image}
+  x,y        &:  \text{Pixel position in template}\\
+  x',y'      &:  \text{Pixel position in current image}\\
+  I_{k-1}    &:  \text{Template image}\\
+  I_{k}      &:  \text{Current image}
 \end{align*}
 
 We describe the transformation of a pixel from the reference image to the current image as a matrix multiplication as shown in equation \ref{eq:lk_warped}. Because \ref{eq:lk_problem} is a nonlinear problem we have to solve it with a nonlinear solver (e.g. Gauss-Newton or Gradient Descent). The problem is solved by iteratively changing the warp matrix in the direction of a gradient until the difference of the intensities are minimal:
 \begin{equation}\label{eq:lk_warped}
-	\begin{gathered}
-		\begin{pmatrix}
-			x' \\
-			y'
-		\end{pmatrix}=
-		W(x;p+\Delta p)\\
-		=>
-		\begin{pmatrix}
-			p_{11}+\Delta p_{11} & p_{12}+\Delta p_{12} & p_{13}+\Delta p_{13} \\
-			p_{21}+\Delta p_{21} & p_{22}+\Delta p_{22} & p_{23}+\Delta p_{23}
-		\end{pmatrix}
-		\begin{pmatrix}
-			x\\
-			y\\
-			1
-		\end{pmatrix}\\
-		=>
-		\begin{pmatrix}
-			x(p_{11}+\Delta p_{11}) + y(p_{12}+\Delta p_{12}) + p_{13}+\Delta p_{13} \\
-			x(p_{21}+\Delta p_{21}) + y(p_{22}+\Delta p_{22}) + p_{23}+\Delta p_{23}
-		\end{pmatrix}
-	\end{gathered}
+  \begin{gathered}
+    \begin{pmatrix}
+      x' \\
+      y'
+    \end{pmatrix}=
+    W(x;p+\Delta p)\\
+    =>
+    \begin{pmatrix}
+      p_{11}+\Delta p_{11} & p_{12}+\Delta p_{12} & p_{13}+\Delta p_{13} \\
+      p_{21}+\Delta p_{21} & p_{22}+\Delta p_{22} & p_{23}+\Delta p_{23}
+    \end{pmatrix}
+    \begin{pmatrix}
+      x\\
+      y\\
+      1
+    \end{pmatrix}\\
+    =>
+    \begin{pmatrix}
+      x(p_{11}+\Delta p_{11}) + y(p_{12}+\Delta p_{12}) + p_{13}+\Delta p_{13} \\
+      x(p_{21}+\Delta p_{21}) + y(p_{22}+\Delta p_{22}) + p_{23}+\Delta p_{23}
+    \end{pmatrix}
+  \end{gathered}
 \end{equation}
 \begin{align*}
-	W(x;p+\Delta p)	&:	\text{Warp function}\\
-	x',y'						&:	\text{Pixel position in current image}\\
-	x,y							&:	\text{Pixel position in template}\\
-	p_{ij}					&:	\text{parameter of warp matrix}\\
-	\Delta p_{ij}		&:	\text{change of $p_{ij}$ per iteration}
+  W(x;p+\Delta p)  &:  \text{Warp function}\\
+  x',y'            &:  \text{Pixel position in current image}\\
+  x,y              &:  \text{Pixel position in template}\\
+  p_{ij}          &:  \text{parameter of warp matrix}\\
+  \Delta p_{ij}    &:  \text{change of $p_{ij}$ per iteration}
 \end{align*}
 
 After each iteration we set $p=p_{n-1}+\Delta p$ where p stands for all $p_{ij}$. We can solve this problem by approximating the gradient heuristically. However, this is slow. Therefore, we need a direct computational approach to find the gradient. This is what Lucas Kanade describes. \\
 Equation \ref{eq:lk_problem} describes the Lucas Kanade problem which is non linear. It's not possible to find $\Delta p$ algebraicly which would be our gradient. Therefore, we need to linearise the problem by doing a first order Taylor approximation as shown in equation \ref{eq:lk_taylor}. $\nabla I$ corresponds here to the exterior derivative when using the chain rule while $\frac{\sigma W}{\sigma p}$ corresponds to the inner derivative. $\Delta p$ is the factor used for Taylor series (see \cite{taylor_series}).
 
 \begin{equation}\label{eq:lk_taylor}
-	\sum_x\sum_y(I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k}*\frac{\sigma W}{\sigma p}*\Delta p-I_{k-1}(x,y))^2
+  \sum_x\sum_y(I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k}*\frac{\sigma W}{\sigma p}*\Delta p-I_{k-1}(x,y))^2
 \end{equation}
 \begin{align*}
-	x,y				&:	\text{Pixel position in template}\\
-	x',y'			&:	\text{Pixel position in current image}\\
-	I_{k-1}		&:	\text{Template image}\\
-	I_{k}			&:	\text{Current image}\\
-	\nabla I	&:	\text{Gradient in image I at position x',y'}
+  x,y        &:  \text{Pixel position in template}\\
+  x',y'      &:  \text{Pixel position in current image}\\
+  I_{k-1}    &:  \text{Template image}\\
+  I_{k}      &:  \text{Current image}\\
+  \nabla I  &:  \text{Gradient in image I at position x',y'}
 \end{align*}
 We want to find $\Delta p$ which is our gradient. To make this work we have to derive equation \ref{eq:lk_taylor}. This gives us:
 \begin{equation}
-	2*\sum_x\sum_y\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k}*\frac{\sigma W}{\sigma p}*\Delta p-I_{k-1}(x,y)\end{bmatrix}
+  2*\sum_x\sum_y\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k}*\frac{\sigma W}{\sigma p}*\Delta p-I_{k-1}(x,y)\end{bmatrix}
 \end{equation}
 We can now find $\Delta p$ by moving it to the left:
 \tiny
 \begin{equation}\label{eq:lk_dp}
-	\Delta p=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k}\frac{\sigma W}{\sigma p}\end{bmatrix})^{-1}
-	\sum_x\sum_y\begin{bmatrix}\nabla I_{k}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}I_{k-1}(x,y) - I_{k}(x_{i-1}',y_{i-1}'\end{bmatrix}
+  \Delta p=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k}\frac{\sigma W}{\sigma p}\end{bmatrix})^{-1}
+  \sum_x\sum_y\begin{bmatrix}\nabla I_{k}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}I_{k-1}(x,y) - I_{k}(x_{i-1}',y_{i-1}'\end{bmatrix}
 \end{equation}
 \normalsize
 
 To  get $\frac{\sigma W}{\sigma p}$ we take equation \ref{eq:lk_warped} and do a partial derivation for each p which gives us equation \ref{eq:lk_warped_derivative}.
 \begin{equation}\label{eq:lk_warped_derivative}
-	\frac{\sigma W}{\sigma p}=
-	\begin{pmatrix}
-		x & y & 1 & 0 & 0 & 0 \\
-		0 & 0 & 0 & x & y & 1
-	\end{pmatrix}
+  \frac{\sigma W}{\sigma p}=
+  \begin{pmatrix}
+    x & y & 1 & 0 & 0 & 0 \\
+    0 & 0 & 0 & x & y & 1
+  \end{pmatrix}
 \end{equation}
 
 All parameters in equation \ref{eq:lk_dp} are known and can be calculated for a given x,y and p. However, the following part of equation \ref{eq:lk_dp} is time consuming to calculate and has to be inverted:
 \begin{equation}
-	\Delta H=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix})
+  \Delta H=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix})
 \end{equation}
 H is called the Hessian matrix. Unfortunately we need to calculate this matrix in each iteration. The inverse compositional Lucas Kanade algorithm tries to solve this problem by wrapping the template to the current image instead of the current image to the template.
 
@@ -478,309 +485,383 @@ H is called the Hessian matrix. Unfortunately we need to calculate this matrix i
 
 The inverse compositional Lucase Kanade algorithm does more or less the same as the normal Lucas Kanade algorithm but it searches the inverse warp update at each iteration. The problem basically stays the same but we switch the role of the template with the one of the image which first doesn't have any effect:
 \begin{equation}\label{eq:iclk_problem}
-	\sum_x\sum_y(I_{k-1}(x'',y'')-I_{k}(x',y'))^2
+  \sum_x\sum_y(I_{k-1}(x'',y'')-I_{k}(x',y'))^2
 \end{equation}
 \begin{align*}
-	x'',y''		&:	\text{Warped pixel position in the template}\\
-	x',y'			&:	\text{Pixel position in the current image}\\
-	I_{k-1}		&:	\text{Template image}\\
-	I_{k}			&:	\text{Current image}
+  x'',y''    &:  \text{Warped pixel position in the template}\\
+  x',y'      &:  \text{Pixel position in the current image}\\
+  I_{k-1}    &:  \text{Template image}\\
+  I_{k}      &:  \text{Current image}
 \end{align*}
 
 What is different this time is that we warp the template with $\Delta p$ as shown in equation \ref{eq:inv_lk_warp}. 
 \begin{equation}\label{eq:inv_lk_warp}
-	\begin{gathered}
-		\begin{pmatrix}
-			x'' \\
-			y''
-		\end{pmatrix}=
-		W(x;\Delta p)\\
-		=>\begin{pmatrix}
-			1 + \Delta p_{11} & 0 + \Delta p_{12} & 0 + \Delta p_{13} \\
-			0 + \Delta p_{21} & 1 + \Delta p_{22} & 0 + \Delta p_{23}
-		\end{pmatrix}
-		\begin{pmatrix}
-			x\\
-			y\\
-			1
-		\end{pmatrix}
-	\end{gathered}
+  \begin{gathered}
+    \begin{pmatrix}
+      x'' \\
+      y''
+    \end{pmatrix}=
+    W(x;\Delta p)\\
+    =>\begin{pmatrix}
+      1 + \Delta p_{11} & 0 + \Delta p_{12} & 0 + \Delta p_{13} \\
+      0 + \Delta p_{21} & 1 + \Delta p_{22} & 0 + \Delta p_{23}
+    \end{pmatrix}
+    \begin{pmatrix}
+      x\\
+      y\\
+      1
+    \end{pmatrix}
+  \end{gathered}
 \end{equation}
 \begin{align*}
-	x,y						&:	\text{Original pixel position in template}\\
-	x'',y''				&:	\text{Warped pixel position in template}\\
-	\Delta p_{ij}	&:	\text{change of $p_{ij}$ per iteration}
+  x,y            &:  \text{Original pixel position in template}\\
+  x'',y''        &:  \text{Warped pixel position in template}\\
+  \Delta p_{ij}  &:  \text{change of $p_{ij}$ per iteration}
 \end{align*}
 
 \begin{equation}
-	\begin{pmatrix}
-		x' \\
-		y'
-	\end{pmatrix}=
-	\begin{pmatrix}
-		p_{11} & p_{12} & p_{13} \\
-		p_{21} & p_{22} & p_{23}
-	\end{pmatrix}*
-	\begin{pmatrix}
-		x\\
-		y\\
-		1
-	\end{pmatrix}
+  \begin{pmatrix}
+    x' \\
+    y'
+  \end{pmatrix}=
+  \begin{pmatrix}
+    p_{11} & p_{12} & p_{13} \\
+    p_{21} & p_{22} & p_{23}
+  \end{pmatrix}*
+  \begin{pmatrix}
+    x\\
+    y\\
+    1
+  \end{pmatrix}
 \end{equation}
 \begin{align*}
-	x',y'					&:	\text{Pixel position in current image}\\
-	x,y						&:	\text{Original pixel position in template}\\
-	p_{ij}				&:	\text{parameter of warp matrix}\\
+  x',y'          &:  \text{Pixel position in current image}\\
+  x,y            &:  \text{Original pixel position in template}\\
+  p_{ij}        &:  \text{parameter of warp matrix}\\
 \end{align*}
 
 With this we separate the update step from the warping of the image. The update step is now shown in equation \ref{eq:iclk_update}. Note that this time the update step is not additive as for normal Lucas Kanade. This is where the word compositional comes from. We can argue that this time the new warp depends on the old warps rotation because the template is always free from rotation. This can be expressed with a matrix multiplication also shown in equation \ref{eq:iclk_update}.
 \begin{equation}\label{eq:iclk_update}
-	\begin{gathered}
-		W(x;p)=W(W(x;\Delta p)^{-1}; p)\\
-		=>
-		\begin{pmatrix}
-		p_{11} & p_{12} & p_{13} \\
-		p_{21} & p_{22} & p_{23}
-		\end{pmatrix}
-		\begin{pmatrix}
-			\Delta p_{11} & \Delta p_{12} & \Delta p_{13} \\
-			\Delta p_{21} & \Delta p_{22} & \Delta p_{23}
-		\end{pmatrix}
-		\begin{pmatrix}
-			x\\
-			y\\
-			1
-		\end{pmatrix}
-	\end{gathered}
+  \begin{gathered}
+    W(x;p)=W(W(x;\Delta p)^{-1}; p)\\
+    =>
+    \begin{pmatrix}
+    p_{11} & p_{12} & p_{13} \\
+    p_{21} & p_{22} & p_{23}
+    \end{pmatrix}
+    \begin{pmatrix}
+      \Delta p_{11} & \Delta p_{12} & \Delta p_{13} \\
+      \Delta p_{21} & \Delta p_{22} & \Delta p_{23}
+    \end{pmatrix}
+    \begin{pmatrix}
+      x\\
+      y\\
+      1
+    \end{pmatrix}
+  \end{gathered}
 \end{equation}
 
 From equation \ref{eq:iclk_problem} we need to do the first order Taylor approximation as we did for the normal Lucas Kanade algorithm. This is shown in equation \ref{eq:iclk_taylor}.
 \begin{equation}\label{eq:iclk_taylor}
-	\sum_x\sum_y(I_{k-1}(x,y)+\nabla I_{k-1}*\frac{\sigma W}{\sigma p}*\Delta p-I_{k}(x',y'))^2
+  \sum_x\sum_y(I_{k-1}(x,y)+\nabla I_{k-1}*\frac{\sigma W}{\sigma p}*\Delta p-I_{k}(x',y'))^2
 \end{equation}
 \begin{align*}
-	x,y				&:	\text{Original pixel position in template}\\
-	x',y'			&:	\text{Pixel position in current image}\\
-	I_{k-1}		&:	\text{Template image}\\
-	I_{k}			&:	\text{Current image}\\
-	\nabla I	&:	\text{Gradient in image I at position x',y'}
+  x,y        &:  \text{Original pixel position in template}\\
+  x',y'      &:  \text{Pixel position in current image}\\
+  I_{k-1}    &:  \text{Template image}\\
+  I_{k}      &:  \text{Current image}\\
+  \nabla I  &:  \text{Gradient in image I at position x',y'}
 \end{align*}
 
 We derive the Taylor approximation so that we can minimize the problem (equation \ref{eq:iclk_derivative}).
 \begin{equation}\label{eq:iclk_derivative}
-	2\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k-1}\frac{\sigma W}{\sigma p}\Delta p-I_{k-1}(x,y)\end{bmatrix}
+  2\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k-1}\frac{\sigma W}{\sigma p}\Delta p-I_{k-1}(x,y)\end{bmatrix}
 \end{equation}
 
 This allows us to find the gradient $\Delta p$ (equation \ref{eq:iclk_dp}) for the non linear optimization.
 \tiny
 \begin{equation}\label{eq:iclk_dp}
-	\Delta p=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma p}\end{bmatrix})^{-1}
-	\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}') - I_{k-1}(x,y)\end{bmatrix}
+  \Delta p=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma p}\end{bmatrix})^{-1}
+  \sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}') - I_{k-1}(x,y)\end{bmatrix}
 \end{equation}
 \normalsize
 
 Compared to the normal Lucas-Kanade algorithm the Hessian Matrix H is now constant for all iterations and we don't have to do the expensive calculation at every iteration:
 \begin{equation}
-	\Delta H=\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}\nabla I_{k-1}*\frac{\sigma W}{\sigma p}\end{bmatrix}
+  \Delta H=\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}\nabla I_{k-1}*\frac{\sigma W}{\sigma p}\end{bmatrix}
 \end{equation}
 
 Because we only have to calculate the Hessian matrix once, the inverse computational Lucas Kanade is more efficient then the Lucas Kanade algorithm.\\
 In this chapter we saw how we calculate the optical flow by using a warp matrix. As we will later see this is used by SVO in the pose refinement step. In the next section we describe how optical flow can be used to find a 3D pose instead of a warp matrix.
 
-\section{Pose estimation}
+\section{Pose estimation}\label{sec:pose_estimation}
 For a first estimate of the pose we use some kind of optical flow algorithm. However, we directly try to find the 3D pose instead of the warp matrix. Also we don't try to find a warp matrix for each individual patch but for all patches in the image. We start again with the idea of minimizing the intensity differences over a patch of pixels shown in equation \ref{eq:pe_problem}.
 \begin{equation}\label{eq:pe_problem}
-	\sum_x\sum_y(I_{k-1}(x'',y'')-I_{k}(x',y'))^2
+  \sum_x\sum_y(I_{k-1}(x'',y'')-I_{k}(x',y'))^2
 \end{equation}
 \begin{align*}
-	x'',y''		&:	\text{Warped pixel position in the template}\\
-	x',y'			&:	\text{Pixel position in the current image}\\
-	I_{k-1}				&:	\text{Template image}\\
-	I_{k}					&:	\text{Current image}
+  x'',y''    &:  \text{Warped pixel position in the template}\\
+  x',y'      &:  \text{Pixel position in the current image}\\
+  I_{k-1}        &:  \text{Template image}\\
+  I_{k}          &:  \text{Current image}
 \end{align*}
 
 This time we use 3D points instead of pixel posiitons. Therefore, we use a projection matrix instead of a warp matrix. The projection matrix $p$ is shown in equation \ref{eq:pe_warped}. 
 
 \begin{equation}\label{eq:pe_warped}
-	\begin{split}
-	\begin{pmatrix}
-		u \\
-		v \\
-		s
-	\end{pmatrix}=
-	\begin{pmatrix}
-		f_x & 0 & c_x \\
-		0 & f_y & c_y \\
-		0 & 0 & 1
-	\end{pmatrix}*
-	\begin{pmatrix}
-		r_{11} & r_{12} & r_{13} & t_{1} \\
-		r_{21} & r_{22} & r_{23} & t_{2} \\
-		r_{31} & r_{32} & r_{33} & t_{3}
-	\end{pmatrix}*
-	\begin{pmatrix}
-		X\\
-		Y\\
-		Z
-	\end{pmatrix}\\
-	=>\begin{pmatrix}
-		p_{11} & p_{12} & p_{13} & p_{14} \\
-		p_{21} & p_{22} & p_{23} & p_{24} \\
-		p_{31} & p_{32} & p_{33} & p_{34}
-	\end{pmatrix}*
-	\begin{pmatrix}
-		X\\
-		Y\\
-		Z
-	\end{pmatrix}
+  \begin{split}
+  \begin{pmatrix}
+    u \\
+    v \\
+    s
+  \end{pmatrix}=
+  \begin{pmatrix}
+    f_x & 0 & c_x \\
+    0 & f_y & c_y \\
+    0 & 0 & 1
+  \end{pmatrix}*
+  \begin{pmatrix}
+    r_{11} & r_{12} & r_{13} & t_{1} \\
+    r_{21} & r_{22} & r_{23} & t_{2} \\
+    r_{31} & r_{32} & r_{33} & t_{3}
+  \end{pmatrix}*
+  \begin{pmatrix}
+    X\\
+    Y\\
+    Z\\
+    1
+  \end{pmatrix}\\
+  =>\begin{pmatrix}
+    p_{11} & p_{12} & p_{13} & p_{14} \\
+    p_{21} & p_{22} & p_{23} & p_{24} \\
+    p_{31} & p_{32} & p_{33} & p_{34}
+  \end{pmatrix}*
+  \begin{pmatrix}
+    X\\
+    Y\\
+    Z\\
+    1
+  \end{pmatrix}
 \end{split}
 \end{equation}
 \begin{align*}
-	u,v,s			&:	\text{Pixel position scaled with s}\\
-	X,Y,Z			&:	\text{3D Pixel position}\\
-	p_{ij}		&:	\text{Projection matrix}\\
+  u,v,s      &:  \text{Pixel position scaled with s}\\
+  X,Y,Z      &:  \text{3D Pixel position}\\
+  p_{ij}    &:  \text{Projection matrix}\\
 \end{align*}
 
 We would need to find 12 gradients if we use the formulation in equation \ref{eq:pe_projection} for the inverse compositional Lucas Kanade. However, the rotational factors $r_{nm}$ in equation \ref{eq:pe_warped} depend on each other. We could express the whole matrix based on 6 unknowns which are 3 times rotation and 3 times translation. Unfortunately it is easy to see that this formulation gets rather complex and it's nearly impossible to find a Jacobian for such a matrix.\\
 
 \begin{equation}\label{eq:pe_projection}
-	\begin{gathered}
-		\begin{pmatrix}
-			x' \\
-			y' 
-		\end{pmatrix}=
-		\begin{pmatrix}
-			\frac{u}{s} \\
-			\frac{v}{s} 
-		\end{pmatrix}=
-		\begin{pmatrix}
-			\frac{p_{11}*X + p_{12}*Y + p_{13}*Z + p_{14}}{p_{31}*X + p_{32}*Y + p_{33}*Z + p_{34}}  \\
-			\frac{p_{21}*X + p_{22}*Y + p_{23}*Z + p_{24}}{p_{31}*X + p_{32}*Y + p_{33}*Z + p_{34}}
-		\end{pmatrix}\\
-		\begin{pmatrix}
-			x'' \\
-			y'' 
-		\end{pmatrix}=W(x,y,z;\Delta p)\\
-		=>\begin{pmatrix}
-			\frac{u'}{s'} \\
-			\frac{v'}{s'} 
-		\end{pmatrix}=
-		\begin{pmatrix}
-			\frac{\Delta p_{11}*X + \Delta p_{12}*Y + \Delta p_{13}*Z + \Delta p_{14}}{\Delta p_{31}*X + \Delta p_{32}*Y + \Delta p_{33}*Z + \Delta p_{34}}  \\
-			\frac{\Delta p_{21}*X + \Delta p_{22}*Y + \Delta p_{23}*Z + \Delta p_{24}}{\Delta p_{31}*X + \Delta p_{32}*Y + \Delta p_{33}*Z + \Delta p_{34}}
-		\end{pmatrix}\\
-	\end{gathered}
+  \begin{gathered}
+    \begin{pmatrix}
+      x' \\
+      y' 
+    \end{pmatrix}=
+    \begin{pmatrix}
+      \frac{u}{s} \\
+      \frac{v}{s} 
+    \end{pmatrix}=
+    \begin{pmatrix}
+      \frac{p_{11}*X + p_{12}*Y + p_{13}*Z + p_{14}}{p_{31}*X + p_{32}*Y + p_{33}*Z + p_{34}}  \\
+      \frac{p_{21}*X + p_{22}*Y + p_{23}*Z + p_{24}}{p_{31}*X + p_{32}*Y + p_{33}*Z + p_{34}}
+    \end{pmatrix}\\
+    \begin{pmatrix}
+      x'' \\
+      y'' 
+    \end{pmatrix}=W(x,y,z;\Delta p)\\
+    =>\begin{pmatrix}
+      \frac{u'}{s'} \\
+      \frac{v'}{s'} 
+    \end{pmatrix}=
+    \begin{pmatrix}
+      \frac{\Delta p_{11}*X + \Delta p_{12}*Y + \Delta p_{13}*Z + \Delta p_{14}}{\Delta p_{31}*X + \Delta p_{32}*Y + \Delta p_{33}*Z + \Delta p_{34}}  \\
+      \frac{\Delta p_{21}*X + \Delta p_{22}*Y + \Delta p_{23}*Z + \Delta p_{24}}{\Delta p_{31}*X + \Delta p_{32}*Y + \Delta p_{33}*Z + \Delta p_{34}}
+    \end{pmatrix}\\
+  \end{gathered}
 \end{equation}
 \begin{align*}
-	u,v,s			&:	\text{Pixel position scaled with s}\\
-	X,Y,Z			&:	\text{3D Pixel position}\\
-	p_{ij}		&:	\text{Projection matrix}\\
+  u,v,s      &:  \text{Pixel position scaled with s}\\
+  X,Y,Z      &:  \text{3D Pixel position}\\
+  p_{ij}    &:  \text{Projection matrix}\\
 \end{align*}
 
 We reformulate the problem by using Lie algebra. The idea is to transform the angles and translations into another space where we can find a Jacobian. The optimization is done in this space. The result of the optimization is transformed from Lie algebra back to angles and translations which we can use to update the pose for the next iteration. The problem we need to solve stays the same as in equation \ref{eq:pe_problem}. However we need to find $x''$ and $y''$ differently. We use the following formulation:
 \begin{equation}\label{eq:pe_lie}
-	\begin{gathered}
-		\begin{pmatrix}
-			x''\\
-			y''
-		\end{pmatrix}
-		=e^{\xi}*p\\
-		\xi=\begin{pmatrix}
-			v_x\\
-			v_y\\
-			v_z\\
-			\omega_x\\
-			\omega_y\\
-			\omega_z
-		\end{pmatrix}
-	\end{gathered}
+  \begin{gathered}
+    \begin{pmatrix}
+      x''\\
+      y''
+    \end{pmatrix}
+    =e^{\xi}*p\\
+    \xi=\begin{pmatrix}
+      v_x\\
+      v_y\\
+      v_z\\
+      \omega_x\\
+      \omega_y\\
+      \omega_z
+    \end{pmatrix}
+  \end{gathered}
 \end{equation}
 \begin{align*}
-	e			&:	\text{Exponential map}\\
-	\xi		&:	\text{Pose change between reference frame and current frame as vector in SE(3)}\\
-	p			&:	\text{point in 3D cloud}
+  e      &:  \text{Exponential map}\\
+  \xi    &:  \text{Pose change between reference frame and current frame as vector in SE(3)}\\
+  p      &:  \text{point in 3D cloud}
 \end{align*}
 
 $\xi$ in \ref{eq:pe_lie} is the change in angle and position in Lie algebra. We can transfer from Lie algebra back to SE(3) which is our ``normal'' space by using the exponential map $e$. The exponential map is the pendant to the Euler function for matrices. In our case it has the closed form solution shown in \ref{eq:pe_closed_form} \cite{rvc}.
 
 \begin{equation}\label{eq:pe_closed_form}
-	\begin{gathered}
-		\omega_{skew}=\begin{pmatrix}
-			0 && -\omega_z && \omega_y \\
-			\omega_z && 0 && -\omega_x \\
-			-\omega_y && \omega_x && 0
-		\end{pmatrix}\\
-		\begin{pmatrix}
-			\Delta t_x\\
-			\Delta t_y\\
-			\Delta t_z
-		\end{pmatrix}=
-		I+(1-cos(1))w_{skew}+(1-sin(1))*w_{skew}^2*\begin{pmatrix}
-			v_x\\
-			v_y\\
-			v_z
-		\end{pmatrix}\\
-		\begin{pmatrix}
-			\Delta r_x\\
-			\Delta r_y\\
-			\Delta r_z
-		\end{pmatrix}=
-		\begin{pmatrix}
-			\omega_x\\
-			\omega_y\\
-			\omega_z
-		\end{pmatrix}
-	\end{gathered}
+  \begin{gathered}
+    \omega_{skew}=\begin{pmatrix}
+      0 && -\omega_z && \omega_y \\
+      \omega_z && 0 && -\omega_x \\
+      -\omega_y && \omega_x && 0
+    \end{pmatrix}\\
+    \begin{pmatrix}
+      \Delta t_x\\
+      \Delta t_y\\
+      \Delta t_z
+    \end{pmatrix}=
+    I+(1-cos(1))w_{skew}+(1-sin(1))*w_{skew}^2*\begin{pmatrix}
+      v_x\\
+      v_y\\
+      v_z
+    \end{pmatrix}\\
+    \begin{pmatrix}
+      \Delta r_x\\
+      \Delta r_y\\
+      \Delta r_z
+    \end{pmatrix}=
+    \begin{pmatrix}
+      \omega_x\\
+      \omega_y\\
+      \omega_z
+    \end{pmatrix}
+  \end{gathered}
 \end{equation}
 
 We use $\Delta t_x,\Delta t_y,\Delta t_z,\Delta r_x,\Delta r_y,\Delta r_z$ as our gradient for optimizing the pose. To get $\xi$ we again do the first order Taylor approximation as shown in equation \ref{eq:pe_taylor}).
 \begin{equation}\label{eq:pe_taylor}
-	\sum_x\sum_y(I_{k-1}(x,y)+\nabla I_{k-1}*\frac{\sigma e^{\xi}*p}{\sigma \xi}*\xi-I_{k}(x',y'))^2
+  \sum_x\sum_y(I_{k-1}(x,y)+\nabla I_{k-1}*\frac{\sigma e^{\xi}*p}{\sigma \xi}*\xi-I_{k}(x',y'))^2
 \end{equation}
 \begin{align*}
-	x,y				&: \text{Original pixel position in template}\\
-	x',y'			&: \text{Pixel position in current image}\\
-	I_{k-1}		&: \text{Template image}\\
-	I_{k}			&: \text{Current image}\\
-	\nabla I	&: \text{Gradient in image I at position x',y'}\\
-	\xi				&: \text{Twist formulated in Lie algebra}\\
-	p					&: \text{point in 3D space}  
+  x,y        &: \text{Original pixel position in template}\\
+  x',y'      &: \text{Pixel position in current image}\\
+  I_{k-1}    &: \text{Template image}\\
+  I_{k}      &: \text{Current image}\\
+  \nabla I  &: \text{Gradient in image I at position x',y'}\\
+  \xi        &: \text{Twist formulated in Lie algebra}\\
+  p          &: \text{point in 3D space}  
 \end{align*}
 
 We again derive the Taylor approximation shown in equation \ref{eq:pe_derivative}
 
 \begin{equation}\label{eq:pe_derivative}
-	2\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma e^{\xi}p}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k-1}\frac{\sigma e^{\xi} p}{\sigma \xi}\xi-I_{k-1}(x,y)\end{bmatrix}
+  2\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma e^{\xi}p}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k-1}\frac{\sigma e^{\xi} p}{\sigma \xi}\xi-I_{k-1}(x,y)\end{bmatrix}
 \end{equation}
 
 We want to find $\xi$ which leads us to equation \ref{eq:pe_xi}.
 
 \tiny
 \begin{equation}\label{eq:pe_xi}
-	\xi=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma e^{\xi}p}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k-1}\frac{\sigma e^{\xi}p}{\sigma \xi}\end{bmatrix})^{-1}
-	\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma e^{\xi}p}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}') - I_{k-1}(x,y)\end{bmatrix}
+  \xi=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma e^{\xi}p}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k-1}\frac{\sigma e^{\xi}p}{\sigma \xi}\end{bmatrix})^{-1}
+  \sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma e^{\xi}p}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}') - I_{k-1}(x,y)\end{bmatrix}
 \end{equation}
 \normalsize
 
 We now only have to find a solution for $\frac{\sigma e^{\xi}p}{\sigma \xi}$ to be able to caclulate $\xi$. This Jacobian matrix is shown in equation \ref{eq:se3_jacobian} \cite{se3_explain}.
 
 \begin{equation}\label{eq:se3_jacobian}
-	\frac{e^{\xi}p}{\delta \xi}=
-	\begin{pmatrix}
-		f_x & f_y
-	\end{pmatrix}
-	\begin{pmatrix}
-		\frac{1}{z} & 0 & -\frac{x}{z^2} & -\frac{x*y}{z^2} & 1 + \frac{x^2}{z^2} & -\frac{y}{z} \\
-		0 & \frac{1}{z}  & -\frac{y}{z^2} & -1 - \frac{y^2}{z^2} & \frac{x*y}{z^2} &  \frac{x}{z}
-	\end{pmatrix}
+  \frac{e^{\xi}p}{\delta \xi}=
+  \begin{pmatrix}
+    f_x & f_y
+  \end{pmatrix}
+  \begin{pmatrix}
+    \frac{1}{z} & 0 & -\frac{x}{z^2} & -\frac{x*y}{z^2} & 1 + \frac{x^2}{z^2} & -\frac{y}{z} \\
+    0 & \frac{1}{z}  & -\frac{y}{z^2} & -1 - \frac{y^2}{z^2} & \frac{x*y}{z^2} &  \frac{x}{z}
+  \end{pmatrix}
 \end{equation}
 \begin{align*}
-	f_x,f_y	&:	\text{Focal length}\\
-	x,y,z		&:	\text{3D point position}\\
+  f_x,f_y  &:  \text{Focal length}\\
+  x,y,z    &:  \text{3D point position}\\
 \end{align*}
 
 Given the Jacobian, all 3D points we can now calculate the gradient for a given pose and then iteratively optimize the pose pased on the gradient. Becasue we again use the Inverse Compositional Lucas Kanade approach, the Hessian only needs to be calculated once per optimization step and not for each iteration.
 
+\chapter{Depth}\label{ch:depth}
+
+To find the depth at a certain point (.e.g. keypoint) we match the intensities of the left and right images for a certain patch. Because we vertically aligned the camera, the algorithm starts matching the right image at pixel position of the left image and searches from there to the right as shown in figure \ref{fig:disparity}. The position with the smallest intensity difference between left and right is where we calculate the distance. We call the distance between the left and right image disparity. An object far away has less disparity than an object near to the camera. A point at infinity will have a disparity of zero. Because camera images are normally noisy it's not possible to just use one pixel instead a whole patch should be used to reduce the influence of noise. For the Econ Tara at 752x480 a patch size of 31x31 pixel works well. The patch size was found empirically.
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.9\textwidth]{img/disparity_concept.png}
+  \end{center}
+  \caption{Disparity with epipolar (horizontal) line, left: left image, right: right image with transparent left image}\label{fig:disparity}
+\end{figure}
+
+From the disparity we can calculate the depth (distance from the camera) by using the formula shown in equation \ref{eq:depth_disp}.
+
+\begin{equation}\label{eq:depth_disp}
+  Z=\frac{f_m*b*s_{px}}{d}=\frac{f_x*b}{d}
+\end{equation}
+\begin{align*}
+  Z        &: \text{Depth/Distance from camera}\\
+  f_x      &: \text{Focal length in pixel}\\
+  d        &: \text{Disparity}\\
+  b        &: \text{Baseline in meter}\\
+  f_m      &: \text{Focal length in meter}\\
+  s_{px}  &: \text{Pixel size in meter}
+\end{align*}
+
+If we know the pose of the camera we can transform the depth to the global coordinate system. First we need to find calculate the X and Y position in the 3D space with camera as (0,0,0). This is shown in equation \ref{eq:depth_xy}.
+
+\begin{equation}\label{eq:depth_xy}
+  \begin{gathered}
+    X = \frac{x-c_x}{f_x*Z}\\
+    Y = \frac{y-c_y}{f_y*Z}\\
+  \end{gathered}
+\end{equation}
+\begin{align*}
+  X,Y,Z    &: \text{Point coordinates with Camera 0,0,0}\\
+  f_x,f_y  &: \text{Focal length in pixel}\\
+  c_x,c_y  &: \text{Image center (where z axis goes through)}\\
+  x,y      &: \text{2D point in image}
+\end{align*}
+
+Now we can simply transform the 3D point with camera as reference to the global coordinate system by using the camera pose. This is shown in equation \ref{eq:depth_global}.
+
+\begin{equation}\label{eq:depth_global}
+  \begin{pmatrix}
+    X'\\
+    Y'\\
+    Z'
+  \end{pmatrix}=
+  \begin{pmatrix}
+    r_{11} & r_{12} & r_{13}\\
+    r_{21} & r_{22} & r_{23}\\
+    r_{31} & r_{32} & r_{33}\\
+  \end{pmatrix}
+  \begin{pmatrix}
+    X\\
+    Y\\
+    Z
+  \end{pmatrix}
+  +\begin{pmatrix}
+    t_x\\
+    t_y\\
+    t_z
+  \end{pmatrix}
+\end{equation}
+\begin{align*}
+  X,Y,Z      &: \text{Point coordinates with Camera 0,0,0}\\
+  X',Y',Z'  &: \text{Global point coordinates}\\
+  r_{ij}    &: \text{Camera rotation matrix}\\
+  t_{x,y,z}  &: \text{Camera location}
+\end{align*}
+
+\chapter{Pose refinement}\label{ch:pose_refinement}
 
 \chapter{Implementation}
 
@@ -799,41 +880,41 @@ In this chapter we discuss the implementation that was written during this thesi
 %
 %\begin{thebibliography}{1}
 %
-%	\bibitem{svo}
-%	Christian Forster et al\\
-%	\textit{SVO: Semi-Direct Visual Odometry for Monocular and Multi-Camera Systems}\\
-%	doi:10.1109/TRO.2016.2623335
+%  \bibitem{svo}
+%  Christian Forster et al\\
+%  \textit{SVO: Semi-Direct Visual Odometry for Monocular and Multi-Camera Systems}\\
+%  doi:10.1109/TRO.2016.2623335
 %
-%	\bibitem{svo2}
-%	Christian Forster et al\\
-%	\textit{SVO: Semi-Direct Visual Odometry for Monocular and Multi-Camera Systems}\\
-%	doi:10.1109/TRO.2016.2623335
+%  \bibitem{svo2}
+%  Christian Forster et al\\
+%  \textit{SVO: Semi-Direct Visual Odometry for Monocular and Multi-Camera Systems}\\
+%  doi:10.1109/TRO.2016.2623335
 %
-%	\bibitem{lucas_kandae}
-%	OpenCV\\
-%	\textit{Optical Flow}\\
-%	https://docs.opencv.org/4.0.1/d7/d8b/tutorial\_py\_lucas\_kanade.html
+%  \bibitem{lucas_kandae}
+%  OpenCV\\
+%  \textit{Optical Flow}\\
+%  https://docs.opencv.org/4.0.1/d7/d8b/tutorial\_py\_lucas\_kanade.html
 %
 %
-%	\bibitem{inverse_compositional}
-%	S. Baker and I. Matthews\\
-%	\textit{Lucas-kanade 20 years on: A unifying framework}
-%	Int. J. Comput. Vis., 56(3):221–255, 2004.
+%  \bibitem{inverse_compositional}
+%  S. Baker and I. Matthews\\
+%  \textit{Lucas-kanade 20 years on: A unifying framework}
+%  Int. J. Comput. Vis., 56(3):221–255, 2004.
 %
-%	\bibitem{se3_explain}
-%	José Luis Blanco Claraco\\
-%	\textit{A tutorial on SE(3) transformation parameterizations and on-manifold optimization José Luis Blanco Claraco}
-%	https://w3.ual.es/personal/jlblanco/, Last update 18/03/2019
+%  \bibitem{se3_explain}
+%  José Luis Blanco Claraco\\
+%  \textit{A tutorial on SE(3) transformation parameterizations and on-manifold optimization José Luis Blanco Claraco}
+%  https://w3.ual.es/personal/jlblanco/, Last update 18/03/2019
 %
-%	\bibitem{taylor_series}
-%	Wikipedia\\
-%	\textit{Taylor series}
-%	https://en.wikipedia.org/wiki/Taylor\_series
+%  \bibitem{taylor_series}
+%  Wikipedia\\
+%  \textit{Taylor series}
+%  https://en.wikipedia.org/wiki/Taylor\_series
 %
-%	\bibitem{rvc}
-%	Peter Corke\\
-%	\textit{Robotics, Vision and Control}\\
-%	Springer, ISBN 978-3-319-54413-7, chapter 11+12, page 319+
+%  \bibitem{rvc}
+%  Peter Corke\\
+%  \textit{Robotics, Vision and Control}\\
+%  Springer, ISBN 978-3-319-54413-7, chapter 11+12, page 319+
 %
 %\end{thebibliography}
 
