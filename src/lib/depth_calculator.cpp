@@ -24,7 +24,6 @@ static void detect_keypoints_on_each_level(
         vector<KeyPoint2d> _keypoints;
         vector<KeyPointInformation> _kp_info;
         const Mat &left = stereo_images.left[i];
-        // TODO: We can use the gradient image from the pyramid
         detector.detect_keypoints(left, grid_width, grid_height, _keypoints,
                 _kp_info, i);
         keypoints_pyr[i] = _keypoints;

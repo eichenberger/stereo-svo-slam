@@ -206,7 +206,7 @@ void DepthFilter::update_kps3d(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
 
         // Deviation of 0.5 pixel divided by baseline which here is
         // the movement
-        float deviation = 0.5/(sqrt(diff(0)*diff(0)+ diff(1)*diff(1))/2);
+        float deviation = 0.5/(sqrt(diff(0)*diff(0)+ diff(1)*diff(1)));
         kf.measurementNoiseCov.at<float>(0,0) = deviation*deviation;
 
         kf.predict();
