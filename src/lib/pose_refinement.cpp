@@ -348,6 +348,8 @@ void PoseRefinerCallback::get_gradient(const PoseManager &x, Vec6f &grad)
 #pragma omp parallel for default(none) \
     shared(keypoints3d, keypoint_information, tot_diff, err, hessian, projected_keypoints2d)
     for (size_t i = 0; i < keypoints3d.size(); i++) {
+        const auto fx = camera_settings.fx;
+        const auto fy = camera_settings.fy;
         auto x = keypoints3d[i].x;
         auto y = keypoints3d[i].y;
         auto z = keypoints3d[i].z;
@@ -356,9 +358,8 @@ void PoseRefinerCallback::get_gradient(const PoseManager &x, Vec6f &grad)
                 keypoint_information[i].ignore_completely)
             continue;
 
-        Matx<float, 2, 6> jacobian(1.0/z, 0, -1.0*x/(z*z), -1.0*x*y/(z*z), 1.0*(1.0+(x*x)/(z*z)), -1.0*y/z,
-                0, 1.0/z, -1.0*y/(z*z), -1.0*(1+(y*y)/(z*z)), 1.0*x*y/(z*z), 1.0*x/z);
-        jacobian *= -1;
+        Matx<float, 2,6> jacobian (-fx/z, 0, fx*x/(z*z), fx*x*y/(z*z), -fx*(1+(x*x)/(z*z)), fx*y/z,
+            0, -fy/z, fy*y/(z*z), fy*(1+(y*y)/(z*z)), -fy*x*y/(z*z), -fy*x/z);
 
         Vec2f diff (keypoints2d[i].x -projected_keypoints2d[i].x,
                 keypoints2d[i].y -projected_keypoints2d[i].y);
