@@ -346,13 +346,20 @@ void PoseRefinerCallback::get_gradient(const PoseManager &x, Vec6f &grad)
     Vec2f tot_diff(0,0);
 
 #pragma omp parallel for default(none) \
-    shared(keypoints3d, keypoint_information, tot_diff, err, hessian, projected_keypoints2d)
+    shared(keypoints3d, keypoint_information, tot_diff, err, hessian, projected_keypoints2d, x)
     for (size_t i = 0; i < keypoints3d.size(); i++) {
         const auto fx = camera_settings.fx;
         const auto fy = camera_settings.fy;
-        auto x = keypoints3d[i].x;
-        auto y = keypoints3d[i].y;
-        auto z = keypoints3d[i].z;
+        const Matx33f rot_mat(x.get_inv_rotation_matrix());
+        const Vec3f translation(x.get_translation());
+        Vec3f kp(&keypoints3d[i].x);
+        // Neutralize angle
+        kp -= translation;
+        kp = rot_mat*kp;
+
+        auto x = kp(0);
+        auto y = kp(1);
+        auto z = kp(2);
 
         if (keypoint_information[i].ignore_during_refinement ||
                 keypoint_information[i].ignore_completely)
@@ -377,7 +384,7 @@ void PoseRefinerCallback::get_gradient(const PoseManager &x, Vec6f &grad)
     }
 
     Matx66f hessian_inv = hessian.inv(DECOMP_SVD);
-    Mat twist (hessian_inv*err); //  / keypoints2d.size();
+    Mat twist(hessian_inv*err); //  / keypoints2d.size();
 
     Mat gradient(1, 6, CV_32F);
 

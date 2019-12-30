@@ -352,7 +352,7 @@ int main(int argc, char **argv)
         slam.get_trajectory(trajectory);
         QTextStream trajectory_stream(&trajectory_file);
         for (auto pose: trajectory) {
-            trajectory_stream << pose.x << "," << pose.y << "," << pose.z << "," <<
+            trajectory_stream << "0," << pose.x << "," << pose.y << "," << pose.z << "," <<
                 pose.pitch << "," << pose.yaw << "," << pose.roll << endl;
         }
         trajectory_file.close();
