@@ -70,7 +70,6 @@
 #include <QQmlContext>
 #include <QVariant>
 
-#include "econ_input.hpp"
 #include "slam.h"
 
 using namespace cv;
@@ -78,19 +77,16 @@ using namespace std;
 
 static OpenCVImageProvider *opencvImageProvider;
 
-static void read_image(ImageInput *input, Slam *slam)
-{
-    Mat image;
-    float time_stamp;
-
-    Mat gray_r, gray_l;
-    if (!input->read(gray_l, gray_r, time_stamp)) {
-        QApplication::quit();
+static void process_image(Slam *slam) {
+    if (!slam->process_image())
         return;
-    }
-    slam->new_image(gray_l, gray_r, time_stamp);
-    opencvImageProvider->setImage(gray_l);
+
+    StereoSlam *_slam = slam->slam_app.slam;
+    Frame frame;
+    _slam->get_frame(frame);
+    opencvImageProvider->setImage(frame);
 }
+
 
 int main(int argc, char **argv)
 {
@@ -100,7 +96,6 @@ int main(int argc, char **argv)
     QStringList arguments = app.arguments();
     parser.setApplicationDescription("SVO stereo SLAM application");
     parser.addHelpOption();
-    parser.addPositionalArgument("camera", "The camera type to use can be econ");
     parser.addOptions({
             {{"v", "video"}, "Path to camera or video (/dev/videoX, video.mov)", "video"},
             {{"s", "settings"}, "Path to the settings file (Econ.yaml)", "settings"},
@@ -112,44 +107,34 @@ int main(int argc, char **argv)
 
 
     parser.process(arguments);
-    arguments.pop_back();
 
-    QString camera_type = parser.positionalArguments().at(0);
-    ImageInput *input;
-    if (camera_type == "econ") {
-        if (!parser.isSet("video") ||
-                !parser.isSet("hidraw") ||
-                !parser.isSet("settings") ||
-                !parser.isSet("exposure")) {
-            cout << "Please set all inputs for econ" << endl;
-            cout << parser.helpText().toStdString() << endl;
-            return -1;
-        }
-
-        EconInput *econ = new EconInput(parser.value("video").toStdString(),
-                parser.value("hidraw").toStdString(),
-                parser.value("settings").toStdString(),
-                parser.value("hidrawimu").toStdString());
-        econ->set_hdr(parser.isSet("hdr"));
-        econ->set_manual_exposure(parser.value("exposure").toInt());
-
-        input = econ;
-    }
-    else {
-        cout << "Unknown camera type " << camera_type.toStdString() << endl;
-        return -2;
+    if (!parser.isSet("video") ||
+            !parser.isSet("hidraw") ||
+            !parser.isSet("settings") ||
+            !parser.isSet("exposure")) {
+        cout << "Please set all inputs for econ" << endl;
+        cout << parser.helpText().toStdString() << endl;
+        return -1;
     }
 
-    CameraSettings camera_settings;
-    input->get_camera_settings(camera_settings);
 
-    Slam slam(camera_settings);
-
-    QCommandLineOption showProgressOption("p", QCoreApplication::translate("main", "Show progress during copy"));
-    parser.addOption(showProgressOption);
+    Slam slam;
+    if (!slam.slam_app.initialize("econ",
+            parser.value("video"),
+            parser.value("settings"),
+            parser.value("trajectory"),
+            parser.value("hidraw"),
+            parser.value("exposure").toInt(),
+            parser.isSet("hdr"),
+            0,
+            parser.value("hidrawimu"))) {
+        cout << "Can't initialize slam app" << endl;
+        return -3;
+    }
 
     QTimer timer;
     timer.setInterval(1.0/60.0*1000.0);
+
 
     QQuickView view;
     view.setResizeMode(QQuickView::SizeRootObjectToView);
@@ -160,6 +145,8 @@ int main(int argc, char **argv)
 
     QQmlEngine *engine = view.engine();
 
+    slam.slam_app.start();
+
     QQmlContext *root = engine->rootContext();
     root->setContextProperty("mediaplayer", opencvImageProvider);
     root->setContextProperty("slam", &slam);
@@ -168,13 +155,12 @@ int main(int argc, char **argv)
     view.show();
 
     QObject::connect(&timer, &QTimer::timeout,
-            std::bind(&read_image, input, &slam));
+            std::bind(process_image, &slam));
     timer.start();
 
     app.exec();
 
     delete opencvImageProvider;
-    delete input;
 }
 
 

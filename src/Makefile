@@ -8,7 +8,7 @@ LDFLAGS ?= -O3
 OPENCV_INC_DIR ?= /usr/local/include/opencv4
 OPENCV_LIB_DIR ?= /usr/local/lib
 QT_INC_DIR ?= /usr/include/x86_64-linux-gnu/qt5
-OMP_LIB ?= omp5
+#OMP_LIB ?= omp5
 
 QMAKE ?= qmake
 

@@ -2,7 +2,7 @@
 
 #include <QtMath>
 
-Slam::Slam(CameraSettings &cameraSettings, QObject *parent) : QObject(parent), slam(new StereoSlam(cameraSettings))
+Slam::Slam(QObject *parent) : QObject(parent)
 {
     previous_pose.x = 0;
     previous_pose.y = 0;
@@ -14,16 +14,17 @@ Slam::Slam(CameraSettings &cameraSettings, QObject *parent) : QObject(parent), s
 
 Slam::~Slam()
 {
-    delete slam;
 }
 
-void Slam::new_image(cv::Mat &left, cv::Mat &right, float time_stamp)
+bool Slam::process_image()
 {
 
-    slam->new_image(left, right, time_stamp);
+    if (!slam_app.process_image())
+        return false;
+
+    StereoSlam *slam = slam_app.slam;
     Frame frame;
     slam->get_frame(frame);
-
 
     Pose _pose = frame.pose.get_pose();
 
@@ -35,4 +36,5 @@ void Slam::new_image(cv::Mat &left, cv::Mat &right, float time_stamp)
 
     previous_pose = _pose;
     emit pose(position, rotation);
+    return true;
 }

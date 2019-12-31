@@ -2,7 +2,7 @@ CXXFLAGS  ?= -O0 -ggdb
 LDFLAGS ?= -O0
 
 SRC_FILES = main.cpp websocketserver.cpp svo_slam_backend.cpp image_input.cpp \
-			econ_input.cpp video_input.cpp
+			econ_input.cpp video_input.cpp slam_app.cpp
 
 OBJ_FILES = $(patsubst %.cpp, %.o, $(SRC_FILES))
 

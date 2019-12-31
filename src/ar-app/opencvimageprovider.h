@@ -8,6 +8,8 @@
 
 #include <opencv2/opencv.hpp>
 
+#include "stereo_slam_types.hpp"
+
 class OpenCVImageProvider : public QObject
 {
     Q_OBJECT
@@ -18,7 +20,7 @@ public:
     QAbstractVideoSurface* videoSurface() const;
     void setVideoSurface( QAbstractVideoSurface* s );
 
-    void setImage(cv::Mat image);
+    void setImage(const Frame &frame);
 
 signals:
 

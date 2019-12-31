@@ -30,7 +30,7 @@ private:
     void estimate_pose(Frame *previous_frame);
     void remove_outliers(Frame *frame);
 
-    const CameraSettings &camera_settings;
+    const CameraSettings camera_settings;
     KeyFrameManager keyframe_manager;
     KeyFrame* keyframe;
     cv::Ptr<Frame> frame;

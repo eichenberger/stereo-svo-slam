@@ -10,20 +10,21 @@
 
 #include <opencv2/opencv.hpp>
 
+#include "slam_app.hpp"
+
 class Slam : public QObject
 {
     Q_OBJECT
 public:
-    explicit Slam(CameraSettings &cameraSettings, QObject *parent = nullptr);
+    explicit Slam(QObject *parent = nullptr);
     ~Slam();
 
-    void new_image(cv::Mat &left, cv::Mat &right, float time_stamp);
-
+    bool process_image();
+    SlamApp slam_app;
 signals:
     void pose(QVector3D position, QVector3D rotation);
 
 private:
-    StereoSlam *slam;
     Pose previous_pose;
 };
 

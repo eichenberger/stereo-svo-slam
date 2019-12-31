@@ -24,8 +24,8 @@ Entity {
             },
             TorusMesh {
                 id: torusMesh
-                radius: 0.2
-                minorRadius: 0.1
+                radius: 0.05
+                minorRadius: 0.01
                 rings: 100
                 slices: 20
             }
@@ -37,7 +37,7 @@ Entity {
         components: [
             SphereMesh {
                 id: sphereMesh
-                radius: 0.1
+                radius: 0.01
             },
             PhongMaterial {
                 id: sphereMaterial
@@ -53,7 +53,7 @@ Entity {
                 matrix: {
                     var m = Qt.matrix4x4();
                     m.rotate(userAngle, Qt.vector3d(0, 1, 0))
-                    m.translate(Qt.vector3d(0.5, 0, 0));
+                    m.translate(Qt.vector3d(0.2, 0, 0));
                     return m;
                 }
             }

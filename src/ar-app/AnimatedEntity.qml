@@ -13,12 +13,12 @@ Entity {
         Camera {
             id: camera
             projectionType: CameraLens.FrustumProjection
-            nearPlane : 0.1
+            nearPlane : 0.01
             farPlane : 20.0
             // See http://kgeorge.github.io/2014/03/08/calculating-opengl-perspective-matrix-from-opencv-intrinsic-matrix for explaination
-            right: (0.1*365.86)/743.804
+            right: (0.01*365.86)/743.804
             left: -right
-            top: (0.1*235.7)/743.804
+            top: (0.01*235.7)/743.804
             bottom: -top
             position: cameraPosition
             upVector: Qt.vector3d( 0.0, -1.0, 0.0 )
@@ -53,7 +53,7 @@ Entity {
         components: [
             Transform {
                 id: test
-                translation: Qt.vector3d(0.0, 0.0, 3)
+                translation: Qt.vector3d(0.0, 0.0, 0.5)
             }
         ]
     }

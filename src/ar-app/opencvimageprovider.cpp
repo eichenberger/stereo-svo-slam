@@ -1,8 +1,12 @@
 #include "opencvimageprovider.h"
 
+#include <vector>
 #include <QImage>
 #include <QDebug>
 #include <QVideoSurfaceFormat>
+
+using namespace cv;
+using namespace std;
 
 OpenCVImageProvider::OpenCVImageProvider(QObject *parent) : QObject(parent), surface(nullptr)
 {
@@ -22,11 +26,33 @@ void OpenCVImageProvider::setVideoSurface(QAbstractVideoSurface *s)
 
 }
 
-void OpenCVImageProvider::setImage(cv::Mat image)
+static void draw_keypoints(const Frame &frame, Mat &out)
+{
+
+    out = frame.stereo_image.left[0].clone();
+    const vector<KeyPoint2d> &kps = frame.kps.kps2d;
+    const vector<KeyPointInformation> &info = frame.kps.info;
+    for (size_t i = 0; i < kps.size(); i++) {
+        if (info[i].ignore_completely)
+            continue;
+        Point kp = Point(kps[i].x, kps[i].y);
+        Scalar color (info[i].color.r, info[i].color.g, info[i].color.b);
+
+        int marker = info[i].type == KP_FAST ? MARKER_CROSS : MARKER_SQUARE;
+
+        cv::drawMarker(out, kp, color, marker);
+    }
+}
+
+
+void OpenCVImageProvider::setImage(const Frame &frame)
 {
     if (surface == nullptr)
         return;
 
+    Mat image;
+
+    draw_keypoints(frame, image);
     QImage _image(image.data,
                   image.cols, image.rows,
                   static_cast<int>(image.step),

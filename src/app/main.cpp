@@ -15,14 +15,10 @@
 #include <QtCore/QMutex>
 #include <QtCore/QSemaphore>
 
-#include "stereo_slam_types.hpp"
-#include "stereo_slam.hpp"
+#include "slam_app.hpp"
 
 #include "svo_slam_backend.hpp"
 #include "websocketserver.hpp"
-
-#include "econ_input.hpp"
-#include "video_input.hpp"
 
 using namespace cv;
 using namespace std;
@@ -121,123 +117,17 @@ static void draw_frame(KeyFrame &keyframe, Frame &frame)
         QApplication::quit();
 }
 
-static bool running = true;
-
-static QMutex imu_data_lock;
-static vector<ImuData> imu_data;
-static void read_imu_data(EconInput *econ)
-{
-    Mat image;
-
-    while (running) {
-        ImuData _imu_data;
-        econ->get_imu_data(_imu_data);
-
-        imu_data_lock.lock();
-        imu_data.push_back(_imu_data);
-        imu_data_lock.unlock();
-
-        QThread::msleep(5);
-    }
-
-}
-
-static void update_pose_from_imu(StereoSlam *slam, float dt)
-{
-    Frame frame;
-    // No frame yet
-    if (!slam->get_frame(frame))
+static void process_image(SlamApp *app) {
+    if (!app->process_image())
         return;
 
-    float f = 104.0;
-
-    imu_data_lock.lock();
-    vector<ImuData> _imu_data = imu_data;
-    imu_data.clear();
-    imu_data_lock.unlock();
-
-    Vec6f pose_variance(1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0);
-    Vec6f speed_variance(100.0, 100.0, 100.0, 0.1, 0.1, 0.1);
-    Pose filtered_pose = frame.pose.get_pose();
-    float y_angle = frame.pose.get_pose().yaw;
-    for (size_t i = 0; i < std::min<size_t>(_imu_data.size(), f*dt); i++) {
-        ImuData &imu_data = _imu_data[i];
-
-        Vec6f speed(0,0,0,imu_data.gyro_x/180.0*M_PI, imu_data.gyro_y/180.0*M_PI, imu_data.gyro_z/180.0*M_PI);
-        y_angle += imu_data.gyro_y/180.0*M_PI/104.0;
-
-        // frae pose is wrong. We need kf.statePost
-        filtered_pose = slam->update_pose(filtered_pose, speed, pose_variance, speed_variance, 1.0/f);
-    }
-}
-
-static QMutex image_lock;
-static QSemaphore images_available(1);
-static Mat gray_r, gray_l;
-static int images_read = 0;
-static float time_stamp = 0.0;
-
-static void read_image(ImageInput *input, bool realtime)
-{
-    Mat image;
-
-    while (running) {
-        Mat _gray_r, _gray_l;
-        float _time_stamp;
-        if (!realtime)
-            images_available.acquire(1);
-        if (!input->read(_gray_l, _gray_r, _time_stamp)) {
-            cout << "No video data received" << endl;
-            QApplication::quit();
-            return;
-        }
-        image_lock.lock();
-        gray_r = _gray_r.clone();
-        gray_l = _gray_l.clone();
-        time_stamp = _time_stamp;
-        images_read ++;
-        image_lock.unlock();
-    }
-
-}
-
-static void process_image(bool use_imu, StereoSlam *slam)
-{
-    Mat _gray_r, _gray_l;
-    float _time_stamp;
-    int _images_read = 0;
-
-    image_lock.lock();
-    if (!images_read) {
-        image_lock.unlock();
-        return;
-    }
-    _gray_r = gray_r.clone();
-    _gray_l = gray_l.clone();
-    _time_stamp = time_stamp;
-    _images_read = images_read;
-    images_read = 0;
-    image_lock.unlock();
-    if (images_available.available() == 0)
-        images_available.release(1);
-
-
-    if (use_imu)
-        update_pose_from_imu(slam, _images_read/30.0);
-
-    cout << "Process image" << endl;
-    START_MEASUREMENT();
-    slam->new_image(_gray_l, _gray_r, _time_stamp);
-    cout << "End process image" << endl;
-    END_MEASUREMENT("Stereo SLAM");
-
+    StereoSlam *slam = app->slam;
     Frame frame;
     slam->get_frame(frame);
     KeyFrame keyframe;
     slam->get_keyframe(keyframe);
     draw_frame(keyframe, frame);
     cout << "Current pose: " << frame.pose << endl;
-
 }
 
 int main(int argc, char **argv)
@@ -271,9 +161,6 @@ int main(int argc, char **argv)
     }
 
     QString camera_type = parser.positionalArguments().at(0);
-    ImageInput *input;
-    bool imu_available = false;
-    QThread* read_imu_thread = nullptr;
     if (camera_type == "econ") {
         if (!parser.isSet("video") ||
                 !parser.isSet("hidraw") ||
@@ -283,20 +170,6 @@ int main(int argc, char **argv)
             cout << parser.helpText().toStdString() << endl;
             return -1;
         }
-
-        EconInput *econ = new EconInput(parser.value("video").toStdString(),
-                parser.value("hidraw").toStdString(),
-                parser.value("settings").toStdString(),
-                parser.value("hidrawimu").toStdString());
-        econ->set_manual_exposure(parser.value("exposure").toInt());
-        econ->set_hdr(parser.isSet("hdr"));
-        if (econ->imu_available()) {
-            econ->configure_imu();
-            econ->calibrate_imu();
-            read_imu_thread = QThread::create(read_imu_data, econ);
-            imu_available = true;
-        }
-        input = econ;
     }
     else if (camera_type == "video") {
         if (!parser.isSet("video") ||
@@ -305,64 +178,39 @@ int main(int argc, char **argv)
             cout << parser.helpText().toStdString() << endl;
             return -1;
         }
-        VideoInput *video = new VideoInput(parser.value("video").toStdString(),
-                parser.value("settings").toStdString());
-        if (parser.isSet("move")) {
-            video->jump_to(parser.value("move").toInt());
-        }
-        input = video;
-
     }
     else {
         cout << "Unknown camera type " << camera_type.toStdString() << endl;
         return -2;
     }
 
-    CameraSettings camera_settings;
-    input->get_camera_settings(camera_settings);
+    SlamApp slam_app;
+    if (!slam_app.initialize(camera_type,
+            parser.value("video"),
+            parser.value("settings"),
+            parser.value("trajectory"),
+            parser.value("hidraw"),
+            parser.value("exposure").toInt(),
+            parser.isSet("hdr"),
+            parser.value("move").toInt(),
+            parser.value("hidrawimu"))) {
+        cout << "Can't initialize slam app" << endl;
+        return -3;
+    }
 
-    StereoSlam slam(camera_settings);
+    slam_app.start();
 
-    QCommandLineOption showProgressOption("p", QCoreApplication::translate("main", "Show progress during copy"));
-    parser.addOption(showProgressOption);
 
     QTimer timer;
     timer.setInterval(1.0/60.0*1000.0);
-
     QObject::connect(&timer, &QTimer::timeout,
-            std::bind(&process_image, imu_available, &slam));
+            std::bind(process_image, &slam_app));
+
     timer.start();
-
-    SvoSlamBackend backend(&slam);
-    WebSocketServer server("svo", 8001, backend);
-
-    QThread* read_image_thread = QThread::create(read_image, input, camera_type == "econ");
-
-    read_image_thread->start();
-    if (read_imu_thread)
-        read_imu_thread->start();
-
 
     app.exec();
 
-    if (parser.isSet("trajectory")) {
-        QFile trajectory_file(parser.value("trajectory"));
-        trajectory_file.open(QIODevice::WriteOnly | QIODevice::Text);
-        vector<Pose> trajectory;
-        slam.get_trajectory(trajectory);
-        QTextStream trajectory_stream(&trajectory_file);
-        for (auto pose: trajectory) {
-            trajectory_stream << "0," << pose.x << "," << pose.y << "," << pose.z << "," <<
-                pose.pitch << "," << pose.yaw << "," << pose.roll << endl;
-        }
-        trajectory_file.close();
-    }
+    slam_app.stop();
 
-    running = false;
-    read_image_thread->wait(100);
-    if (read_imu_thread)
-        read_imu_thread->wait(100);
-
-    delete input;
     return 0;
 }
