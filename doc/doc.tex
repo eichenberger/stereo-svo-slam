@@ -573,7 +573,7 @@ From equation \ref{eq:iclk_problem} we need to do the first order Taylor approxi
   \nabla I  &:  \text{Gradient in image I at position x',y'}
 \end{align*}
 
-We derive the Taylor approximation so that we can minimize the problem (equation \ref{eq:iclk_derivative}).
+We derive equation \ref{eq:iclk_taylor} and set it to zero so that we can minimize the problem (equation \ref{eq:iclk_derivative}).
 \begin{equation}\label{eq:iclk_derivative}
   2\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k-1}\frac{\sigma W}{\sigma p}\Delta p-I_{k-1}(x,y)\end{bmatrix}
 \end{equation}
@@ -756,7 +756,7 @@ We use $\Delta t_x,\Delta t_y,\Delta t_z,\Delta r_x,\Delta r_y,\Delta r_z$ as ou
   p          &: \text{point in 3D space}  
 \end{align*}
 
-We again derive the Taylor approximation shown in equation \ref{eq:pe_derivative}
+We again derive equation \ref{eq:pe_taylor} from $\xi$ and set it to zero as shown in equation \ref{eq:pe_derivative}. This finally allows us to find $\xi$.
 
 \begin{equation}\label{eq:pe_derivative}
   2\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma e^{\xi}p}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k-1}\frac{\sigma e^{\xi} p}{\sigma \xi}\xi-I_{k-1}(x,y)\end{bmatrix}
@@ -863,11 +863,123 @@ Now we can simply transform the 3D point with camera as reference to the global 
 
 \chapter{Pose refinement}\label{ch:pose_refinement}
 
+Pose refinement is used to decrease the drift over time and to increase the accuracy of the pose estimation. In a first step we use optical flow to locate keypoints from the keyframe in the current image. Then we try to minimize the reprojection error shown in equation \ref{eq:refinement_reprojection}.
+\begin{equation}\label{eq:refinement_reprojection}
+  \begin{gathered}
+    minimize(\sum_n ((x'-x)^2+(y'-y)^2))\\
+    =>minimize(\sum_n ((L'-L)^T(L'-L))
+  \end{gathered}
+\end{equation}
+\begin{align*}
+  x',y'   &: \text{Keypoint position found by optical flow}\\
+  x,y     &: \text{Keypoint projection from 3D cloud with camera pose see \ref{eq:camera_model}}\\
+  n       &: \text{count of keypoints}\\
+  L,L'    &: \text{x,y and x',y' as vector}
+\end{align*}
+
+We could do that with e.g. heuristic gradient descent. However, this would be again computationally inefficient because for each iteration we would have to do up to 7 calculations. Therefore, we try to use a similar approach as we use for optical flow. We try to find the gradient mathematically. Let take again the equation \ref{eq:pe_projection}. We don't use the exact same definition but instead use the formulation shown in equation \ref{eq:refinement_projection}. Again we don't want to use this formulation directly. Some parameters depend on each other (rotational) and we can't find a Jacobian for this formulation.
+
+\begin{equation}\label{eq:refinement_projection}
+  \begin{gathered}
+    \begin{pmatrix}
+      x \\
+      y 
+    \end{pmatrix}=
+    \begin{pmatrix}
+      \frac{u}{s} \\
+      \frac{v}{s} 
+    \end{pmatrix}=
+    \begin{pmatrix}
+      \frac{(p_{11} + \Delta p_{11})*X + (p_{12} + \Delta p_{12})*Y + (p_{13} + \Delta p_{13})*Z + (p_{14} + \Delta p_{14})}{(p_{31}+\Delta p_{31})*X + (p_{32} + \Delta p_{32})*Y + (p_{33} + \Delta p_{33})*Z + (p_{34} + \Delta p_{34})}  \\
+      \frac{(p_{21} + \Delta p_{21})*X + (p_{22} + \Delta p_{22})*Y + (p_{23} + \Delta p_{23})*Z + (p_{24} + \Delta p_{24})}{(p_{31}+\Delta p_{31})*X + (p_{32} + \Delta p_{32})*Y + (p_{33} + \Delta p_{33})*Z + (p_{34} + \Delta p_{34})}
+    \end{pmatrix}
+  \end{gathered}
+\end{equation}
+\begin{align*}
+  u,v,s           &:  \text{Pixel position scaled with s}\\
+  X,Y,Z           &:  \text{3D Pixel position}\\
+  p_{ij}          &:  \text{Projection matrix}\\
+  \Delta p_{ij}   &:  \text{Projection matrix change per iteration}\\
+\end{align*}
+
+We now formulate the problem again with the help of Lie algebra shown in equation \ref{eq:refinement_lie}.
+\begin{equation}\label{eq:refinement_lie}
+  \begin{gathered}
+    \begin{pmatrix}
+      x\\
+      y
+    \end{pmatrix}
+    =h(e^{\xi}*p)\\
+    \xi=\begin{pmatrix}
+      v_x\\
+      v_y\\
+      v_z\\
+      \omega_x\\
+      \omega_y\\
+      \omega_z
+    \end{pmatrix}
+  \end{gathered}
+\end{equation}
+\begin{align*}
+  P     &: \text{Current projection matrix}\\
+  e     &: \text{Exponential map}\\
+  \xi   &: \text{Pose change between reference frame and current frame as vector in SE(3)}\\
+  p     &: \text{3D point in camera local coordinates}\\
+  h     &: \text{u,v,s to x,y}
+\end{align*}
+
+If we formulate the problem of equation \ref{eq:refinement_problem} with the knowledge of equation \ref{eq:refinement_lie} we end up in equation \ref{eq:refinement_solve}.
+
+\begin{equation}\label{eq:refinement_solve}
+  \begin{gathered}
+    \sum_n ((L'-L)^T(L'-L))\\
+    =>\sum_n (L'-h(e^{\xi}*p))^2
+  \end{gathered}
+\end{equation}
+
+We do a Taylor approximation of the inner part as shown in equation \ref{eq:refinement_taylor}.
+\begin{equation}\label{eq:refinement_taylor}
+  (L'-h(p)+\frac{h(e^{\xi}*p)}{\xi}(\xi))^2
+\end{equation}
+
+Now we derive the Taylor approximation to be able to minimize it. This is shown in equation \ref{eq:refinement_derived}. Keep in mind that the gradient points towards maxima. Therefore, we would optimize in direction of the negative gradient.
+\begin{equation}\label{eq:refinement_derived}
+  \begin{gathered}
+    (\frac{h(e^{\xi}*p)}{\xi})^T2*(L'-h(p)+\frac{h(e^{\xi}*p)}{\xi}(\xi))=0\\
+    (\frac{h(e^{\xi}*p)}{\xi})^T(L'-h(p))+\frac{h(e^{\xi}*p)}{\xi}\frac{h(e^{\xi}*p)}{\xi}\xi=0\\
+    (\frac{h(e^{\xi}*p)}{\xi})^T(\frac{h(e^{\xi}*p)}{\xi})^{-1}(\frac{h(e^{\xi}*p)}{\xi})^T(h(p)-L')=\xi
+  \end{gathered}
+\end{equation}
+
+We can reuse the exact same definition for the Jacobian as we did for pose estimation in equation \ref{eq:se3_jacobian}.
+
 \chapter{Implementation}
 
 In this chapter we discuss the implementation that was written during this thesis. It shows which parts of the algorithm are implemented where to give an overall picture of the implementation.
 
 \chapter{Results}
+
+For testing the algorithm with a reference implementation we use two synthetic scenes generated by Blender. The advantage of having synthetic scenes is that we can test some well defined movements where we know exactly the trajectory. We compare our implementation with svo edgelet \cite{svo_edgled}. This is based on the reference svo implementation. However, it is using newer versions of OpenCV, libegien, etc. They added edgelets tracking which is missing in the original svo sources and they added a GUI to observe the tracking. However, it's much slower than the original implementation on the other side it seems to be more robust than the original implementation.
+
+\sectuion{Classroom}
+In our first test we change the position and angles as shown in figure \ref{fig:blender_classroom_traj}.
+
+\begin{figure}[H]
+  \includegraphics[width=1.0\textwidth]{img/blender_classroom_traj.png}
+  \caption{Blender classroom trajectory}\label{fig:blender_classroom_traj}
+\end{figure}
+
+We now measure the difference of the reference trajectory to what we measure by using our SVO implementation. We see in figure \ref{fig:blender_classroom_our_diff} that we have low errors (< 0.06 m) when moving and up to 2° for angles.
+\begin{figure}[H]
+  \includegraphics[width=1.0\textwidth]{img/blender_classroom_our_diff.png}
+  \caption{Blender classroom error our implementation. Distances in meter, angels in °.}\label{fig:blender_classroom_our_diff}
+\end{figure}
+
+Figure \ref{fig:blender_classroom_ref_diff} shows the difference of the reference implementation. Please not that this implementation only uses monocular images. The first 11 pictures are required to initialize the tracking. Therefore, no data is available during that time. The scaling is not known and therefore the output trajectory was later scaled to match in meters. It seems that the point cloud is less accurate than in the stereo case. A movement along x axis also affects the yaw value. The simultainous change in movement and angle seems to be a huge problem for the monocular tracker. The tracker can't insert new keypoints during this movement because the change in position is too small. Therefore, we see a huge error there.
+\begin{figure}[H]
+  \includegraphics[width=1.0\textwidth]{img/blender_classroom_ref_diff.png}
+  \caption{Blender classroom error reference implementation. Distances in meter, angels in °.}\label{fig:blender_classroom_ref_diff}
+\end{figure}
 
 \printbibliography
 
