@@ -27,7 +27,7 @@ static TickMeter tick_meter;
 #endif
 
 StereoSlam::StereoSlam(const CameraSettings &camera_settings) :
-    camera_settings(camera_settings), keyframe_manager(camera_settings),
+    camera_settings(camera_settings), keyframe_manager(this->camera_settings),
     motion(0, 0, 0, 0, 0, 0)
 {
     kf.init(12,12);

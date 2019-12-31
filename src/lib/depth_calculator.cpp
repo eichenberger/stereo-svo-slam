@@ -41,7 +41,7 @@ static void select_best_keypoints(
     keypoints = keypoints_pyr[0];
     kp_info = kp_info_pyr[0];
 
-#pragma omp parallel for
+//#pragma omp parallel for
     for (unsigned int i = 1; i < keypoints_pyr.size(); i++) {
         vector<KeyPoint2d> _keypoints = keypoints_pyr[i];
         vector<KeyPointInformation> _info = kp_info_pyr[i];
@@ -189,7 +189,7 @@ void DepthCalculator::calculate_depth(Frame &frame,
     Vec3f translation(frame.pose.get_translation());
 
     // Estimate the depth now
-#pragma omp parallel for
+//#pragma omp parallel for
     for (uint32_t i = old_keypoint_count; i < keypoints2d.size(); i++) {
         auto keypoint = keypoints2d[i];
         int x = static_cast<int>(keypoint.x);

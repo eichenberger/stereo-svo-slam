@@ -98,7 +98,7 @@ float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
 #else
 	// The openmp variant doesn't ouput exactly the same. However, the difference
 	// is super small and it's much faster
-#pragma omp parallel for default(none) shared(frame, keyframe_manager, reference, active, err)
+//#pragma omp parallel for default(none) shared(frame, keyframe_manager, reference, active, err)
     for(size_t i = 0; i < reference.size(); i++) {
         OpticalFlow optical_flow(camera_settings);
         // Do stupid hack for openmp
@@ -113,7 +113,7 @@ float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
                 itr->second, frame.stereo_image, active_keypoints, _err);
 
         // Make sure this is atomic
-#pragma omp critical
+//#pragma omp critical
         err[itr->first] = _err;
     }
 #endif
@@ -250,7 +250,8 @@ float PoseRefiner::update_pose(const KeyPoints &keypoints,
     PoseManager _x;
 
     float prev_cost = solver_callback->do_calc(x0);
-    for (size_t i = 0; i < maxIter; i++) {
+    size_t i;
+    for (i = 0; i < maxIter; i++) {
         Vec6f gradient;
         solver_callback->get_gradient(x0, gradient);
         float k = 10.0;
@@ -273,6 +274,7 @@ float PoseRefiner::update_pose(const KeyPoints &keypoints,
         }
     }
 
+    cout << "Pose Refinement took n " << i << "loops" << endl;
     refined_pose = x0;
 
     return prev_cost;
@@ -345,8 +347,8 @@ void PoseRefinerCallback::get_gradient(const PoseManager &x, Vec6f &grad)
 
     Vec2f tot_diff(0,0);
 
-#pragma omp parallel for default(none) \
-    shared(keypoints3d, keypoint_information, tot_diff, err, hessian, projected_keypoints2d, x)
+//#pragma omp parallel for default(none) \
+//    shared(keypoints3d, keypoint_information, tot_diff, err, hessian, projected_keypoints2d, x)
     for (size_t i = 0; i < keypoints3d.size(); i++) {
         const auto fx = camera_settings.fx;
         const auto fy = camera_settings.fy;
@@ -377,9 +379,9 @@ void PoseRefinerCallback::get_gradient(const PoseManager &x, Vec6f &grad)
         tot_diff += diff;
         Matx<float, 6, 2> transposed_jacobian = jacobian.t();
         // It seems that matrices are not atomic even if they are marked as shared
-#pragma omp critical
+//#pragma omp critical
         hessian += transposed_jacobian*jacobian;
-#pragma omp critical
+//#pragma omp critical
         err += transposed_jacobian * diff;
     }
 

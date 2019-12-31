@@ -64,7 +64,7 @@ void DepthFilter::outlier_check(Frame &frame, const vector<float> &disparities)
 
     const Matx33f rot_mat(frame.pose.get_rotation_matrix());
     const Vec3f translation(frame.pose.get_translation());
-#pragma omp parallel for shared(disparities, kps3d, kps2d) firstprivate(fx, fy, cx, cy, baseline)
+//#pragma omp parallel for shared(disparities, kps3d, kps2d) firstprivate(fx, fy, cx, cy, baseline)
     for (size_t i = 0; i < disparities.size(); i++) {
         const KeyPoint2d &kp2d = kps2d[i];
         KeyPoint3d &kp3d = kps3d[i];
@@ -89,7 +89,7 @@ void DepthFilter::outlier_check(Frame &frame, const vector<float> &disparities)
     }
 
     vector<KeyPointInformation> &info = frame.kps.info;
-#pragma omp parallel for default(none) shared(kps3d, info, disparities, keyframe_manager) firstprivate(baseline)
+//#pragma omp parallel for default(none) shared(kps3d, info, disparities, keyframe_manager) firstprivate(baseline)
     for (size_t i = 0; i < kps3d.size(); i++) {
         const float &disparity = disparities[i];
         if (disparity < 0)
@@ -144,7 +144,7 @@ void DepthFilter::update_kps3d(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
     updated_kps3d = frame.kps.kps3d;
 
     vector<KeyPointInformation> &info = frame.kps.info;
-#pragma omp parallel for default(none) shared(updated_kps3d, keyframe_manager, info, frame) firstprivate(fx, fy, cx, cy)
+//#pragma omp parallel for default(none) shared(updated_kps3d, keyframe_manager, info, frame) firstprivate(fx, fy, cx, cy)
     for (size_t i = 0; i < updated_kps3d.size(); i++) {
         KeyPoint3d &update_kp3d = updated_kps3d[i];
         const KeyFrame *keyframe = keyframe_manager.get_keyframe(info[i].keyframe_id);
@@ -243,7 +243,7 @@ void DepthFilter::calculate_disparities(Frame &frame, std::vector<float> &dispar
     disparity.resize(frame.kps.kps2d.size());
 
     const vector<KeyPoint2d> &kps2d = frame.kps.kps2d;
-#pragma omp parallel for default(none) shared (kps2d, disparity, left, right) firstprivate(window_before, window_after, search_x, search_y)
+//#pragma omp parallel for default(none) shared (kps2d, disparity, left, right) firstprivate(window_before, window_after, search_x, search_y)
     for (size_t i = 0; i < kps2d.size(); i++) {
         disparity[i] = -1;
         auto keypoint = kps2d[i];

@@ -65,10 +65,10 @@ static inline float _get_intensity_diff(const Mat &image1, Mat image2,
         ip2.x >= 0 && (int)(ip2.x + patch_size) < image2.cols )
     {
         for (size_t i = 0; i < patch_size; i++) {
-            const uint8_t *src11 = image1.ptr<uint8_t>(ip1.y, ip1.x);
-            const uint8_t *src12 = image1.ptr<uint8_t>(ip1.y+1, ip1.x);
-            const uint8_t *src21 = image2.ptr<uint8_t>(ip2.y, ip2.x);
-            const uint8_t *src22 = image2.ptr<uint8_t>(ip2.y+1, ip2.x);
+            const uint8_t *src11 = image1.ptr<uint8_t>(i+ip1.y, ip1.x);
+            const uint8_t *src12 = image1.ptr<uint8_t>(i+ip1.y+1, ip1.x);
+            const uint8_t *src21 = image2.ptr<uint8_t>(i+ip2.y, ip2.x);
+            const uint8_t *src22 = image2.ptr<uint8_t>(i+ip2.y+1, ip2.x);
             for (size_t j = 0; j < patch_size; j++) {
                 Vec4f px1 (*(src11+0),
                            *(src11+1),
@@ -85,8 +85,6 @@ static inline float _get_intensity_diff(const Mat &image1, Mat image2,
                 intensity += fabs(i1-i2);
                 src11++; src12++; src21++; src22++;
             }
-            ip1.y++;
-            ip2.y++;
         }
     }
     return intensity;
@@ -126,11 +124,12 @@ void get_total_intensity_diff(const cv::Mat &image1, const cv::Mat &image2,
         vector<float> &diff)
 {
     diff.resize(keypoints1.size());
-#pragma omp parallel for default(none) shared(keypoints1, keypoints2, image1, image2, patchSize, diff)
+//#pragma omp parallel for default(none) shared(keypoints1, keypoints2, diff) firstprivate(image1, image2, patchSize)
     for (unsigned i = 0; i < keypoints1.size(); i++) {
         KeyPoint2d kp1 = keypoints1[i];
         KeyPoint2d kp2 = keypoints2[i];
-        diff[i] = get_intensity_diff(image1, image2, kp1, kp2, patchSize);
+        float _diff = _get_intensity_diff(image1, image2, kp1, kp2, patchSize);
+        diff[i] = _diff;
     }
 }
 

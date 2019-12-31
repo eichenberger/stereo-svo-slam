@@ -27,7 +27,7 @@ void project_keypoints(const PoseManager &pose,
     // However, projectPoints first translates and then rotates which
     // breaks everything
     vector<Point3f> _in(in.size());
-#pragma omp parallel for default(none) shared(_in, in, _pose)
+//#pragma omp parallel for default(none) shared(_in, in, _pose)
     for (size_t i = 0; i < in.size(); i++) {
         _in[i] = Vec3f(&in[i].x) - _pose;
     }
