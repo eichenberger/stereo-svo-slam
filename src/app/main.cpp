@@ -79,7 +79,7 @@ static void draw_frame(KeyFrame &keyframe, Frame &frame)
 
         int marker = info[i].type == KP_FAST ? MARKER_CROSS : MARKER_SQUARE;
 
-        int marker_size = info[i].confidence*16 + 4;
+        int marker_size = info[i].ignore_temporary ? 10 : 20;
 
         cv::drawMarker(left, kp, color, marker, marker_size);
 
@@ -138,7 +138,7 @@ int main(int argc, char **argv)
     QStringList arguments = app.arguments();
     parser.setApplicationDescription("SVO stereo SLAM application");
     parser.addHelpOption();
-    parser.addPositionalArgument("camera", "The camera type to use can be econ, video or blender");
+    parser.addPositionalArgument("camera", "The camera type to use can be econ, video or euroc");
     parser.addOptions({
             {{"v", "video"}, "Path to camera or video (/dev/videoX, video.mov)", "video"},
             {{"s", "settings"}, "Path to the settings file (Econ.yaml)", "settings"},
@@ -171,7 +171,7 @@ int main(int argc, char **argv)
             return -1;
         }
     }
-    else if (camera_type == "video") {
+    else if (camera_type == "video" || camera_type == "euroc") {
         if (!parser.isSet("video") ||
                 !parser.isSet("settings")) {
             cout << "Please set all inputs for video" << endl;
@@ -200,6 +200,8 @@ int main(int argc, char **argv)
 
     slam_app.start();
 
+    SvoSlamBackend backend(slam_app.slam);
+    WebSocketServer server("svo", 8001, backend);
 
     QTimer timer;
     timer.setInterval(1.0/60.0*1000.0);

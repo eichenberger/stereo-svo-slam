@@ -47,6 +47,7 @@ void DepthFilter::update_depth(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
     outlier_check(frame, disparities);
 
     update_kps3d(frame, updated_kps3d);
+    //updated_kps3d = frame.kps.kps3d;
 }
 
 void DepthFilter::outlier_check(Frame &frame, const vector<float> &disparities)
@@ -70,8 +71,6 @@ void DepthFilter::outlier_check(Frame &frame, const vector<float> &disparities)
         KeyPoint3d &kp3d = kps3d[i];
 
         float disparity = disparities[i];
-        if (disparity < 0)
-            continue;
         // Calculate depth and transform kp3d into global coordinates
         float _z = baseline/std::max<float>(disparity, 0.5);
         float _x = (kp2d.x - cx)/fx*_z;
@@ -91,10 +90,6 @@ void DepthFilter::outlier_check(Frame &frame, const vector<float> &disparities)
     vector<KeyPointInformation> &info = frame.kps.info;
 //#pragma omp parallel for default(none) shared(kps3d, info, disparities, keyframe_manager) firstprivate(baseline)
     for (size_t i = 0; i < kps3d.size(); i++) {
-        const float &disparity = disparities[i];
-        if (disparity < 0)
-            continue;
-
         const KeyFrame *keyframe = keyframe_manager.get_keyframe(info[i].keyframe_id);
         const KeyPoint3d &kp3d_ref = keyframe->kps.kps3d[info[i].keypoint_index];
         Matx33f inv_rotation_kf(keyframe->pose.get_inv_rotation_matrix());
@@ -127,7 +122,6 @@ void DepthFilter::outlier_check(Frame &frame, const vector<float> &disparities)
         // rotation can introduce a negative sign for deviation again therfore abs
         if (abs(pixel_distance) > 5*deviation) {
             info[i].outlier_count++;
-            continue;
         }
         else
             info[i].inlier_count++;
@@ -168,11 +162,16 @@ void DepthFilter::update_kps3d(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
         // A movement in z direction can't help us at all
         // It also seems if the distance is too big we have too much jitter
         // and it gets inaccurate again
-        if ((diff(0) < 0.1 && diff(1) < 0.1) || diff(0) > 0.7 ||
-            diff(1) > 0.7 || diff(2) > 0.5)
-            continue;
+//        if ((diff(0) < 0.1 && diff(1) < 0.1) || diff(0) > 0.7 ||
+//            diff(1) > 0.7 || diff(2) > 0.5)
+//            continue;
 
-        if (info[i].ignore_completely || info[i].ignore_during_refinement)
+        if (info[i].ignore_completely || info[i].ignore_during_refinement) {
+            info[i].outlier_count++;
+            continue;
+        }
+
+        if ((diff(0) < 0.1 && diff(1) < 0.1))
             continue;
 
         const KeyPoint2d &kp2d_ref = keyframe->kps.kps2d[info[i].keypoint_index];
@@ -191,11 +190,11 @@ void DepthFilter::update_kps3d(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
 
         p2 = rotation_frame * p2;
 
-        // This is the a matrix we need to solve to get the new l
+        // This is the matrix we need to solve to get the new l
         // where the two lines from reference and new frame intersect
-        Mat a = (Mat_<float>(3, 2) << p1(0)-c1(0), -(p2(0)-c2(0)),
-                    p1(1)-c1(1), -(p2(1)-c2(1)),
-                        p1(2)-c1(2), -(p2(2)-c2(2)));
+        Mat a = (Mat_<float>(3, 2) << p1(0), -p2(0),
+                    p1(1), -p2(1),
+                        p1(2), -p2(2));
         Vec3f y=c2-c1;
         Vec2f l;
 
@@ -225,6 +224,36 @@ void DepthFilter::update_kps3d(Frame &frame, vector<KeyPoint3d> &updated_kps3d)
         update_kp3d.x = corrected_p(0);
         update_kp3d.y = corrected_p(1);
         update_kp3d.z = corrected_p(2);
+
+#if 0
+        if (info[i].keyframe_id == 0 && info[i].keypoint_index == 27 && info[i].inlier_count == 10) {
+
+            cout << "our z: " << _z << endl;
+            cout << "new p: " << new_p << endl;
+            cout << "l: " << l << endl;
+            cout << "kp2d: " << kp2d.x << endl;
+            cout << "kp2d_ref: " << kp2d_ref.x << endl;
+            cout << "p1: " << p1 << endl;
+            cout << "p2: " << p2 << endl;
+
+            Mat ref;
+            cvtColor(keyframe->stereo_image.left[0], ref, COLOR_GRAY2RGB);
+            Scalar ref_color(255,0,0);
+            Scalar cur_color(0,255,0);
+            cv::drawMarker(ref, Point(kp2d_ref.x, kp2d_ref.y), ref_color);
+            cv::drawMarker(ref, Point(kp2d.x, kp2d.y), cur_color);
+            namedWindow("ref", WINDOW_GUI_EXPANDED);
+            imshow("ref", ref);
+
+            Mat cur;
+            cvtColor(frame.stereo_image.left[0], cur, COLOR_GRAY2RGB);
+            cv::drawMarker(cur, Point(kp2d_ref.x, kp2d_ref.y), ref_color);
+            cv::drawMarker(cur, Point(kp2d.x, kp2d.y), cur_color);
+            namedWindow("cur", WINDOW_GUI_EXPANDED);
+            imshow("cur", cur);
+            waitKey(0);
+        }
+#endif
     }
 }
 
@@ -294,6 +323,6 @@ void DepthFilter::calculate_disparities(Frame &frame, std::vector<float> &dispar
         }
         minPos = minPos/matches;
 
-        disparity[i] =  minPos;
+        disparity[i] =  max<float>(0.5, minPos);
     }
 }

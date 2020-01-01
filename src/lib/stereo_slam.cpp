@@ -153,6 +153,10 @@ void StereoSlam::new_image(const Mat &left, const Mat &right, const float time_s
         frame->pose.set_pose(pose);
 
         keyframe = keyframe_manager.create_keyframe(*frame);
+
+        // Never ignore the keypoints for the first frame
+        for (auto &info:frame->kps.info)
+            info.ignore_temporary = false;
 #if 0
         cout << "void createVector(std::vector<Vector2d> &pts2d, std::vector<Vector3d> &pts3d) { " << endl;
         for (size_t i = 0; i < frame->kps.kps2d.size(); i++) {
@@ -167,6 +171,14 @@ void StereoSlam::new_image(const Mat &left, const Mat &right, const float time_s
     }
     else {
         frame->id = previous_frame->id + 1;
+
+        for (size_t i = 0; i < frame->kps.info.size(); i++) {
+            KeyPointInformation &info = frame->kps.info[i];
+            if (info.keyframe_id == 0 && info.keypoint_index == 143) {
+                cout << "Fucking inlier count: " << info.inlier_count << "," <<
+                    info.outlier_count << endl;
+            }
+        }
 
         Pose predicted_pose;
         predicted_pose.x = kf.statePre.at<float>(0);
@@ -200,20 +212,34 @@ void StereoSlam::new_image(const Mat &left, const Mat &right, const float time_s
             if (info.outlier_count > info.inlier_count)
                 info.ignore_completely = true;
 
+            if (info.inlier_count > info.outlier_count)
+                info.ignore_temporary = false;
+
             kp3d = updated_kps3d[i];
             frame->kps.kps3d[i] = kp3d;
+            keyframe->kps.info[i].inlier_count = info.inlier_count;
+            keyframe->kps.info[i].outlier_count = info.outlier_count;
+
         }
         END_MEASUREMENT("Filter update");
         project_keypoints(frame->pose, frame->kps.kps3d, camera_settings,
                 frame->kps.kps2d);
-
-
 
         if (keyframe_manager.keyframe_needed(*frame)) {
             cout << "New keyframe is needed" << endl;
             START_MEASUREMENT();
             keyframe = keyframe_manager.create_keyframe(*frame);
             END_MEASUREMENT("Create new keyframe");
+
+            size_t i = 0;
+            for (auto &info:frame->kps.info)
+                if (!info.ignore_temporary)
+                    i++;
+            // We have a problem now we need a backup
+            if (i < frame->kps.info.size()/4) {
+                for (auto &info:frame->kps.info)
+                    info.ignore_temporary = false;
+            }
         }
     }
 

@@ -37,13 +37,13 @@ Camera2.k3: 0.00237161
 Camera2.p1: 0.00838884
 Camera2.p2: 0.05137548
 
-Camera.grid_height: 60
+Camera.grid_height: 50
 Camera.grid_width: 40
-Camera.search_x: 50
+Camera.search_x: 60
 Camera.search_y: 6
 Camera.window_size: 4
-Camera.window_size_opt_flow: 31
-Camera.window_size_depth_calculator: 31
+Camera.window_size_opt_flow: 35
+Camera.window_size_depth_calculator: 35
 Camera.max_pyramid_levels: 5
 Camera.min_pyramid_level_pose_estimation: 2
 

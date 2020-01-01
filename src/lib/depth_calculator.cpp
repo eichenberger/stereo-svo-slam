@@ -4,6 +4,7 @@
 #include "depth_calculator.hpp"
 #include "corner_detector.hpp"
 #include "image_comparison.hpp"
+#include "optical_flow.hpp"
 
 using namespace std;
 
@@ -188,8 +189,15 @@ void DepthCalculator::calculate_depth(Frame &frame,
     Matx33f rot_mat(frame.pose.get_rotation_matrix());
     Vec3f translation(frame.pose.get_translation());
 
+#if 0
+    Mat left_copy;
+    Mat right_copy;
+    cvtColor(left, left_copy, COLOR_GRAY2RGB);
+    cvtColor(right, right_copy, COLOR_GRAY2RGB);
+#endif
     // Estimate the depth now
 //#pragma omp parallel for
+#if 1
     for (uint32_t i = old_keypoint_count; i < keypoints2d.size(); i++) {
         auto keypoint = keypoints2d[i];
         int x = static_cast<int>(keypoint.x);
@@ -226,6 +234,7 @@ void DepthCalculator::calculate_depth(Frame &frame,
                 }
             }
         }
+
         minPos = minPos/matches;
 
         float disparity = minPos;
@@ -252,9 +261,102 @@ void DepthCalculator::calculate_depth(Frame &frame,
         kp_info[i].color.g = (color >> 8) & 0xFF;
         kp_info[i].color.b = (color >> 16) & 0xFF;
 
+        Scalar _color(kp_info[i].color.r, kp_info[i].color.g, kp_info[i].color.b);
+#if 0
+        cv::drawMarker(left_copy, Point(keypoint.x, keypoint.y), _color);
+        cv::drawMarker(right_copy, Point(keypoint.x+minPos, keypoint.y + minLoc.y), _color);
+#endif
+
+        kp_info[i].keyframe_id = keyframe_count;
+        kp_info[i].keypoint_index = i;
+        kp_info[i].ignore_completely = false;
+        kp_info[i].ignore_temporary = true;
+        kp_info[i].ignore_during_refinement = false;
+        kp_info[i].inlier_count = 0;
+        kp_info[i].outlier_count = 0;
+
+        KalmanFilter &kf = kp_info[i].kf;
+        kf.init(1,1);
+        setIdentity(kf.transitionMatrix);
+        setIdentity(kf.measurementMatrix);
+        setIdentity(kf.processNoiseCov, Scalar::all(0.0001));
+        setIdentity(kf.errorCovPost, Scalar::all(1.0));
+
+        // Standard deviation can be +- 0.5 pixel
+        float deviation = 0.5/(baseline/fx);
+
+        kf.errorCovPost.at<float>(0,0) = deviation*deviation;
+
+        kf.statePost = (Mat_<float>(1,1) << 1/_z);
+    }
+#else
+
+    vector<Point2f> left_pos;
+    vector<Point2f> right_pos;
+    left_pos.resize(keypoints2d.size()-old_keypoint_count);
+    right_pos.resize(keypoints2d.size()-old_keypoint_count);
+    for (uint32_t i = 0; i < left_pos.size(); i++) {
+        left_pos[i].x = keypoints2d[old_keypoint_count+i].x;
+        left_pos[i].y = keypoints2d[old_keypoint_count+i].y;
+        right_pos[i].x = keypoints2d[old_keypoint_count+i].x;
+        right_pos[i].y = keypoints2d[old_keypoint_count+i].y;
+    }
+
+    vector<uchar> status;
+    vector<float> err;
+    Size patch_size(camera_settings.window_size_opt_flow,
+            camera_settings.window_size_opt_flow);
+    cv::calcOpticalFlowPyrLK(left, right, left_pos,
+            right_pos, status, err, patch_size, 2,
+            TermCriteria(TermCriteria::COUNT+TermCriteria::EPS, 30, 0.01),
+            OPTFLOW_USE_INITIAL_FLOW);
+
+    for (uint32_t i = old_keypoint_count, j=0; i < keypoints2d.size(); i++,j++) {
+        if (status[j] == 0) {
+            keypoints2d.erase (keypoints2d.begin()+i);
+            keypoints3d.erase (keypoints3d.begin()+i);
+            kp_info.erase (kp_info.begin()+i);
+            i--;
+            continue;
+        }
+        KeyPoint2d &keypoint = keypoints2d[i];
+        float x_diff = keypoints2d[i].x-right_pos[j].x;
+        float y_diff = keypoints2d[i].x-right_pos[j].y;
+
+        float disparity = sqrt(x_diff*x_diff+y_diff*y_diff);
+
+        // Calculate depth and transform kp3d into global coordinates
+        float _z = baseline/max<float>(0.5, disparity);
+        float _x = (keypoints2d[i].x - cx)/fx*_z;
+        float _y = (keypoints2d[i].y - cy)/fy*_z;
+
+        Vec3f kp3d_loc(_x, _y, _z);
+        Vec3f kp3d;
+
+        // The position is fucked up therefore rot_mat and tranlation
+        // are already the inverse and we can use it directly
+        kp3d = rot_mat*kp3d_loc;
+        kp3d += translation;
+
+        keypoints3d[i].x = kp3d(0);
+        keypoints3d[i].y = kp3d(1);
+        keypoints3d[i].z = kp3d(2);
+
+        uint32_t color = rand();
+        kp_info[i].color.r = (color >> 0) & 0xFF;
+        kp_info[i].color.g = (color >> 8) & 0xFF;
+        kp_info[i].color.b = (color >> 16) & 0xFF;
+
+#if 0
+        Scalar _color(kp_info[i].color.r, kp_info[i].color.g, kp_info[i].color.b);
+        cv::drawMarker(left_copy, Point(keypoint.x, keypoint.y), _color);
+        cv::drawMarker(right_copy, Point(right_pos[j].x, right_pos[j].y), _color);
+#endif
+
         kp_info[i].confidence = 1.0;
         kp_info[i].keyframe_id = keyframe_count;
         kp_info[i].keypoint_index = i;
+        kp_info[i].ignore_temporary = true;
         kp_info[i].ignore_completely = false;
         kp_info[i].ignore_during_refinement = false;
         kp_info[i].inlier_count = 1;
@@ -273,6 +375,20 @@ void DepthCalculator::calculate_depth(Frame &frame,
         kf.errorCovPost.at<float>(0,0) = deviation*deviation;
 
         kf.statePost = (Mat_<float>(1,1) << 1/_z);
+
     }
+
+#endif
+
+#if 0
+    Mat result(left.rows, left.cols*2, CV_8UC3);
+
+    left_copy.copyTo(result(Rect(0, 0, left.cols, left.rows)));
+    right_copy.copyTo(result(Rect(left.cols, 0, left.cols, left.rows)));
+
+    namedWindow("depth", WINDOW_GUI_EXPANDED);
+    imshow("depth", result);
+    waitKey(0);
+#endif
     keyframe_count++;
 }

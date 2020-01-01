@@ -29,7 +29,7 @@ bool Slam::process_image()
     Pose _pose = frame.pose.get_pose();
 
     // OpenGL uses a different coordinate system than we do. Everything besides z is mirrored...
-    QVector3D position(-_pose.x, -_pose.y, _pose.z);
+    QVector3D position(_pose.x, _pose.y, _pose.z);
     QVector3D rotation((_pose.pitch)/M_PI*180.0,
                        (_pose.yaw)/M_PI*180.0,
                        (_pose.roll)/M_PI*180.0);

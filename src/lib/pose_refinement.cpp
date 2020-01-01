@@ -144,8 +144,8 @@ float PoseRefiner::refine_pose(KeyFrameManager &keyframe_manager,
         }
         else {
             info.ignore_during_refinement = false;
+            kp2d = new_estimate;
         }
-        kp2d = new_estimate;
         active[info.keyframe_id].pop_back();
     }
     END_MEASUREMENT("Merge keypoints");
@@ -254,7 +254,7 @@ float PoseRefiner::update_pose(const KeyPoints &keypoints,
     for (i = 0; i < maxIter; i++) {
         Vec6f gradient;
         solver_callback->get_gradient(x0, gradient);
-        float k = 10.0;
+        float k = 1.0;
         for (;i < maxIter; i++) {
             Vec6f x = x0.get_vector() + (k*gradient);
             _x.set_vector(x);
@@ -265,6 +265,7 @@ float PoseRefiner::update_pose(const KeyPoints &keypoints,
                 break;
             }
             else if (fabs(new_cost - prev_cost) < 0.0001) {
+                cout << "Refinement drop out because of small change after" << i << " loops" << endl;
                 i = maxIter;
                 break;
             }
@@ -273,8 +274,6 @@ float PoseRefiner::update_pose(const KeyPoints &keypoints,
             }
         }
     }
-
-    cout << "Pose Refinement took n " << i << "loops" << endl;
     refined_pose = x0;
 
     return prev_cost;
@@ -325,7 +324,9 @@ float PoseRefinerCallback::do_calc(const PoseManager &pose) const
 // #pragma omp parallel for shared(keypoint_information, tot_diff, diff)
     for (size_t i=0; i < keypoint_information.size(); i++) {
         float *_diff = diff.ptr<float>(i);
-        if (!keypoint_information[i].ignore_during_refinement && !keypoint_information[i].ignore_completely) {
+        if (!keypoint_information[i].ignore_during_refinement &&
+                !keypoint_information[i].ignore_completely &&
+                !keypoint_information[i].ignore_temporary) {
             tot_diff += *_diff + *(_diff+1);
         }
     }
@@ -347,8 +348,7 @@ void PoseRefinerCallback::get_gradient(const PoseManager &x, Vec6f &grad)
 
     Vec2f tot_diff(0,0);
 
-//#pragma omp parallel for default(none) \
-//    shared(keypoints3d, keypoint_information, tot_diff, err, hessian, projected_keypoints2d, x)
+//#pragma omp parallel for default(none) shared(keypoints3d, keypoint_information, tot_diff, err, hessian, projected_keypoints2d, x)
     for (size_t i = 0; i < keypoints3d.size(); i++) {
         const auto fx = camera_settings.fx;
         const auto fy = camera_settings.fy;
@@ -364,7 +364,8 @@ void PoseRefinerCallback::get_gradient(const PoseManager &x, Vec6f &grad)
         auto z = kp(2);
 
         if (keypoint_information[i].ignore_during_refinement ||
-                keypoint_information[i].ignore_completely)
+                keypoint_information[i].ignore_completely ||
+                keypoint_information[i].ignore_temporary)
             continue;
 
         Matx<float, 2,6> jacobian (-fx/z, 0, fx*x/(z*z), fx*x*y/(z*z), -fx*(1+(x*x)/(z*z)), fx*y/z,

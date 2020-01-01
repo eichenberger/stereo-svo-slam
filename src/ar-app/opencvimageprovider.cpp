@@ -29,7 +29,7 @@ void OpenCVImageProvider::setVideoSurface(QAbstractVideoSurface *s)
 static void draw_keypoints(const Frame &frame, Mat &out)
 {
 
-    out = frame.stereo_image.left[0].clone();
+    cvtColor(frame.stereo_image.left[0].clone(), out,  COLOR_GRAY2RGB);
     const vector<KeyPoint2d> &kps = frame.kps.kps2d;
     const vector<KeyPointInformation> &info = frame.kps.info;
     for (size_t i = 0; i < kps.size(); i++) {
@@ -56,7 +56,7 @@ void OpenCVImageProvider::setImage(const Frame &frame)
     QImage _image(image.data,
                   image.cols, image.rows,
                   static_cast<int>(image.step),
-                  QImage::Format_Grayscale8 );
+                  QImage::Format_RGB888);
 
 
     if (!surface->isActive()) {

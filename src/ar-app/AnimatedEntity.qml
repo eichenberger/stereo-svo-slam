@@ -53,7 +53,7 @@ Entity {
         components: [
             Transform {
                 id: test
-                translation: Qt.vector3d(0.0, 0.0, 0.5)
+                translation: Qt.vector3d(0.0, 0.0, 1.0)
             }
         ]
     }

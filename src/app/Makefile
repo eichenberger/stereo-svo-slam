@@ -2,7 +2,7 @@ CXXFLAGS  ?= -O0 -ggdb
 LDFLAGS ?= -O0
 
 SRC_FILES = main.cpp websocketserver.cpp svo_slam_backend.cpp image_input.cpp \
-			econ_input.cpp video_input.cpp slam_app.cpp
+			econ_input.cpp video_input.cpp slam_app.cpp euroc_input.cpp
 
 OBJ_FILES = $(patsubst %.cpp, %.o, $(SRC_FILES))
 
@@ -15,8 +15,8 @@ INCLUDEDIRS = -I../include -I$(OPENCV_INC_DIR) \
 			  -I$(QT_INC_DIR)
 
 LIBDIRS = -L$(OPENCV_LIB_DIR) -L../lib
-LIBS = -lstereosvo -lopencv_core -lopencv_videoio -lopencv_imgproc \
-	   -lopencv_highgui -lQt5WebSockets -lQt5Core -lQt5Network -lQt5Widgets
+LIBS = -lstereosvo -lopencv_core -lopencv_videoio -lopencv_imgproc -lopencv_imgcodecs\
+	   -lopencv_highgui -lopencv_calib3d -lQt5WebSockets -lQt5Core -lQt5Network -lQt5Widgets
 CXXFLAGS += -std=c++17 -pedantic -Wall -fopenmp -fPIC $(INCLUDEDIRS)
 LDFLAGS += -fPIC $(LIBDIRS) $(LIBS) -pthread -Wl,-rpath,$(OPENCV_LIB_DIR),-rpath,../lib/,-rpath,.
 

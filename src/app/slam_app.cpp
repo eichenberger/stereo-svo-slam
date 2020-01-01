@@ -7,6 +7,7 @@
 
 #include "econ_input.hpp"
 #include "video_input.hpp"
+#include "euroc_input.hpp"
 
 using namespace std;
 using namespace cv;
@@ -70,6 +71,14 @@ bool SlamApp::initialize(const QString &camera_type,
             video_input->jump_to(move);
 
         input = video_input;
+    }
+    else if (camera_type == "euroc") {
+        EurocInput *euroc_input = new EurocInput(video.toStdString(),
+                settings.toStdString());
+        if (move)
+            euroc_input->jump_to(move);
+
+        input = euroc_input;
     }
     else {
         cout << "Unknown camera type " << camera_type.toStdString() << endl;
@@ -228,5 +237,4 @@ bool SlamApp::stop()
 
     return true;
 }
-
 

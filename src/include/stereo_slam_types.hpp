@@ -80,6 +80,7 @@ struct KeyPointInformation {
     bool ignore_completely;
     int outlier_count;
     int inlier_count;
+    bool ignore_temporary;
     cv::KalmanFilter kf;
 };
 

@@ -52,10 +52,10 @@ private:
 
     const StereoImage &current_stereo_image;
     const StereoImage &previous_stereo_image;
-    const KeyPoints &keypoints;
     const CameraSettings &camera_settings;
     CameraSettings level_camera_settings;
     vector<KeyPoint2d> level_keypoints2d;
+    KeyPoints local_keypoints;
     int level;
 
     cv::Ptr<Mat> hessian;
@@ -177,20 +177,24 @@ float PoseEstimator::estimate_pose_at_level(const PoseManager &pose_manager_gues
     for (i = 0; i < maxIter; i++) {
         Vec6f gradient;
         solver_callback->get_gradient(x0, gradient);
-        float k = 10.0;
+        float k = 1.0;
         for (;i < maxIter; i++) {
             Vec6f x = x0.get_vector() + (k*gradient);
             _x.set_vector(x);
             float new_cost = solver_callback->do_calc(_x);
             if (new_cost < prev_cost) {
+                cout << "Previous cost: " << prev_cost << " new cost: " <<
+                    new_cost << endl;
+
+                cout << "Gradient: " << gradient << endl;
+
                 x0 = _x;
                 prev_cost = new_cost;
                 break;
             }
             else if (fabs(new_cost - prev_cost) < 1.0) {
                 // Change below 1px
-                cout << "Drop out because of small change after" << i << " loops" << endl;
-                cout << "Pose Estimator took n " << i << "loops" << endl;
+                cout << "Estimator drop out because of small change after" << i << " loops" << endl;
                 i = maxIter;
                 break;
             }
@@ -199,8 +203,6 @@ float PoseEstimator::estimate_pose_at_level(const PoseManager &pose_manager_gues
             }
         }
     }
-
-    cout << "Pose Estimator took n " << i << "loops" << endl;
 
     pose = x0;
 
@@ -218,10 +220,33 @@ PoseEstimatorCallback::PoseEstimatorCallback(const StereoImage &current_stereo_i
                           const CameraSettings &camera_settings):
     current_stereo_image(current_stereo_image),
     previous_stereo_image(previous_stereo_image),
-    keypoints(previous_keypoints),
     camera_settings(camera_settings),
     level(0)
 {
+    local_keypoints.info.clear();
+    local_keypoints.kps2d.clear();
+    local_keypoints.kps3d.clear();
+    for (size_t i = 0; i < previous_keypoints.info.size(); i++)
+    {
+        if (previous_keypoints.info[i].ignore_temporary)
+            continue;
+        local_keypoints.info.push_back(previous_keypoints.info[i]);
+        local_keypoints.kps2d.push_back(previous_keypoints.kps2d[i]);
+        local_keypoints.kps3d.push_back(previous_keypoints.kps3d[i]);
+    }
+
+    if (local_keypoints.info.size() == 0) {
+        cout << "This should never happen" << endl;
+        cout << "Info:" << endl;
+        for (size_t i = 0; i < previous_keypoints.info.size(); i++)
+        {
+            cout << i << ": " <<
+                previous_keypoints.info[i].keyframe_id << "," <<
+                previous_keypoints.info[i].outlier_count << ", " <<
+                previous_keypoints.info[i].inlier_count <<endl;
+        }
+
+    }
 }
 
 static inline Pose pose_from_x(const double *x){
@@ -241,7 +266,7 @@ static inline Pose pose_from_x(const double *x){
 float PoseEstimatorCallback::do_calc(const PoseManager &pose_manager) const
 {
     vector<KeyPoint2d> kps2d;
-    project_keypoints(pose_manager, keypoints.kps3d, level_camera_settings, kps2d);
+    project_keypoints(pose_manager, local_keypoints.kps3d, level_camera_settings, kps2d);
 
 #ifdef SUPER_VERBOSE
     cout << "keypoints 2d: ";
@@ -301,7 +326,7 @@ void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
         // cout << "Keypoint position: " << kp2d.x << ", " << kp2d.y << endl;
         kp2d.x -= PATCH_SIZE/2;
         kp2d.y -= PATCH_SIZE/2;
-        Vec3f kp(&keypoints.kps3d[i].x);
+        Vec3f kp(&local_keypoints.kps3d[i].x);
 
         // Neutralize angle
         kp -= translation;
@@ -388,7 +413,6 @@ void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
 
 }
 
-
 void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
 {
     const int PATCH_SIZE=4;
@@ -404,7 +428,7 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
 
     // See ICRA Forster 14 for the whole algorithm
     vector<KeyPoint2d> kps2d;
-    project_keypoints(pose, keypoints.kps3d, level_camera_settings, kps2d);
+    project_keypoints(pose, local_keypoints.kps3d, level_camera_settings, kps2d);
 
     cout << "pose for projection: " << pose << endl;
 
@@ -556,13 +580,12 @@ void PoseEstimatorCallback::setLevel(int level)
     level_camera_settings.cy /= divider;
     level_camera_settings.baseline /= divider;
 
-
-    level_keypoints2d = keypoints.kps2d;
+    level_keypoints2d = local_keypoints.kps2d;
 
     if (level == 0)
         return;
 
-    for (size_t i = 0; i < level_keypoints2d.size(); i++) {
+    for (size_t i = 0; i < local_keypoints.kps2d.size(); i++) {
         level_keypoints2d[i].x /= divider;
         level_keypoints2d[i].y /= divider;
     }

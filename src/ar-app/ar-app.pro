@@ -5,6 +5,7 @@ QMAKE_CXXFLAGS += -std=c++17
 
 SOURCES += \
     ../app/econ_input.cpp \
+    ../app/euroc_input.cpp \
     ../app/video_input.cpp \
     ../app/image_input.cpp \
     ../app/slam_app.cpp \
@@ -20,6 +21,7 @@ RESOURCES += \
 
 HEADERS += \
     ../app/econ_input.hpp \
+    ../app/euroc_input.hpp \
     ../app/video_input.hpp \
     ../app/image_input.hpp \
     ../app/slam_app.hpp \
@@ -30,7 +32,8 @@ DISTFILES += \
     AnimatedEntity.qml \
     ObjectEntity.qml
 
-LIBS += -L$$(OPENCV_LIB_DIR) -lopencv_core -lopencv_videoio -lopencv_imgproc -L../lib -lstereosvo -Wl,-rpath,../lib
+LIBS += -L$$(OPENCV_LIB_DIR) -lopencv_core -lopencv_videoio -lopencv_imgproc \
+    -lopencv_imgcodecs -lopencv_calib3d -L../lib -lstereosvo -Wl,-rpath,../lib
 
 INCLUDEPATH += $$(OPENCV_INC_DIR) \
     ../include \
