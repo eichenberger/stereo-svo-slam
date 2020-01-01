@@ -1,5 +1,8 @@
 from libcpp.vector cimport vector
 from libc.stdint cimport uint64_t
+from libcpp cimport bool
+
+from pose_manager cimport PoseManager as _PoseManager
 
 # Declares OpenCV's cv::Mat class
 cdef extern from "opencv2/core/core.hpp" namespace "cv":
@@ -13,13 +16,30 @@ cdef extern from "opencv2/core/core.hpp" namespace "cv":
         int cols
         pass
 
-#cdef extern from "<array>" namespace "std" nogil:
-#    cdef cppclass array3 "std::array<float, 3>":
-#        array3() except+
-#        float& operator[](size_t)
-#    cdef cppclass array2 "std::array<float, 2>":
-#        array2() except+
-#        float& operator[](size_t)
+# Declares OpenCV's cv::Mat class
+cdef extern from "opencv2/video/tracking.hpp" namespace "cv":
+    cdef cppclass KalmanFilter:
+        KalmanFilter()
+#        KalmanFilter(KalmanFilter rhs)
+#
+#        Mat statePre
+#        Mat statePost
+#        Mat transitionMatrix
+#        Mat controlMatrix
+#        Mat measurementMatrix
+#        Mat processNoiseCov
+#        Mat measurementNoiseCov
+#        Mat errorCovPre
+#        Mat gain
+#        Mat errorCovPost
+#
+#        Mat temp1
+#        Mat temp2
+#        Mat temp3
+#        Mat temp4
+#        Mat temp5
+        pass
+
 
 cdef extern from "stereo_slam_types.hpp":
     cdef enum KeyPointType:
@@ -46,7 +66,13 @@ cdef extern from "stereo_slam_types.hpp":
         KeyPointType type
         float confidence
         uint64_t keyframe_id
+        size_t keypoint_index;
         Color color
+        bool ignore_during_refinement
+        bool ignore_completely
+        int outlier_count
+        int inlier_count
+        KalmanFilter kf
 
     cdef struct StereoImage:
         vector[Mat] left
@@ -69,7 +95,20 @@ cdef extern from "stereo_slam_types.hpp":
         int search_y
         int window_size
         int window_size_opt_flow
+        int window_size_depth_calculator
         int max_pyramid_levels
+        int min_pyramid_level_pose_estimation
+
+        int image_width
+        int image_height
+
+        float dist_window_k0
+        float dist_window_k1
+        float dist_window_k2
+        float dist_window_k3
+
+        float cost_k0
+        float cost_k1
 
     cdef struct KeyPoints:
         vector[KeyPoint2d] kps2d
@@ -86,13 +125,13 @@ cdef extern from "stereo_slam_types.hpp":
 
     cdef struct Frame:
         uint64_t id
-        Pose pose
+        _PoseManager pose
         StereoImage stereo_image
         KeyPoints kps
 
     cdef struct KeyFrame:
         uint64_t id
-        Pose pose
+        _PoseManager pose
         StereoImage stereo_image
         KeyPoints kps
 

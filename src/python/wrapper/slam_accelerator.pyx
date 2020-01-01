@@ -28,6 +28,7 @@ from stereo_slam_types cimport KeyPoints as _KeyPoints
 from stereo_slam_types cimport Mat as _Mat
 from stereo_slam_types cimport Pose as _Pose
 from stereo_slam_types cimport StereoImage as _StereoImage
+from stereo_slam_types cimport KalmanFilter as _KalmanFilter
 
 
 cdef _c2np(_Mat image):
@@ -55,14 +56,14 @@ cdef class StereoSlam:
     def __dealloc__(self):
         del self._stereo_slam
 
-    def new_image(self, left, right):
+    def new_image(self, left, right, float dt):
         cdef _Mat _left
         cdef _Mat _right
 
         _np2c(left, _left)
         _np2c(right, _right)
 
-        self._stereo_slam.new_image(_left, _right)
+        self._stereo_slam.new_image(_left, _right, dt)
 
     def get_keyframe(self):
         kf = KeyFrame()
@@ -88,7 +89,6 @@ cdef class StereoSlam:
             keyframes.append(kf)
 
         return keyframes
-
 
 
 cdef class StereoImage:
@@ -326,6 +326,28 @@ cdef class CameraSettings:
             py_result = <int>_r
             return py_result
 
+    property window_size_depth_calculator:
+        def __set__(self, window_size_depth_calculator):
+            self.inst.window_size_depth_calculator = (<int>window_size_depth_calculator)
+
+
+        def __get__(self):
+            cdef int _r = self.inst.window_size_depth_calculator
+            py_result = <int>_r
+            return py_result
+
+
+    property min_pyramid_level_pose_estimation:
+        def __set__(self, min_pyramid_level_pose_estimation):
+            self.inst.min_pyramid_level_pose_estimation= (<int>min_pyramid_level_pose_estimation)
+
+
+        def __get__(self):
+            cdef int _r = self.inst.min_pyramid_level_pose_estimation
+            py_result = <int>_r
+            return py_result
+
+
 cdef class Frame:
     """
     Cython implementation of _Frame
@@ -345,12 +367,12 @@ cdef class Frame:
     property pose:
         def __set__(self, Pose pose):
 
-            self.inst.pose = (pose.inst)
+            self.inst.pose.set_pose(pose.inst)
 
 
         def __get__(self):
             cdef Pose py_result = Pose()
-            py_result.inst = self.inst.pose
+            py_result.inst = self.inst.pose.get_pose()
             return py_result
 
     property stereo_image:
@@ -394,12 +416,12 @@ cdef class KeyFrame:
     property pose:
         def __set__(self, Pose pose):
 
-            self.inst.pose = (pose.inst)
+            self.inst.pose.set_pose(pose.inst)
 
 
         def __get__(self):
             cdef Pose py_result = Pose()
-            py_result.inst = self.inst.pose
+            py_result.inst = self.inst.pose.get_pose()
             return py_result
 
     property stereo_image:
@@ -499,6 +521,9 @@ cdef class KeyPointInformation:
     """
 
     cdef _KeyPointInformation inst
+
+    def __cinit__(self):
+        self.inst.kf = _KalmanFilter()
 
     property score:
         def __set__(self, float score):

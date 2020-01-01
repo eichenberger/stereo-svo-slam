@@ -84,8 +84,11 @@ class BlenderInput():
         self.camera_settings.grid_height = 30
         self.camera_settings.search_x = 30
         self.camera_settings.search_y = 6
-
-
+        self.camera_settings.window_size = 4
+        self.camera_settings.window_size_opt_flow = 31
+        self.camera_settings.window_size_depth_calculator = 31
+        self.camera_settings.max_pyramid_levels = 5
+        self.camera_settings.min_pyramid_level_pose_estimation = 2
 
     def read(self):
 
@@ -186,6 +189,8 @@ def main():
     slam = StereoSlam(camera.camera_settings)
 
     gray_l, gray_r = camera.read()
+    timestamp = cv2.TickMeter()
+    timestamp.start()
     async def read_frame():
         print("SLAM started")
         key = 0
@@ -194,7 +199,10 @@ def main():
                 gray_l, gray_r = camera.read()
                 tm = cv2.TickMeter()
                 tm.start()
-                slam.new_image(gray_l.copy(), gray_r.copy())
+                timestamp.stop()
+                dt = timestamp.getTimeSec()
+                timestamp.start()
+                slam.new_image(gray_l.copy(), gray_r.copy(), dt)
                 tm.stop()
                 print(f"stereo slam took: {tm.getTimeMilli()} ms")
 

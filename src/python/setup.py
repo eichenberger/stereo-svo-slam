@@ -26,7 +26,7 @@ distutils.ccompiler.CCompiler.compile=parallelCCompile
 
 
 sources = ["wrapper/slam_accelerator.pyx"]
-libraries = ["stereosvo"]
+libraries = ["stereosvo", "opencv_video"]
 #libraries = ["m", "opencv_core", 'omp5', 'opencv_features2d',
 #             'opencv_imgproc', 'opencv_calib3d','opencv_video', 'opencv_highgui']
 library_dirs = ['../lib']
