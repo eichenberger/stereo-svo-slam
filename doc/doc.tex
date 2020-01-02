@@ -39,8 +39,12 @@
 
 \chapter{Introduction}
 
-Humans use different sensors to estimate the pose of the head inside a room. Everyone ever tried to stand on one foot and closed the eyes knows that closing eyes makes finding the balance harder. From this we can guess that our eyes are an import factor for finding the pose for our brain. In this thesis we try to find a way to use the same optical information from a camera to estimate the pose of the camera inside a room. This is called visual odometry (VO). In this documentation we analyse and reimplement an algorithm which is called Semi-Dens Visual Odometry (SVO). The corresponding paper states that this algorithm is fast and can be used on embedded systems. We try to reimplement this algorithm and use it together with stereo cameras while the original algorithm uses a monocular camera.\\
-Even thought SVO SLAM is open source, the reference implementation is over 4 years old and has a lot of 3th party libraries. There exists a newer version called SVO2. However, this implementation is closed source. The new library written during this project will be completely independent of the original implementation. It will have less dependencies and will run faster. While the original implementation can be used with monocular camera the new library requires stereo cameras.
+Humans use different sensors to estimate the pose of the head inside a room. Everyone ever tried to stand on one foot and closed the eyes knows that closing eyes makes finding the balance harder. From this we can guess that our eyes are an import factor for finding the pose for our brain. In this thesis we try to find a way to use the same optical information from a camera to estimate the pose of the camera inside a room. This is called visual odometry (VO). Most algorithms that implement visual odometry also require SLAM (Simultaneous Localization and Mapping). This means they create a map of the environment while constantly estimating the camera position. Therefore, we use this terms interchangeably in this document. Th
+
+In this documentation we analyse and reimplement an algorithm which is called Semi-Dens Visual Odometry (SVO). The corresponding paper states that this algorithm is fast and can be used on embedded systems. We try to reimplement this algorithm and use it together with stereo cameras while the original algorithm uses a monocular camera.\\
+Even thought SVO SLAM is open source, the reference implementation is over 4 years old and has a tons of 3th party dependencies. There is a newer version called SVO2 but this implementation is closed source. The new library written during this project will be independent from the original implementation. It will have less dependencies and will run faster. While the original implementation be use a monocular camera the new library uses a stereo camera.
+
+\chapter{Planing}
 
 \section{Requirement Specification}
 
@@ -73,7 +77,7 @@ The application shall have a feature to export a generated map for further use.
 \subsubsection{Relocation}
 The application shall have a mechanism to load a pre-generated map that can be used to do relocation.
 
-\section{Planning}
+\section{Time plan}
 The master thesis is honored with 27 ECTS. 1 ECTS consumes 30h which results in a total of 810h. Assuming 8.5 working hours per day, we have to spend 95.29 working days. Because the thesis is done part time a full year can be used. We assume one year has 48 weeks. During the first 16 weeks only 1.5 days can be used for the master thesis (because of additional modules). This means during the first 16 weeks we only work 24 days on the project. 71.29 days are left for the last 32 weeks. This results in 2.228 days work during the 32 weeks. Figure \ref{fig:gantt} shows the initial planing. The first implementation of the algorithm takes longer than the rest because only 1.5 days can be spent for the thesis during this period.
 
 \begin{figure}[H]
@@ -355,6 +359,79 @@ As we saw before SVO \cite{svo} uses monocular cameras. For that it is necessary
   w                   &: \text{New information}\\
   v                   &: \text{Measurement error/noise}\\
 \end{align*}
+
+\chapter{Depth}\label{ch:depth}
+
+To find the depth at a certain point (.e.g. keypoint) we match the intensities of the left and right images for a certain patch. Because we vertically aligned the camera, the algorithm starts matching the right image at pixel position of the left image and searches from there to the right as shown in figure \ref{fig:disparity}. The position with the smallest intensity difference between left and right is where we calculate the distance. We call the distance between the left and right image disparity. An object far away has less disparity than an object near to the camera. A point at infinity will have a disparity of zero. Because camera images are normally noisy it's not possible to just use one pixel instead a whole patch should be used to reduce the influence of noise. For the Econ Tara at 752x480 a patch size of 31x31 pixel works well. The patch size was found empirically.
+
+\begin{figure}[H]
+  \begin{center}
+    \includegraphics[width=0.9\textwidth]{img/disparity_concept.png}
+  \end{center}
+  \caption{Disparity with epipolar (horizontal) line, left: left image, right: right image with transparent left image}\label{fig:disparity}
+\end{figure}
+
+From the disparity we can calculate the depth (distance from the camera) by using the formula shown in equation \ref{eq:depth_disp}.
+
+\begin{equation}\label{eq:depth_disp}
+  Z=\frac{f_m*b*s_{px}}{d}=\frac{f_x*b}{d}
+\end{equation}
+\begin{align*}
+  Z        &: \text{Depth/Distance from camera}\\
+  f_x      &: \text{Focal length in pixel}\\
+  d        &: \text{Disparity}\\
+  b        &: \text{Baseline in meter}\\
+  f_m      &: \text{Focal length in meter}\\
+  s_{px}  &: \text{Pixel size in meter}
+\end{align*}
+
+If we know the pose of the camera we can transform the depth to the global coordinate system. First we need to find calculate the X and Y position in the 3D space with camera as (0,0,0). This is shown in equation \ref{eq:depth_xy}.
+
+\begin{equation}\label{eq:depth_xy}
+  \begin{gathered}
+    X = \frac{x-c_x}{f_x*Z}\\
+    Y = \frac{y-c_y}{f_y*Z}\\
+  \end{gathered}
+\end{equation}
+\begin{align*}
+  X,Y,Z    &: \text{Point coordinates with Camera 0,0,0}\\
+  f_x,f_y  &: \text{Focal length in pixel}\\
+  c_x,c_y  &: \text{Image center (where z axis goes through)}\\
+  x,y      &: \text{2D point in image}
+\end{align*}
+
+Now we can simply transform the 3D point with camera as reference to the global coordinate system by using the camera pose. This is shown in equation \ref{eq:depth_global}.
+
+\begin{equation}\label{eq:depth_global}
+  \begin{pmatrix}
+    X'\\
+    Y'\\
+    Z'
+  \end{pmatrix}=
+  \begin{pmatrix}
+    r_{11} & r_{12} & r_{13}\\
+    r_{21} & r_{22} & r_{23}\\
+    r_{31} & r_{32} & r_{33}\\
+  \end{pmatrix}
+  \begin{pmatrix}
+    X\\
+    Y\\
+    Z
+  \end{pmatrix}
+  +\begin{pmatrix}
+    t_x\\
+    t_y\\
+    t_z
+  \end{pmatrix}
+\end{equation}
+\begin{align*}
+  X,Y,Z      &: \text{Point coordinates with Camera 0,0,0}\\
+  X',Y',Z'  &: \text{Global point coordinates}\\
+  r_{ij}    &: \text{Camera rotation matrix}\\
+  t_{x,y,z}  &: \text{Camera location}
+\end{align*}
+
+
 
 \chapter{Optical Flow}\label{ch:opt_flow}
 To speed up the optimization a predefined gradient can be calculated. The method to find such a gradient is related to the Lucas-Kanade optical flow method. Instead of searching a Warp matrix we search a transformation matrix in this scenario. We have two images $I_{k-1}$ and $I_{k}$. We know the pose of image k-1 $T_{k-1}$ . We search the pose $T_k$.\\
@@ -790,77 +867,6 @@ We now only have to find a solution for $\frac{\sigma e^{\xi}p}{\sigma \xi}$ to 
 
 Given the Jacobian, all 3D points we can now calculate the gradient for a given pose and then iteratively optimize the pose pased on the gradient. Becasue we again use the Inverse Compositional Lucas Kanade approach, the Hessian only needs to be calculated once per optimization step and not for each iteration.
 
-\chapter{Depth}\label{ch:depth}
-
-To find the depth at a certain point (.e.g. keypoint) we match the intensities of the left and right images for a certain patch. Because we vertically aligned the camera, the algorithm starts matching the right image at pixel position of the left image and searches from there to the right as shown in figure \ref{fig:disparity}. The position with the smallest intensity difference between left and right is where we calculate the distance. We call the distance between the left and right image disparity. An object far away has less disparity than an object near to the camera. A point at infinity will have a disparity of zero. Because camera images are normally noisy it's not possible to just use one pixel instead a whole patch should be used to reduce the influence of noise. For the Econ Tara at 752x480 a patch size of 31x31 pixel works well. The patch size was found empirically.
-
-\begin{figure}[H]
-  \begin{center}
-    \includegraphics[width=0.9\textwidth]{img/disparity_concept.png}
-  \end{center}
-  \caption{Disparity with epipolar (horizontal) line, left: left image, right: right image with transparent left image}\label{fig:disparity}
-\end{figure}
-
-From the disparity we can calculate the depth (distance from the camera) by using the formula shown in equation \ref{eq:depth_disp}.
-
-\begin{equation}\label{eq:depth_disp}
-  Z=\frac{f_m*b*s_{px}}{d}=\frac{f_x*b}{d}
-\end{equation}
-\begin{align*}
-  Z        &: \text{Depth/Distance from camera}\\
-  f_x      &: \text{Focal length in pixel}\\
-  d        &: \text{Disparity}\\
-  b        &: \text{Baseline in meter}\\
-  f_m      &: \text{Focal length in meter}\\
-  s_{px}  &: \text{Pixel size in meter}
-\end{align*}
-
-If we know the pose of the camera we can transform the depth to the global coordinate system. First we need to find calculate the X and Y position in the 3D space with camera as (0,0,0). This is shown in equation \ref{eq:depth_xy}.
-
-\begin{equation}\label{eq:depth_xy}
-  \begin{gathered}
-    X = \frac{x-c_x}{f_x*Z}\\
-    Y = \frac{y-c_y}{f_y*Z}\\
-  \end{gathered}
-\end{equation}
-\begin{align*}
-  X,Y,Z    &: \text{Point coordinates with Camera 0,0,0}\\
-  f_x,f_y  &: \text{Focal length in pixel}\\
-  c_x,c_y  &: \text{Image center (where z axis goes through)}\\
-  x,y      &: \text{2D point in image}
-\end{align*}
-
-Now we can simply transform the 3D point with camera as reference to the global coordinate system by using the camera pose. This is shown in equation \ref{eq:depth_global}.
-
-\begin{equation}\label{eq:depth_global}
-  \begin{pmatrix}
-    X'\\
-    Y'\\
-    Z'
-  \end{pmatrix}=
-  \begin{pmatrix}
-    r_{11} & r_{12} & r_{13}\\
-    r_{21} & r_{22} & r_{23}\\
-    r_{31} & r_{32} & r_{33}\\
-  \end{pmatrix}
-  \begin{pmatrix}
-    X\\
-    Y\\
-    Z
-  \end{pmatrix}
-  +\begin{pmatrix}
-    t_x\\
-    t_y\\
-    t_z
-  \end{pmatrix}
-\end{equation}
-\begin{align*}
-  X,Y,Z      &: \text{Point coordinates with Camera 0,0,0}\\
-  X',Y',Z'  &: \text{Global point coordinates}\\
-  r_{ij}    &: \text{Camera rotation matrix}\\
-  t_{x,y,z}  &: \text{Camera location}
-\end{align*}
-
 \chapter{Pose refinement}\label{ch:pose_refinement}
 
 Pose refinement is used to decrease the drift over time and to increase the accuracy of the pose estimation. In a first step we use optical flow to locate keypoints from the keyframe in the current image. Then we try to minimize the reprojection error shown in equation \ref{eq:refinement_reprojection}.
@@ -959,27 +965,76 @@ In this chapter we discuss the implementation that was written during this thesi
 
 \chapter{Results}
 
-For testing the algorithm with a reference implementation we use two synthetic scenes generated by Blender. The advantage of having synthetic scenes is that we can test some well defined movements where we know exactly the trajectory. We compare our implementation with svo edgelet \cite{svo_edgled}. This is based on the reference svo implementation. However, it is using newer versions of OpenCV, libegien, etc. They added edgelets tracking which is missing in the original svo sources and they added a GUI to observe the tracking. However, it's much slower than the original implementation on the other side it seems to be more robust than the original implementation.
+For testing the algorithm with a reference implementation we use a synthetic scene generated by Blender. The advantage of having synthetic scenes is that we can test some well defined movements where we exactly know the trajectory. We compare our implementation with SVO edgelet \cite{svo_edgled} as well as the original SVO implementation \cite{svo}. This is based on the reference SVO implementation. However, it is using newer versions of OpenCV, libegien, etc. They added edgelets tracking which is missing in the original SVO sources and they added a GUI to observe the tracking. However, it's much slower than the original implementation on the other side it seems to be more robust than the original implementation. Unfortunately the reference implementation are quite prone to changes in z and angle changes. Therefore, a simplified scene was generate to have at least some reference.
 
-\sectuion{Classroom}
-In our first test we change the position and angles as shown in figure \ref{fig:blender_classroom_traj}.
-
+\section{Classroom}
 \begin{figure}[H]
-  \includegraphics[width=1.0\textwidth]{img/blender_classroom_traj.png}
-  \caption{Blender classroom trajectory}\label{fig:blender_classroom_traj}
+  \includegraphics[width=1.0\textwidth]{img/blender_classroom_scene.png}
+  \caption{Blender classroom scene}\label{fig:blender_classroom_scene}
 \end{figure}
 
-We now measure the difference of the reference trajectory to what we measure by using our SVO implementation. We see in figure \ref{fig:blender_classroom_our_diff} that we have low errors (< 0.06 m) when moving and up to 2° for angles.
+For the first test we use the Blender Classroom Scene \cite{blender}. A snapshot from this scene is shown in figure \ref{fig:blender_classroom_scene}. An image for the left and right camera was rendered to have a valid stereo image input. We change the position and angles in this scene as shown in figure \ref{fig:blender_classroom_simple_traj}.
+
 \begin{figure}[H]
-  \includegraphics[width=1.0\textwidth]{img/blender_classroom_our_diff.png}
-  \caption{Blender classroom error our implementation. Distances in meter, angels in °.}\label{fig:blender_classroom_our_diff}
+  \includegraphics[width=1.0\textwidth]{img/blender_classroom_simple_traj.png}
+  \caption{Blender classroom trajectory}\label{fig:blender_classroom_simple_traj}
 \end{figure}
 
-Figure \ref{fig:blender_classroom_ref_diff} shows the difference of the reference implementation. Please not that this implementation only uses monocular images. The first 11 pictures are required to initialize the tracking. Therefore, no data is available during that time. The scaling is not known and therefore the output trajectory was later scaled to match in meters. It seems that the point cloud is less accurate than in the stereo case. A movement along x axis also affects the yaw value. The simultainous change in movement and angle seems to be a huge problem for the monocular tracker. The tracker can't insert new keypoints during this movement because the change in position is too small. Therefore, we see a huge error there.
+Figure \ref{fig:blender_classroom_simple_diff} shows the trajectory difference measured by our implementation, the SVO edgeled reference and the orignal SVO implementation. Both reference implementations are scaled to make a comparison possible. Table \ref{tab:maximas} show the maximum error, table \ref{tab:average} the average error and table \ref{tab:fps} shows the average frames per seconds when doing the measurement.
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{|c|c|c|c|c|c|c|}
+  { impl & err x & err y & err z & err pitch & err yaw & err roll }\\
+  \hline
+  Our & 0.031 & 0.013 & 0.073 & 0.205 & 0.610 & 0.285\\
+  Edgled & 0.344 & 0.099 & 0.273 & 0.989 & 12.941 & 1.430\\
+  Orig & 0.300 & 0.120 & 0.488 & 1.169 & 6.123 & 1.390\\
+  ORB & 0.023 & 0.015 & 0.023 & 0.222 & 0.302 & 0.204
+\end{tabular}
+\caption{Maximum errors}
+\label{tab:maximas}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{|c|c|c|c|c|c|c|}
+  { impl & err x & err y & err z & err pitch & err yaw & err roll }\\
+  \hline
+  Our & 0.008 & 0.005 & 0.032 & 0.110 & 0.390 & 0.107\\
+  Edgled & 0.158 & 0.050 & 0.093 & 0.477 & 5.349 & 0.344\\
+  Orig & 0.060 & 0.058 & 0.202 & 0.396 & 3.132 & 0.557\\
+  ORB & 0.006 & 0.004 & 0.011 & 0.074 & 0.084 & 0.123
+\end{tabular}
+
+\caption{Average errors}
+\label{tab:average}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{|c|c|}
+  { impl & FPS}\\
+  \hline
+  Our & 52.38\\
+  Edgled & 0.93\\
+  Orig & 115.81\\
+  ORB & 17.38
+\end{tabular}
+\caption{Frame rate}
+\label{tab:fps}
+\end{table}
+
+As we see in the results all implementations have a hard time to track the yaw angle and the z movment. Both is expected because the with a change in yaw we can often correct small movments along the x axis. When moving along the z axis we are not able to refine the 3D point positions because we don't get any change along the x or y axis. This makes it impossible for monocular systems to insert new keypoints.
+
 \begin{figure}[H]
-  \includegraphics[width=1.0\textwidth]{img/blender_classroom_ref_diff.png}
-  \caption{Blender classroom error reference implementation. Distances in meter, angels in °.}\label{fig:blender_classroom_ref_diff}
+  \subfloat[Our implementation]{\includegraphics[width=0.5\textwidth]{img/blender_classroom_simple_our_diff.png}}
+  \subfloat[SVO Edgled implementation]{\includegraphics[width=0.5\textwidth]{img/blender_classroom_simple_ref_diff.png}}\\
+  \subfloat[SVO Original implementation]{\includegraphics[width=0.5\textwidth]{img/blender_classroom_simple_orig_diff.png}}
+  \subfloat[ORB SLAM]{\includegraphics[width=0.5\textwidth]{img/blender_classroom_simple_orb_diff.png}}
+  \caption{Blender classroom Scene errors. Distances in meter, angels in Degree.}\label{fig:blender_classroom_simple_diff}
 \end{figure}
+
 
 \printbibliography
 
