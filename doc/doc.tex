@@ -985,29 +985,29 @@ Figure \ref{fig:blender_classroom_simple_diff} shows the trajectory difference m
 \begin{table}[H]
   \centering
   \begin{tabular}{|c|c|c|c|c|c|c|}
-  { impl & err x & err y & err z & err pitch & err yaw & err roll }\\
+  { impl & err x & err y & err z & err rx & err ry & err rz }\\
   \hline
-  Our & 0.031 & 0.013 & 0.073 & 0.205 & 0.610 & 0.285\\
-  Edgled & 0.344 & 0.099 & 0.273 & 0.989 & 12.941 & 1.430\\
-  Orig & 0.300 & 0.120 & 0.488 & 1.169 & 6.123 & 1.390\\
-  ORB & 0.023 & 0.015 & 0.023 & 0.222 & 0.302 & 0.204
+  Our SVO & 0.031 & 0.013 & 0.073 & 0.205 & 0.610 & 0.285\\
+  Edgled SVO & 0.344 & 0.099 & 0.273 & 0.989 & 12.941 & 1.430\\
+  Original SVO & 0.300 & 0.120 & 0.488 & 1.169 & 6.123 & 1.390\\
+  ORB SLAM& 0.023 & 0.015 & 0.023 & 0.222 & 0.302 & 0.204
 \end{tabular}
-\caption{Maximum errors}
+\caption{Maximum errors in meter (x,y,z) and Degrees (rx,ry,rz)}
 \label{tab:maximas}
 \end{table}
 
 \begin{table}[H]
   \centering
   \begin{tabular}{|c|c|c|c|c|c|c|}
-  { impl & err x & err y & err z & err pitch & err yaw & err roll }\\
+  { impl & err x & err y & err z & err rx & err ry & err rz }\\
   \hline
-  Our & 0.008 & 0.005 & 0.032 & 0.110 & 0.390 & 0.107\\
-  Edgled & 0.158 & 0.050 & 0.093 & 0.477 & 5.349 & 0.344\\
-  Orig & 0.060 & 0.058 & 0.202 & 0.396 & 3.132 & 0.557\\
-  ORB & 0.006 & 0.004 & 0.011 & 0.074 & 0.084 & 0.123
+  Our SVO & 0.008 & 0.005 & 0.032 & 0.110 & 0.390 & 0.107\\
+  Edgled SVO & 0.158 & 0.050 & 0.093 & 0.477 & 5.349 & 0.344\\
+  Original SVO & 0.060 & 0.058 & 0.202 & 0.396 & 3.132 & 0.557\\
+  ORB SLAM & 0.006 & 0.004 & 0.011 & 0.074 & 0.084 & 0.123
 \end{tabular}
 
-\caption{Average errors}
+\caption{Average errors in meter (x,y,z) and Degrees (rx,ry,rz)}
 \label{tab:average}
 \end{table}
 
@@ -1016,16 +1016,16 @@ Figure \ref{fig:blender_classroom_simple_diff} shows the trajectory difference m
   \begin{tabular}{|c|c|}
   { impl & FPS}\\
   \hline
-  Our & 52.38\\
-  Edgled & 0.93\\
-  Orig & 115.81\\
-  ORB & 17.38
+  Our SVO & 52.38\\
+  Edgled SVO & 0.93\\
+  Original SVO & 115.81\\
+  ORB SLAM & 17.38
 \end{tabular}
 \caption{Frame rate}
 \label{tab:fps}
 \end{table}
 
-As we see in the results all implementations have a hard time to track the yaw angle and the z movment. Both is expected because the with a change in yaw we can often correct small movments along the x axis. When moving along the z axis we are not able to refine the 3D point positions because we don't get any change along the x or y axis. This makes it impossible for monocular systems to insert new keypoints.
+As we see in the results all implementations have a hard time to track the ry angle and the z movment. Both is expected because the with a change in ry we can often correct small movments along the x axis. When moving along the z axis we are not able to refine the 3D point positions because we don't get any change along the x or y axis. This makes it impossible for monocular systems to insert new keypoints.
 
 \begin{figure}[H]
   \subfloat[Our implementation]{\includegraphics[width=0.5\textwidth]{img/blender_classroom_simple_our_diff.png}}
@@ -1035,6 +1035,49 @@ As we see in the results all implementations have a hard time to track the yaw a
   \caption{Blender classroom Scene errors. Distances in meter, angels in Degree.}\label{fig:blender_classroom_simple_diff}
 \end{figure}
 
+\section{Barcelona}
+
+\begin{figure}[H]
+  \includegraphics[width=1.0\textwidth]{img/blender_barcelona_scene.png}
+  \caption{Blender Barcelona scene}\label{fig:blender_barcelona_scene}
+\end{figure}
+
+\begin{figure}[H]
+  \includegraphics[width=1.0\textwidth]{img/blender_barcelona_traj.png}
+  \caption{Blender Barcelona trajectory}\label{fig:blender_barcelona_traj}
+\end{figure}
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{|c|c|c|c|c|c|c|}
+  { impl & err x & err y & err z & err rx & err ry & err rz }\\
+  \hline
+  Our SVO & 0.577 & 1.230 & 1.503 & 6.521 & 12.698 & 14.772\\
+  ORB SLAM& 0.993 & 0.189 & 0.592 & 7.491 & 19.315 & 10.542
+\end{tabular}
+\caption{Maximum errors in meter (x,y,z) and Degrees (rx,ry,rz)}
+\label{tab:barcelona_maximas}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{|c|c|c|c|c|c|c|}
+    { impl & err x & err y & err z & err rx & err ry & err rz }\\
+    \hline
+    Our SVO & 0.265 & 0.447 & 0.722 & 1.528 & 2.704 & 3.21\\
+    ORB SLAM & 0.734 & 0.088 & 0.416 & 0.711 & 2.717 & 1.955
+  \end{tabular}
+\caption{Average errors in meter (x,y,z) and Degrees (rx,ry,rz)}
+\label{tab:barcelona_average}
+\end{table}
+
+\begin{figure}[H]
+  \subfloat[Our implementation]{\includegraphics[width=0.5\textwidth]{img/blender_barcelona_our_diff.png}}
+  \subfloat[ORB SLAM]{\includegraphics[width=0.5\textwidth]{img/blender_barcelona_orb_diff.png}}
+  \caption{Blender Barcelona Scene errors. Distances in meter, angels in Degree.}\label{fig:blender_barcelona_diff}
+\end{figure}
+
+\chapter{Discussion}
 
 \printbibliography
 
