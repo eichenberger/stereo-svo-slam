@@ -8,9 +8,9 @@ struct Pose {
     float x;
     float y;
     float z;
-    float pitch;    // around x
-    float yaw;      // around y
-    float roll;     // around z
+    float rx;    // around x
+    float ry;      // around y
+    float rz;     // around z
 };
 
 class PoseManager
@@ -24,6 +24,7 @@ public:
     cv::Matx33f get_inv_rotation_matrix() const;
     cv::Vec3f get_translation() const;
     cv::Vec3f get_angles() const;
+    cv::Vec3f get_robot_angles() const;
     Pose get_pose() const;
     cv::Vec6f get_vector() const;
     friend std::ostream& operator<<(std::ostream& os, const PoseManager& pose);

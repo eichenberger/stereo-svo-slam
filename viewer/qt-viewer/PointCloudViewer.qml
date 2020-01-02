@@ -62,9 +62,9 @@ Scene3D {
             _keyframePoses[i*6+0] = keyframes[i].pose.x;
             _keyframePoses[i*6+1] = keyframes[i].pose.y;
             _keyframePoses[i*6+2] = keyframes[i].pose.z;
-            _keyframePoses[i*6+3] = keyframes[i].pose.pitch;
-            _keyframePoses[i*6+4] = keyframes[i].pose.yaw;
-            _keyframePoses[i*6+5] = keyframes[i].pose.roll;
+            _keyframePoses[i*6+3] = keyframes[i].pose.rx;
+            _keyframePoses[i*6+4] = keyframes[i].pose.ry;
+            _keyframePoses[i*6+5] = keyframes[i].pose.rz;
 
 
         }
@@ -100,9 +100,9 @@ Scene3D {
             viewCenter: Qt.vector3d( 0.0, 0.0, 0.0 )
         }
 
-        // This is the most natural controller I found
+        // This is the most natural contrzer I found
         OrbitCameraController {
-            id: controller
+            id: contrzer
             camera: camera
             linearSpeed: 100
         }
@@ -331,7 +331,7 @@ Scene3D {
                 property var currentPose: scene3d.currentPose
 
                 translation: Qt.vector3d(currentPose.x, currentPose.y, currentPose.z)
-                rotation: fromEulerAngles(Qt.vector3d(180.0*currentPose.pitch/Math.PI, 180.0*currentPose.yaw/Math.PI, 180.0*currentPose.roll/Math.PI))
+                rotation: fromEulerAngles(Qt.vector3d(180.0*currentPose.rx/Math.PI, 180.0*currentPose.ry/Math.PI, 180.0*currentPose.rz/Math.PI))
             }
 
             components: [poseTransformation, keyframeRenderer, poseMaterial, pointLayer]

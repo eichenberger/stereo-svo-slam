@@ -194,9 +194,9 @@ float PoseRefiner::update_pose(const KeyPoints &keypoints,
     x0[0] = pose.x;
     x0[1] = pose.y;
     x0[2] = pose.z;
-    x0[3] = pose.pitch;
-    x0[4] = pose.yaw;
-    x0[5] = pose.roll;
+    x0[3] = pose.rx;
+    x0[4] = pose.ry;
+    x0[5] = pose.rz;
 
     Ptr<MinProblemSolver::Function> callback = new PoseRefinerCallback(keypoints2d,
             keypoints3d, keypoint_information, camera_settings);
@@ -210,9 +210,9 @@ float PoseRefiner::update_pose(const KeyPoints &keypoints,
     pose.x = x0[0];
     pose.y = x0[1];
     pose.z = x0[2];
-    pose.pitch = x0[3];
-    pose.yaw = x0[4];
-    pose.roll = x0[5];
+    pose.rx = x0[3];
+    pose.ry = x0[4];
+    pose.rz = x0[5];
 
     refined_pose.set_pose(pose);
 
@@ -299,9 +299,9 @@ double PoseRefinerCallback::calc(const double *x) const
     pose.x = x[0];
     pose.y = x[1];
     pose.z = x[2];
-    pose.pitch = x[3];
-    pose.yaw = x[4];
-    pose.roll = x[5];
+    pose.rx = x[3];
+    pose.ry = x[4];
+    pose.rz = x[5];
 
     PoseManager _pose;
     _pose.set_pose(pose);

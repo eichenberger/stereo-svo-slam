@@ -7,9 +7,9 @@ Slam::Slam(QObject *parent) : QObject(parent)
     previous_pose.x = 0;
     previous_pose.y = 0;
     previous_pose.z = 0;
-    previous_pose.pitch = 0;
-    previous_pose.yaw = 0;
-    previous_pose.roll= 0;
+    previous_pose.rx = 0;
+    previous_pose.ry = 0;
+    previous_pose.rz= 0;
 }
 
 Slam::~Slam()
@@ -30,9 +30,9 @@ bool Slam::process_image()
 
     // OpenGL uses a different coordinate system than we do. Everything besides z is mirrored...
     QVector3D position(_pose.x, _pose.y, _pose.z);
-    QVector3D rotation((_pose.pitch)/M_PI*180.0,
-                       (_pose.yaw)/M_PI*180.0,
-                       (_pose.roll)/M_PI*180.0);
+    QVector3D rotation((_pose.rx)/M_PI*180.0,
+                       (_pose.ry)/M_PI*180.0,
+                       (_pose.rz)/M_PI*180.0);
 
     previous_pose = _pose;
     emit pose(position, rotation);

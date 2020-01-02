@@ -147,9 +147,9 @@ void StereoSlam::new_image(const Mat &left, const Mat &right, const float time_s
         pose.x = 0;
         pose.y = 0;
         pose.z = 0;
-        pose.pitch = 0;
-        pose.yaw = 0; // M_PI; //0;
-        pose.roll = 0;
+        pose.rx = 0;
+        pose.ry = 0; // M_PI; //0;
+        pose.rz = 0;
         frame->pose.set_pose(pose);
 
         keyframe = keyframe_manager.create_keyframe(*frame);
@@ -184,9 +184,9 @@ void StereoSlam::new_image(const Mat &left, const Mat &right, const float time_s
         predicted_pose.x = kf.statePre.at<float>(0);
         predicted_pose.y = kf.statePre.at<float>(1);
         predicted_pose.z = kf.statePre.at<float>(2);
-        predicted_pose.pitch = kf.statePre.at<float>(3);
-        predicted_pose.yaw = kf.statePre.at<float>(4);
-        predicted_pose.roll = kf.statePre.at<float>(5);
+        predicted_pose.rx = kf.statePre.at<float>(3);
+        predicted_pose.ry = kf.statePre.at<float>(4);
+        predicted_pose.rz = kf.statePre.at<float>(5);
 
         cout << "Previous pose: " << previous_frame->pose;
         frame->pose.set_pose(predicted_pose);
@@ -328,9 +328,9 @@ Pose StereoSlam::update_pose(const Pose &pose, const Vec6f &speed,
             pose.x,
             pose.y,
             pose.z,
-            pose.pitch,
-            pose.yaw,
-            pose.roll,
+            pose.rx,
+            pose.ry,
+            pose.rz,
             speed(0),
             speed(1),
             speed(2),
@@ -344,9 +344,9 @@ Pose StereoSlam::update_pose(const Pose &pose, const Vec6f &speed,
     filtered_pose.x = kf.statePost.at<float>(0);
     filtered_pose.y = kf.statePost.at<float>(1);
     filtered_pose.z = kf.statePost.at<float>(2);
-    filtered_pose.pitch = kf.statePost.at<float>(3);
-    filtered_pose.yaw = kf.statePost.at<float>(4);
-    filtered_pose.roll = kf.statePost.at<float>(5);
+    filtered_pose.rx = kf.statePost.at<float>(3);
+    filtered_pose.ry = kf.statePost.at<float>(4);
+    filtered_pose.rz = kf.statePost.at<float>(5);
 
     //cout << "Post error cov: " << endl << kf.errorCovPost << endl;
     //cout << "dt: " << dt << endl;

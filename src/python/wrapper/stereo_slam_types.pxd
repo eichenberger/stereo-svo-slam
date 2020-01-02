@@ -119,9 +119,9 @@ cdef extern from "stereo_slam_types.hpp":
         float x
         float y
         float z
-        float pitch # around x
-        float yaw   # around y
-        float roll  # around z
+        float rx # around x
+        float ry   # around y
+        float rz  # around z
 
     cdef struct Frame:
         uint64_t id

@@ -29,14 +29,16 @@ void SvoSlamBackend::text_message_received(QWebSocket &socket,
             vector<KeyFrame> keyframes;
             slam->get_keyframes(keyframes);
             for (auto keyframe:keyframes) {
-                Pose _pose = keyframe.pose.get_pose();
+                cv::Vec3f translation = keyframe.pose.get_translation();
+                cv::Vec3f angles = keyframe.pose.get_robot_angles();
+
                 QJsonObject pose;
-                pose["x"] = _pose.x;
-                pose["y"] = _pose.y;
-                pose["z"] = _pose.z;
-                pose["pitch"] = _pose.pitch;
-                pose["yaw"] = _pose.yaw;
-                pose["roll"] = _pose.roll;
+                pose["x"] = translation(0);
+                pose["y"] = translation(1);
+                pose["z"] = translation(2);
+                pose["rx"] = angles(0);
+                pose["ry"] = angles(1);
+                pose["rz"] = angles(2);
                 QJsonArray kps;
                 for (auto kp:keyframe.kps.kps3d) {
                     QJsonObject _kp;
@@ -67,13 +69,14 @@ void SvoSlamBackend::text_message_received(QWebSocket &socket,
         Frame frame;
         slam->get_frame(frame);
         QJsonObject pose;
-        Pose _pose = frame.pose.get_pose();
-        pose["x"]  = _pose.x;
-        pose["y"]  = _pose.y;
-        pose["z"]  = _pose.z;
-        pose["pitch"]  = _pose.pitch;
-        pose["yaw"]  = _pose.yaw;
-        pose["roll"]  = _pose.roll;
+        cv::Vec3f translation = frame.pose.get_translation();
+        cv::Vec3f angles = frame.pose.get_robot_angles();
+        pose["x"] = translation(0);
+        pose["y"] = translation(1);
+        pose["z"] = translation(2);
+        pose["rx"] = angles(0);
+        pose["ry"] = angles(1);
+        pose["rz"] = angles(2);
 
         QJsonObject top_object;
         top_object["pose"] = pose;
@@ -88,9 +91,9 @@ void SvoSlamBackend::text_message_received(QWebSocket &socket,
             trajectory.append(_trajectory[i].x);
             trajectory.append(_trajectory[i].y);
             trajectory.append(_trajectory[i].z);
-            trajectory.append(_trajectory[i].pitch);
-            trajectory.append(_trajectory[i].yaw);
-            trajectory.append(_trajectory[i].roll);
+            trajectory.append(_trajectory[i].rx);
+            trajectory.append(_trajectory[i].ry);
+            trajectory.append(_trajectory[i].rz);
         }
 
         QJsonObject top_object;

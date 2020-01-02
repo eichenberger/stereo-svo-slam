@@ -239,9 +239,9 @@ def main():
                             'x': keyframe.pose.x,
                             'y': keyframe.pose.y,
                             'z': keyframe.pose.z,
-                            'pitch': keyframe.pose.pitch,
-                            'yaw': keyframe.pose.yaw,
-                            'roll': keyframe.pose.roll
+                            'rx': keyframe.pose.rx,
+                            'ry': keyframe.pose.ry,
+                            'rz': keyframe.pose.rz
                         }
 
                         print(f"Pose: {pose}")
@@ -260,9 +260,9 @@ def main():
                         'x': frame.pose.x,
                         'y': frame.pose.y,
                         'z': frame.pose.z,
-                        'pitch': frame.pose.pitch,
-                        'yaw': frame.pose.yaw,
-                        'roll': frame.pose.roll
+                        'rx': frame.pose.rx,
+                        'ry': frame.pose.ry,
+                        'rz': frame.pose.rz
                     }
 
                     pose = {'pose': pose}

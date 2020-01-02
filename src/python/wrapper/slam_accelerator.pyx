@@ -686,36 +686,36 @@ cdef class Pose:
             py_result = <float>_r
             return py_result
 
-    property pitch:
-        def __set__(self, float pitch):
+    property rx:
+        def __set__(self, float rx):
 
-            self.inst.pitch = (<float>pitch)
+            self.inst.rx = (<float>rx)
 
 
         def __get__(self):
-            cdef float _r = self.inst.pitch
+            cdef float _r = self.inst.rx
             py_result = <float>_r
             return py_result
 
-    property yaw:
-        def __set__(self, float yaw):
+    property ry:
+        def __set__(self, float ry):
 
-            self.inst.yaw = (<float>yaw)
+            self.inst.ry = (<float>ry)
 
 
         def __get__(self):
-            cdef float _r = self.inst.yaw
+            cdef float _r = self.inst.ry
             py_result = <float>_r
             return py_result
 
-    property roll:
-        def __set__(self, float roll):
+    property rz:
+        def __set__(self, float rz):
 
-            self.inst.roll = (<float>roll)
+            self.inst.rz = (<float>rz)
 
 
         def __get__(self):
-            cdef float _r = self.inst.roll
+            cdef float _r = self.inst.rz
             py_result = <float>_r
             return py_result
 

@@ -125,14 +125,11 @@ void SlamApp::update_pose_from_imu(StereoSlam *slam, float dt)
     Vec6f pose_variance(1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0);
     Vec6f speed_variance(100.0, 100.0, 100.0, 0.1, 0.1, 0.1);
     Pose filtered_pose = frame.pose.get_pose();
-    float y_angle = frame.pose.get_pose().yaw;
     for (size_t i = 0; i < std::min<size_t>(_imu_data.size(), f*dt); i++) {
         ImuData &imu_data = _imu_data[i];
 
         Vec6f speed(0,0,0,imu_data.gyro_x/180.0*M_PI, imu_data.gyro_y/180.0*M_PI, imu_data.gyro_z/180.0*M_PI);
-        y_angle += imu_data.gyro_y/180.0*M_PI/104.0;
 
-        // frae pose is wrong. We need kf.statePost
         filtered_pose = slam->update_pose(filtered_pose, speed, pose_variance, speed_variance, 1.0/f);
     }
 }
@@ -231,8 +228,18 @@ bool SlamApp::stop()
         QTextStream trajectory_stream(&ftrajectory);
         vector<float>::iterator _time_stamp = time_stamps.begin();
         for (auto pose: trajectory) {
+            Matx33f rot_mat_x , rot_mat_y, rot_mat_z;
+            Rodrigues(Vec3f(pose.rx,0,0), rot_mat_x);
+            Rodrigues(Vec3f(0,pose.ry,0), rot_mat_y);
+            Rodrigues(Vec3f(0,0,pose.rz), rot_mat_z);
+
+            Vec3f robot_angles;
+            // We want to compare to what blender gives us. Unforunatley
+            // the order is changed there and we need to convert
+            Rodrigues(rot_mat_x*rot_mat_y*rot_mat_z, robot_angles);
+
             trajectory_stream << *_time_stamp << "," << pose.x << "," << pose.y << "," << pose.z << "," <<
-                pose.pitch << "," << pose.yaw << "," << pose.roll << endl;
+                robot_angles[0] << "," << robot_angles[1] << "," << robot_angles[2] << endl;
             _time_stamp++;
         }
         ftrajectory.close();

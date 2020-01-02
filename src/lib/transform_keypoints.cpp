@@ -53,12 +53,12 @@ void project_keypoints(const PoseManager &pose,
 //    _pose.x = -pose.x;
 //    _pose.y = -pose.y;
 //    _pose.z = -pose.z;
-//    _pose.pitch = -pose.pitch;
-//    _pose.yaw = -pose.yaw;
-//    _pose.roll = -pose.roll;
+//    _pose.rx = -pose.rx;
+//    _pose.ry = -pose.ry;
+//    _pose.rz = -pose.rz;
 //
 //
-//    Mat angles(1, 3, CV_32F, (void*)&_pose.pitch);
+//    Mat angles(1, 3, CV_32F, (void*)&_pose.rx);
 //    Mat rot_mat(3, 3, CV_32F);
 //    Rodrigues(angles, rot_mat);
 //

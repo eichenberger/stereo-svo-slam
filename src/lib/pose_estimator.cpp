@@ -137,7 +137,7 @@ float PoseEstimator::estimate_pose_at_level(const PoseManager &pose_manager_gues
 
     Mat x0 = (Mat_<double>(6,1) <<
         pose_guess.x, pose_guess.y, pose_guess.z,
-        pose_guess.pitch, pose_guess.yaw, pose_guess.roll);
+        pose_guess.rx, pose_guess.ry, pose_guess.rz);
 
     solver_callback->setLevel(level);
     Ptr<DownhillSolver> solver = DownhillSolver::create(solver_callback);
@@ -151,9 +151,9 @@ float PoseEstimator::estimate_pose_at_level(const PoseManager &pose_manager_gues
     _pose.x = x0.at<double>(0);
     _pose.y = x0.at<double>(1);
     _pose.z = x0.at<double>(2);
-    _pose.pitch = x0.at<double>(3);
-    _pose.yaw = x0.at<double>(4);
-    _pose.roll = x0.at<double>(5);
+    _pose.rx = x0.at<double>(3);
+    _pose.ry = x0.at<double>(4);
+    _pose.rz = x0.at<double>(5);
 
     pose.set_pose(_pose);
 
@@ -256,9 +256,9 @@ static inline Pose pose_from_x(const double *x){
     pose.x = x[0];
     pose.y = x[1];
     pose.z = x[2];
-    pose.pitch = x[3];
-    pose.yaw = x[4];
-    pose.roll = x[5];
+    pose.rx = x[3];
+    pose.ry = x[4];
+    pose.rz = x[5];
 
     return pose;
 }

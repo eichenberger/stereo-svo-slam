@@ -35,7 +35,7 @@ Entity {
         ]
     }
 
-    FirstPersonCameraController { camera: camera }
+    FirstPersonCameraContrzer { camera: camera }
 
     components: [
         RenderSettings {
