@@ -162,6 +162,7 @@ void SlamApp::read_image()
 
 bool SlamApp::process_image()
 {
+    static cv::TickMeter ticker;
     Mat _gray_r, _gray_l;
     float _time_stamp;
     int _images_read = 0;
@@ -185,7 +186,11 @@ bool SlamApp::process_image()
 
     cout << "Process image" << endl;
     START_MEASUREMENT();
+    // Only measure the time the algorithm really took
+    ticker.start();
     slam->new_image(_gray_l, _gray_r, _time_stamp);
+    ticker.stop();
+    time_stamps.push_back(ticker.getTimeSec());
     cout << "End process image" << endl;
     END_MEASUREMENT("Stereo SLAM");
 
@@ -224,9 +229,11 @@ bool SlamApp::stop()
         vector<Pose> trajectory;
         slam->get_trajectory(trajectory);
         QTextStream trajectory_stream(&ftrajectory);
+        vector<float>::iterator _time_stamp = time_stamps.begin();
         for (auto pose: trajectory) {
-            trajectory_stream << "0," << pose.x << "," << pose.y << "," << pose.z << "," <<
+            trajectory_stream << *_time_stamp << "," << pose.x << "," << pose.y << "," << pose.z << "," <<
                 pose.pitch << "," << pose.yaw << "," << pose.roll << endl;
+            _time_stamp++;
         }
         ftrajectory.close();
     }

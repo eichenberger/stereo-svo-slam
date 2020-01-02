@@ -57,6 +57,7 @@ private:
     bool running;
     QMutex imu_data_lock;
     std::vector<ImuData> imu_data;
+    std::vector<float> time_stamps;
 };
 
 #endif
