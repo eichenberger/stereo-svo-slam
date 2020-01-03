@@ -39,203 +39,78 @@
 
 \chapter{Introduction}
 
-Humans use different sensors to estimate the pose of the head inside a room. Everyone ever tried to stand on one foot and closed the eyes knows that closing eyes makes finding the balance harder. From this we can guess that our eyes are an import factor for finding the pose for our brain. In this thesis we try to find a way to use the same optical information from a camera to estimate the pose of the camera inside a room. This is called visual odometry (VO). Most algorithms that implement visual odometry also require SLAM (Simultaneous Localization and Mapping). This means they create a map of the environment while constantly estimating the camera position. Therefore, we use this terms interchangeably in this document. Th
+Humans use different sensors to estimate the pose of the head inside a room. Everyone ever tried to stand on one foot and closed the eyes knows that closing eyes makes finding the balance harder. From this we can guess that our eyes are an import factor for finding the pose for our brain. In this thesis we try to find a way to use the same optical information from a camera to estimate the pose of the camera inside a room. This is called visual odometry (VO). Most algorithms that implement visual odometry also require SLAM (Simultaneous Localization and Mapping). Such algorithms create a map of the environment while constantly estimating the camera pose. Therefore, we use this terms interchangeably in this document. Knowing the position of an object is important in a lot of different applications and becomes more and more important towards autonomous navigation. Examples of such applications are e.g. drone navigation, robot navigation or augmented reality. All this application require a flexible and ideally mobile device. Therefore a PC with a big power supply can't be used. This is why such an algorithm should ideally be able to run on embedded devices without the requirement of having powerful GPUs or CPUs available.\\
+The CPVR lab of the Bern university of applied science today uses an algorithm called ORB SLAM for projects related to augmented reality. They were able to tweak the algorithm to achieve an acceptable frame rate of 10-20 frames per second(fps) on mobile phones. However, a faster frame rate would mean that no interpolation is needed or the algorithm could even run on slower devices. Therefore, we evaluate and test a different algorithm for the SLAM problem in this document which is called Semi-Dens Visual Odometry (SVO) \cite{svo}.  The duration one frame is processed by SVO on an i7 processor is 3.44ms when running on two threads according to their paper \cite{svo2}. Even thought SVO SLAM is open source, the reference implementation is over 4 years old and has tons of 3th party dependencies. There is a newer version available called SVO2 \cite{svo2} but this implementation is closed source. However, it is based on the original implementation of SVO. In this document we describe our own implementation of the SVO algorithm but we focus on stereo camera SLAM only while the original implementation was meant for monocular cameras. We will analyse the robustness of the SVO and how suitable it is for embedded systems.
 
-In this documentation we analyse and reimplement an algorithm which is called Semi-Dens Visual Odometry (SVO). The corresponding paper states that this algorithm is fast and can be used on embedded systems. We try to reimplement this algorithm and use it together with stereo cameras while the original algorithm uses a monocular camera.\\
-Even thought SVO SLAM is open source, the reference implementation is over 4 years old and has a tons of 3th party dependencies. There is a newer version called SVO2 but this implementation is closed source. The new library written during this project will be independent from the original implementation. It will have less dependencies and will run faster. While the original implementation be use a monocular camera the new library uses a stereo camera.
+\section{SLAM}
 
-\chapter{Planing}
-
-\section{Requirement Specification}
-
-This section lists the features that must and shall be implemented during the master thesis. The word must means that these are hard requirements. Shall describes nice to have features that aren't hardly required. Can are options that are not required at all. The numbers after \# are IDs found in the Gantt chart of figure \ref{fig:gantt}.
-
-\subsection{SLAM Library \#42}
-A SLAM library must be written which runs at 30 fps on stereo gray scale images at a resolution of 752x480 on two Intel i5-7Y54 CPUs.
-\subsubsection{SVO based algorithm \#44}
-A first implementation of the library shall be based on SVO. However, it's not mandatory to be the exact SVO algorithm.
-\subsubsection{Plane Detection \#45}
-The library must provide a mechanism to detect points laying on a plane and to remove redundant points.
-\subsubsection{Plane Mesh Creation \#46}
-The library must create a plane mesh from the sparse point cloud. The mesh shall contain textures from corresponding images.
-\subsubsection{IMU Integration \#47}
-The library must provide an interface to feed data from an IMU to estimate the motion model.
-\subsubsection{Relocation \#48}
-The library shall provide an interface to find the current location of the camera based on a pre-generated map
-\subsubsection{Language}
-The library must provide a Python 3 interface.
-\subsubsection{CPU}
-The library must run on x86/amd64 but shall not be limited to this architecture.
-\subsection{OpenCL}
-OpenCL can be used to increase the performance of the library
-\subsection{Example Application \#43}
-An application must be written that shows the capabilities of the library. 
-\subsubsection{Mapping}
-The application must create a sparse map of a typical room with four walls, one door and two windows. However, it shall not be limited to such an environment.
-\subsubsection{Exporting}
-The application shall have a feature to export a generated map for further use.
-\subsubsection{Relocation}
-The application shall have a mechanism to load a pre-generated map that can be used to do relocation.
-
-\section{Time plan}
-The master thesis is honored with 27 ECTS. 1 ECTS consumes 30h which results in a total of 810h. Assuming 8.5 working hours per day, we have to spend 95.29 working days. Because the thesis is done part time a full year can be used. We assume one year has 48 weeks. During the first 16 weeks only 1.5 days can be used for the master thesis (because of additional modules). This means during the first 16 weeks we only work 24 days on the project. 71.29 days are left for the last 32 weeks. This results in 2.228 days work during the 32 weeks. Figure \ref{fig:gantt} shows the initial planing. The first implementation of the algorithm takes longer than the rest because only 1.5 days can be spent for the thesis during this period.
-
-\begin{figure}[H]
-  \includegraphics[width=1.0\textwidth]{img/gantt.png}
-  \caption{Initial planing}\label{fig:gantt}
-\end{figure}
-
-\section{Final timeline}
-
-Unfortunately not all requirements are available in the final reason. As we will see the main reason for this is that implementing the algorithm took more time than expected. The final version now includes the following features:
-\begin{itemize}
-  \item{SLAM library \#42}
-    \subitem{30 fps are not achieved on an i5-7Y54 but on Quad Core i7 processor}
-  \item{SVO based algorithm \#44}
-  \item{IMU Integration \#47}
-  \item{Language}
-  \item{CPU}
-  \item{Example Application \#43}
-\end{itemize}
-
-\chapter{SLAM Evaluation}\label{chap:evaluation}
-
-In this section we analyze different documented SLAMs. This work was not part of this thesis. However, it shows what other algorithms and possibilities are available today. We can split them in two groups, indirect and direct SLAM (figure \ref{fig:slammodes}). Indirect methods analyze an image and try to extract features. This feature points are matched directly to further images. Based on these matches we can estimate the pose of the camera. Direct methods operate on intensity variances. The goal is to find a pose that minimizes the intensity difference between two images. Because minimizing the intensity difference over the whole image is computational expensive most methods operated only on edges or corners of the image. We call such methods direct semi dense or direct sparse. In the next sections we will have a discussion about these different approaches.
+SLAM is a technology that takes images as input and generates a map of its environment while simultaneous estimating the pose of the camera. There are two groups of SLAM algorithms. Indirect SLAM algorithms extract features from an image and then try to map this features based on descriptors with each other. For each image it is necessary to detect features, extract descriptors, compare the descriptors to previous images and then do a triangulation. On the other side there are direct SLAM algorithms. This algorithms directly match one frame to another by it's intensity differences. They optimize the pose and try to minimize the intensity difference over the whole image (dense) or at some sparse points (sparse). An overview is shown in figure \ref{fig:slammodes}.
 
 \begin{figure}[H]
   \includegraphics[width=1.0\textwidth]{img/slam_modes.png}
   \caption{SLAM Modes}\label{fig:slammodes}
 \end{figure}
 
-
-\section{Indirect method}
-
-A well documented indirect method is ORB SLAM \cite{orbslam}. ORB SLAM extracts ORB keypoints which are then matched with a known 3D point cloud. Based on these matches it can do PnP with RANSAC \cite{ransac} to estimate the current pose and position. Indirect methods can estimate the pose through PnP which isn’t computationally expensive. On the other side computing descriptors costs CPU time. ORB was explained in greater detail in the project work 2 of this thesis TODO cite.
-
-\section{Direct method}
-
-In this section we will analyze two direct approaches a dense and a sparse approach. Dense methods use all pixels on the image for tracking while sparse methods only use a subset. Figure \ref{fig:sparse_dense} shows a comparison of dense sparse and semi-dense approaches. We don't dig into semi-dense approaches they work similar to sparse methods but with more keypoints.
-
-\begin{figure}[H]
-  \begin{center}
-    \includegraphics[width=1.0\textwidth]{img/sparse_dense.png}
-  \end{center}
-  \caption{Comparison of sparse, dense and semi-dense approaches \cite{svo}}\label{fig:sparse_dense}
-\end{figure}
-
-\subsection{Dense}
-
-There are not that many dense SLAM algorithms. One is DTAM \cite{dtam} which uses the intensity values of the whole image to estimating the pose. The idea is to minimize the intensity difference (energy) between two images by optimizing the camera pose. The energy defined at one pixel position is defined as shown in equation \ref{eq:pixel_energy}. To estimate the pose and position it tries to find a projection matrix that minimizes $E_{t}$ as shown in equation \ref{eq:total_energy}.
-\begin{equation}\label{eq:pixel_energy}
-\begin{aligned}
-  E_{xy}=I_1(x,y)-I_2(x',y')\\
-  \begin{pmatrix}
-  x'*s'\\
-  y'*s'\\
-  s'\\
-  \end{pmatrix}=P*XYZ
-\end{aligned}
-\end{equation}
-Where:
-\begin{align*}
-  E_{xy}  &: \text{Energy at a specific position}\\
-  I_1      &: \text{Previous image}\\
-  I_2      &: \text{Current image}\\
-  x,y      &: \text{Point position in previous image} \\
-  x',y'    &: \text{Point position in current image} \\
-  s'      &: \text{Scaling value}\\
-  P        &: \text{Projection matrix}\\
-  XYZ      &: \text{Point position in 3D cloud}
-\end{align*}
-\begin{equation}\label{eq:total_energy}
-  E_{t}=\min(\sum_{x=0}^C\sum_{y=0}^RE_{xy})
-\end{equation}
-Where:
-\begin{align*}
-  E_{t}    &: \text{Total energy}\\
-  E_{xy}  &: \text{Energy at pixel position x/y in image}\\
-  C        &: \text{Image columns}\\
-  R        &: \text{Image rows}\\
-\end{align*}
-
-Direct dense methods deliver a dense point cloud which we can use directly to create maps and 3D objects. However, they are computational expensive. Therefore, they are not appropriate for embedded devices.
-
-\subsection{Sparse}
-
-Sparse direct SLAMs like SVO \cite{svo} don’t optimize the Energy over the whole image but the energy at sparse points instead. One possibility of a sparse point is e.g. a corner point found by FAST \cite{fast}. Similar to sparse methods there are semi dense methods which try to minimize the energy on several points laying on edges. Canny Edge detection or DoG can for example find such edges. The advantage of sparse and semi dense methods is that they are less computationally expensive than dense methods.\\\\
-Sparse direct methods don’t create dense clouds immediately however they can work on weaker keypoints than indirect methods. Therefore, they can create denser clouds than e.g. ORB SLAM. They can also be computational less expensive than indirect methods because they don’t have to calculate expensive features \cite{svo}.
+In this thesis we use SVO which is a sparse direct approach.
 
 \section{Stereo and Monocular SLAM}
 
-In this project, the focus is on stereo SLAM. A lot of today's paper focus on monocular SLAM. The reasons are that monocular cameras are cheaper and monocular cameras are available in Smartphones. Monocular SLAM has two problems we don’t have with stereo SLAM. First an initialization process has to estimate the movement between two frames. We can only create a 3D point cloud based on two images with known position, in the monocular case the position of two images is random. Therefore, the algorithm needs to guess the pose and transformation over a few images until it knows the poses. It does that by making assumptions on the world or by trying to optimizing the point positions over several images. However, even when successfully initialized the second problem persists. Monocular SLAM is not able to guess the scale of the point cloud. The intuition for this issue is that we can’t distinguish between the movement of the camera on a small model close to the scene or the movement of the camera on the original model further away from the scene. With stereo SLAM we don’t have this issue. For each camera pose we get two images with a known distance between the two camera sensors (baseline). Therefore, we can calculate the depth of each pixel in real world distance. From this we can generate a point cloud assuming that the initial camera pose is at origin. We therefore have an instantaneous initialization and can calculate the real world position in a known unit e.g. meters. Tracking between two camera poses is however the same on monocular and stereo SLAM. However we can again insert new keypoints immediately on stereo cameras without the need of using a second camera pose.
+In this thesis we focus on stereo SLAM. A lot of today's paper focus on monocular SLAM. The reasons is that monocular cameras are cheaper and they are available in Smartphones. Monocular SLAM has two problems that we don’t have with stereo SLAM. First an initialization process has to estimate the movement between two frames. We can only create a 3D point cloud based on two images with known position, in the monocular case the position of two images is random. Therefore, the algorithm needs to guess the pose and transformation over a few images until it knows the poses. It does that by making assumptions on the world or by trying to optimizing the point positions over several images. However, even when successfully initialized the second problem persists. Monocular SLAM is not able to guess the scale of the point cloud. The intuition for this issue is that we can’t distinguish between the movement of the camera on a small model close to the scene or the movement of the camera on the original model further away from the scene. With stereo SLAM we don’t have this issue. For each camera pose we get two images with a known distance between the two camera sensors (baseline). Therefore, we can calculate the depth of each pixel in real world distance. From this we can generate a point cloud assuming that the initial camera pose is at origin. We therefore have an instantaneous initialization and can calculate the real world position in a known unit e.g. meters. Tracking between two camera poses is however the same on monocular and stereo SLAM. However we can again insert new keypoints immediately on stereo cameras without the need of using a second camera pose.
 
-\section{Decision}
+\section{Camera}
 
-In our previous project works we used ORB SLAM for pose estimation and SLAM. While ORB SLAM is powerful it has some performance limitations when running on embedded systems. The CPVR lab uses ORB SLAM heavily in different projects but there is no experience with direct or semi direct approaches yet. Therefore, we try to reimplement SVO SLAM in this thesis. It should have less dependencies and run faster than the open source version available on Github. The decision for SVO SLAM was taken because of:
-\begin{itemize}
-  \item Open source implementation available
-  \item According to SVO paper it's faster than ORB SLAM
-  \item Approach seems to be ``simpler'' than ORB SLAM
-  \item The CPVR lab already has experience with ORB, an alternative solution may be interesting.
-\end{itemize}
+To do stereo computer vision, we need a stereo camera. There are a few stereo cameras available on the market. It is also possible to build a stereo camera with two monocular cameras. However, we decide against that because it would require a mechanism to synchronize the images from both streams. We analyze three stereo cameras available on the market. An ideal camera would have a high frame rate, a high resoultion, a global shutter, USB3.0 with UVC driver and a high baseline (distance of the two cameras) while being cheap. Table \ref{tab:cameras} shows a comparison of a ZED camera from Stereolabs \cite{zed}, a Tara from Econ \cite{tara} and a Realsense D435 from Intel \cite{realsense}.
 
-\chapter{Camera Evaluation}
+\tiny
+\begin{table}[H]
+  \centering
+  \begin{tabular}{|c|c|c|c|c|c|c|c|}
+  Camera & Resolution & FPS & Shutter & Driver & Baseline & IMU & Price \\
+  \hline
+  ZED & 1920x1080 & 30 & rolling &  UVC & 120mm & 6DoF & 449\\
+  Tara & 752x480& 60 & global &  UVC &  60mm & 6DoF & 149\\
+  D435 & 1280x720& 90 & global & UVC &  50mm & 6DoF & 179\\
+\end{tabular}
+\caption{Evaluated camera types}
+\label{tab:cameras}
+\end{table}
+\normalsize
 
-To do stereo computer vision, we need a stereo camera. There are a few stereo cameras available on the market. It is also possible to build a stereo camera with two monocular cameras. However, we decided against that because it would require a mechanism to synchronize the images from both streams. We analyze three stereo cameras available on the market.
+\begin{figure}[H]
+  \centering
+  \subfloat[Stereolabs ZED]{\includegraphics[width=0.3\textwidth]{img/zed_cam.jpg}}
+  \subfloat[Econ Tara]{\includegraphics[width=0.3\textwidth]{img/tara_cam.jpg}}
+  \subfloat[Intel Realsense D435]{\includegraphics[width=0.3\textwidth]{img/d435_cam.jpg}}
+  \caption{Three evaluated stereo cameras}\label{fig:cameras}
+\end{figure}
 
-\section{ZED}
-The ZED camera \cite{zed} is a stereo camera from Stereo Labs. Here the specification of this camera:
-\begin{itemize}
-  \item Full HD color images with 30fps
-  \item USB3.0
-  \item UVC compliant
-  \item Linux SDK
-  \item Baseline 120mm
-  \item IMU sensor with 6DoF
-  \item Price: 449\$
-\end{itemize}
 
-To run their SDK a Dual Core CPU with 2.3 GHz and CUDA > 3.0 is required. However, it's also possible to use the camera without their SDK.
+We decide to use the Econ Tara because it has an outstanding price ratio and because it is a conventional stereo camera. However, the Intel RealSense camera is also a great fit because it delivers depth images directly. This reduces the CPU load on the iMX8. If we require Full HD, we should use the ZED camera. Another advantage of the ZED camera is the bigger baseline of 120mm. This allows depth estimation with a bigger range. We decide against this camera mainly because of the high price. We can't benefit from Full HD sensors because embedded systems only have limited CPU resources.
 
-\section{ECON Tara}
-The Tara camera \cite{tara} from Econ is another stereo camera. In comparison to the ZED camera it delivers a reduced resolution and only gray scale images.
-\begin{itemize}
-  \item 752x480 gray scale images with 60fps
-  \item USB3.0
-  \item Global Shutter Camera
-  \item UVC compliant
-  \item Baseline 60mm
-  \item IMU sensor with 6DoF
-  \item Open Source SDK
-  \item Price: 149\$
-\end{itemize}
+\section{Purpose of this Thesis}
 
-It has a small OpenCV based SDK with open source software. In comparison to the ZED SDK it is less powerful.
+The purpose of this thesis is to implement SVO SLAM as open source library. Based on this implementation an evaluation should be done of how well the algorithm is suited for embedded systems. The implementation should finally be benchmarked against the open source reference implementation regarding speed and accuracy. Further more we will provide a 3D viewer and a demo application which shows the possibilities of a SLAM library.
 
-\section{Intel RealSense D435}
-The Intel RealSense camera \cite{realsense} is a infrared stereo camera. In comparison to RGB stereo cameras it uses infrared images for stereo vision. It seems that this sensors are less prone to reflections. A third camera delivers RGB images in full HD.
-\begin{itemize}
-  \item 1280x720 with 90fps (IR), 1920x1080 with 30fps (RGB)
-  \item USB3.0
-  \item Global Shutter Camera
-  \item UVC compilant (kernel patch required)
-  \item Baseline 50mm
-  \item Open Source SDK (librealsense)
-  \item Price: 179\$
-\end{itemize}
+\section{Outline}
 
-The Intel SDK seems quite powerful and is open source as well. However, the indepth details of the camera are not publicly available.
 
-\section{Decision}
+\section{Planing}
+The master thesis is honored with 27 ECTS. 1 ECTS consumes 30h which results in a total of 810h. Assuming 8.5 working hours per day, we have to spend 95.29 working days. Because the thesis is done part time a full year can be used. We assume one year has 48 weeks. During the first 16 weeks only 1.5 days can be used for the master thesis (because of additional modules). This means during the first 16 weeks we only work 24 days on the project. 71.29 days are left for the last 32 weeks. This results in 2.228 days work during the 32 weeks. Figure \ref{fig:gantt} shows the initial as well as the final planing. Unfortunately the implementation of the library took more time than expected. Therefore, the plane detection and mesh creation was removed completely from what is implemented. If this would be required an additional library like the open source project Point Cloud Library \cite{pcl} could be used.
 
-We decided to use the Econ Tara because it has an outstanding price ratio and because it is a conventional stereo camera. However, the Intel RealSense camera is also a great fit because it delivers depth images directly. This reduces the CPU load on the iMX8. If we require Full HD, we should use the ZED camera. Another advantage of the ZED camera is the bigger baseline of 120mm. This allows depth estimation with higher range. We decided against this camera mainly because of the high price and because of the closed source SDK. We can't benefit from Full HD sensors because embedded systems only have limited CPU resources.
+\begin{figure}[H]
+  \subfloat[Inital planing]{\includegraphics[width=1.0\textwidth]{img/gantt_orig.png}}\\
+  \subfloat[Final planing]{\includegraphics[width=1.0\textwidth]{img/gantt_final.png}}
+  \caption{Planing}\label{fig:gantt}
+\end{figure}
+
+As the final planing shows we first started to with a Python based implementation of the algorithm. The idea was that Python code is more readable and better suited for experimenting. However, the problem was that the code was slow even when using Numpy to accelerate matrix multiplications. Therefore, a completely C++ based implementation of the library has been written. However, for debugging a Python wrapper was developed in parallel. Reviewing this decision, this was a mistake because a lot of time was spent for debugging the Python wrapper. In the final version it is still available and it can be built. However, it is tested poorly and not documented at all. Further there was no plan to write a 3D viewer. However, to make it more flexible a viewer was developed which can receive data over Network to keep the code bases separated and to allow remote analysis of 3D data. Because of this two issues the scope was reduced and the focus was set on the library.
 
 \chapter{SVO}
-In this chapter we see the basic idea behind SVO SLAM. We don't dive into the mathematical details yet. As we will see most parts of the algorithm is heavily based on ideas of optical flow. Therefore we will handle this topic in a separate chapter.
+In this chapter we describe the basic idea behind SVO SLAM. We don't dive into the mathematical details yet. As we will see most parts of the algorithm are based on the idea of optical flow. Therefore, we will handle this topic in chapter \ref{ch:opt_flow}.
 
 \section{Architecture}
 
-Figure \ref{fig:svo_slam} shows a lot of differences beteween the orignal SVO SLAM implementation and what we implmented. However, the two main steps which are sparse model based image alginemnt and pose refinement are the same. Our implementation does not use threadings everything is done sequential. This first may surprise but has the advantage of not needing to synchronize and is also more deterministic. However, it's not the whole truth. By using OpenMP we use multiprocessing a lot but on a finer level. The idea is that the main steps are executed sequential but they use the features of multicore processors just for each step. Using this approach we hope to spread the computitional load more equally over all processors on modern systems instead of using separated huge tasks which may not scale. Further, because we focus on stereo cameras the mapping task is not required in the same depth as SVO did it. We will describe this differences in a later section.
+Figure \ref{fig:svo_slam} shows the architecture of SVO and our implementation. In this figure we see a lot of differences between the original implementation and what we do. However, the two main steps which are sparse model based image alignment and pose refinement are the same. Our implementation does not use multi-threading so everything is done sequential. This may surprise but has the advantage of not having to synchronize and is also more deterministic. However, it's not the whole truth. Some parts of the code are prepared to use OpenMP for multiprocessing. The idea is that the main steps are executed sequential but they use the features of multi-core processors just for each step. Using this approach we hope to spread the load more equally over all processors on modern systems instead of using separate tasks which may not scale. Further, because we focus on stereo cameras the mapping task is not required in the same depth as in SVO. We will describe this differences in a later section.
 
 \begin{figure}[H]
   \centering
@@ -244,9 +119,8 @@ Figure \ref{fig:svo_slam} shows a lot of differences beteween the orignal SVO SL
   \caption{Orignal SVO SLAM vs modified version}\label{fig:svo_slam}
 \end{figure}
 
-
 \section{Keyframe Generation}\label{sec:initialization}
-The original SVO implementation uses a monocular camera. It's therefore not possible to estimate depth in the first picture. There must at least be a slight movement so that the algorithm can estimate the depth of keypoints. However, here we use a stereo camera with a known baseline. Therefore, we can estimate the depth of a keepoint from the first image. To generate a new keyframe we perform the following steps:
+The original SVO implementation uses a monocular camera. It's therefore not possible to estimate depth in the first picture. There must be a movement that the algorithm can estimate the depth of keypoints. However, in this thesis we use a stereo camera with a known baseline. Therefore, we can estimate the depth of a keepoint from the first image. To generate a new keyframe we perform the following steps:
 \begin{enumerate}
   \item{Search FAST keypoints in the image \cite{fast}}
   \item{Do Sobel filtering of the image in horizontal direction}
@@ -257,7 +131,7 @@ The original SVO implementation uses a monocular camera. It's therefore not poss
   \item{Transform the keypoint depth to world coordinates by using the camera pose}
 \end{enumerate}
 
-The mathematical details on how to calculate the depth and the world coordinates from a stereo camera are described in chapter \ref{ch:depth}.
+The mathematical details on how to calculate the depth and the world coordinates from a stereo camera is described in chapter \ref{ch:depth}.
 
 \section{Sparse Image Alignment}\label{sec:sia}
 
@@ -360,7 +234,7 @@ As we saw before SVO \cite{svo} uses monocular cameras. For that it is necessary
   v                   &: \text{Measurement error/noise}\\
 \end{align*}
 
-\chapter{Depth}\label{ch:depth}
+\chapter{Depth Estimation}\label{ch:depth}
 
 To find the depth at a certain point (.e.g. keypoint) we match the intensities of the left and right images for a certain patch. Because we vertically aligned the camera, the algorithm starts matching the right image at pixel position of the left image and searches from there to the right as shown in figure \ref{fig:disparity}. The position with the smallest intensity difference between left and right is where we calculate the distance. We call the distance between the left and right image disparity. An object far away has less disparity than an object near to the camera. A point at infinity will have a disparity of zero. Because camera images are normally noisy it's not possible to just use one pixel instead a whole patch should be used to reduce the influence of noise. For the Econ Tara at 752x480 a patch size of 31x31 pixel works well. The patch size was found empirically.
 
@@ -959,13 +833,13 @@ Now we derive the Taylor approximation to be able to minimize it. This is shown 
 
 We can reuse the exact same definition for the Jacobian as we did for pose estimation in equation \ref{eq:se3_jacobian}.
 
-\chapter{Implementation}
+\chapter{Implementation}\label{ch:implementation}
 
 In this chapter we discuss the implementation that was written during this thesis. It shows which parts of the algorithm are implemented where to give an overall picture of the implementation.
 
 \chapter{Results}
 
-For testing the algorithm with a reference implementation we use a synthetic scene generated by Blender. The advantage of having synthetic scenes is that we can test some well defined movements where we exactly know the trajectory. We compare our implementation with SVO edgelet \cite{svo_edgled} as well as the original SVO implementation \cite{svo}. This is based on the reference SVO implementation. However, it is using newer versions of OpenCV, libegien, etc. They added edgelets tracking which is missing in the original SVO sources and they added a GUI to observe the tracking. However, it's much slower than the original implementation on the other side it seems to be more robust than the original implementation. Unfortunately the reference implementation are quite prone to changes in z and angle changes. Therefore, a simplified scene was generate to have at least some reference.
+For testing the algorithm with a reference implementation we use a synthetic scene generated by Blender. The advantage of having synthetic scenes is that we can test some well defined movements where we exactly know the trajectory. We compare our implementation with SVO edgelet \cite{svo_edgled} as well as the original SVO implementation \cite{svo}. This is based on the reference SVO implementation. However, it is using newer versions of OpenCV, libegien, etc. They added edgelets tracking which is missing in the original SVO sources and they added a GUI to observe the tracking. However, it's much slower than the original implementation on the other side it seems to be more robust than the original implementation. Unfortunately the reference implementation are quite prone to changes in z and angle changes. Therefore, a simplified scene was generate to have at least some reference. All measurements were done on an Intel i7-8550U processor a version without OpenMP was used (see \ref{ch:implementation}).
 
 \section{Classroom}
 \begin{figure}[H]
@@ -985,7 +859,7 @@ Figure \ref{fig:blender_classroom_simple_diff} shows the trajectory difference m
 \begin{table}[H]
   \centering
   \begin{tabular}{|c|c|c|c|c|c|c|}
-  { impl & err x & err y & err z & err rx & err ry & err rz }\\
+  impl & err x & err y & err z & err rx & err ry & err rz\\
   \hline
   Our SVO & 0.031 & 0.013 & 0.073 & 0.205 & 0.610 & 0.285\\
   Edgled SVO & 0.344 & 0.099 & 0.273 & 0.989 & 12.941 & 1.430\\
@@ -999,7 +873,7 @@ Figure \ref{fig:blender_classroom_simple_diff} shows the trajectory difference m
 \begin{table}[H]
   \centering
   \begin{tabular}{|c|c|c|c|c|c|c|}
-  { impl & err x & err y & err z & err rx & err ry & err rz }\\
+  impl & err x & err y & err z & err rx & err ry & err rz\\
   \hline
   Our SVO & 0.008 & 0.005 & 0.032 & 0.110 & 0.390 & 0.107\\
   Edgled SVO & 0.158 & 0.050 & 0.093 & 0.477 & 5.349 & 0.344\\
@@ -1014,7 +888,7 @@ Figure \ref{fig:blender_classroom_simple_diff} shows the trajectory difference m
 \begin{table}[H]
   \centering
   \begin{tabular}{|c|c|}
-  { impl & FPS}\\
+  impl & FPS\\
   \hline
   Our SVO & 52.38\\
   Edgled SVO & 0.93\\
@@ -1042,90 +916,84 @@ As we see in the results all implementations have a hard time to track the ry an
   \caption{Blender Barcelona scene}\label{fig:blender_barcelona_scene}
 \end{figure}
 
+For the second test we use an outdoor synthetic scene called Barcelona \cite{blender}. Here we only compare ORB SLAM with our SVO implementation because the monocular SLAMs are unable to track such complicated movements. Figure \ref{fig:blender_barcelona_traj} shows the trajectory. The challenges for the tracker are long z movement and big changes in angle.
+
 \begin{figure}[H]
   \includegraphics[width=1.0\textwidth]{img/blender_barcelona_traj.png}
   \caption{Blender Barcelona trajectory}\label{fig:blender_barcelona_traj}
 \end{figure}
 
+As we see in figure \ref{fig:blender_barcelona_diff} both algorithm struggle for big angle changes without movement. When checking table \ref{tab:barcelona_maximas} and table \ref{tab:barcelona_average} we see that ORB SLAM performs slightly better but with lower frame rate (table \ref{tab:barcelona_fps}) than our SVO SLAM implementation.
+
 \begin{table}[H]
   \centering
   \begin{tabular}{|c|c|c|c|c|c|c|}
-  { impl & err x & err y & err z & err rx & err ry & err rz }\\
+  impl & err x & err y & err z & err rx & err ry & err rz\\
   \hline
-  Our SVO & 0.577 & 1.230 & 1.503 & 6.521 & 12.698 & 14.772\\
+  Our SVO & 0.622 & 0.537 & 0.956 & 10.417 & 11.222 & 14.682\\
   ORB SLAM& 0.993 & 0.189 & 0.592 & 7.491 & 19.315 & 10.542
 \end{tabular}
-\caption{Maximum errors in meter (x,y,z) and Degrees (rx,ry,rz)}
+\caption{Maximum error in meter (x,y,z) and Degrees (rx,ry,rz)}
 \label{tab:barcelona_maximas}
 \end{table}
 
 \begin{table}[H]
   \centering
   \begin{tabular}{|c|c|c|c|c|c|c|}
-    { impl & err x & err y & err z & err rx & err ry & err rz }\\
+    impl & err x & err y & err z & err rx & err ry & err rz\\
     \hline
-    Our SVO & 0.265 & 0.447 & 0.722 & 1.528 & 2.704 & 3.21\\
+    Our SVO & 0.396 & 0.166 & 0.451 & 1.012 & 2.753 & 2.446\\
     ORB SLAM & 0.734 & 0.088 & 0.416 & 0.711 & 2.717 & 1.955
   \end{tabular}
-\caption{Average errors in meter (x,y,z) and Degrees (rx,ry,rz)}
+\caption{Average error in meter (x,y,z) and Degrees (rx,ry,rz)}
 \label{tab:barcelona_average}
 \end{table}
 
+\begin{table}[H]
+  \centering
+  \begin{tabular}{|c|c|}
+  impl & FPS\\
+  \hline
+  Our SVO & 39.56\\
+  ORB SLAM & 22.53
+\end{tabular}
+\caption{Frame rate}
+\label{tab:barcelona_fps}
+\end{table}
+
+
 \begin{figure}[H]
-  \subfloat[Our implementation]{\includegraphics[width=0.5\textwidth]{img/blender_barcelona_our_diff.png}}
-  \subfloat[ORB SLAM]{\includegraphics[width=0.5\textwidth]{img/blender_barcelona_orb_diff.png}}
+  \subfloat[Our implementation]{\includegraphics[width=0.9\textwidth]{img/blender_barcelona_our_diff.png}}\\
+  \subfloat[ORB SLAM]{\includegraphics[width=0.9\textwidth]{img/blender_barcelona_orb_diff.png}}
   \caption{Blender Barcelona Scene errors. Distances in meter, angels in Degree.}\label{fig:blender_barcelona_diff}
 \end{figure}
 
+\section{EuRoC}
+
+\begin{figure}[H]
+  \includegraphics[width=1.0\textwidth]{img/euroc_scene.png}
+  \caption{EuRoC Scene}\label{fig:euroc_scene}
+\end{figure}
+
+EuRoC is a widely used testset for SLAM algorithms \cite{euroc}. Figure \ref{fig:euroc_scene} shows an image from EuRoC Machine Hall 2. The SVO2 paper \cite{svo2} compares some measurements based on EuRoC. Our measurements are not in the range of any modern SLAM algorithm. However, the problem is that the current implementation doesn't use past keyframes. Therefore, it can't profit if it sees the same scene more than once what increases the drift. For completeness an initial result is shown here for EuRoC Machine Hall 2.
+
+\begin{figure}[H]
+  \subfloat[Top View]{\includegraphics[width=0.9\textwidth]{img/euroc_svo_top.png}}\\
+  \subfloat[Side View]{\includegraphics[width=0.9\textwidth]{img/euroc_svo_side.png}}\\
+  \caption{EuRoC }\label{fig:euroc}
+\end{figure}
+
+As we can see in figure \ref{fig:euroc} we have a huge drift over the whole sequence. In the end we measure an error of more than one meter in each direction. However, this was measured without doing a lot of parameter tuning. SVO2 states that they can achieve an RMSW of only 8 cm. SVO 1 where this thesis is based on can't follow the sequence. It is possible that better results could be achieved with our implementation by tweaking the parameters but it's unrealistic to get close to what SVO2 measured. The average frame rate was 37.13 fps.
+
 \chapter{Discussion}
 
-\printbibliography
+We showed that the principle of SVO works and can be faster than e.g. ORB SLAM. Our implementation does not achieve the same frame rate as the reference implementation. There can be a lot of reasons why this happens. First we only use gradient descent for optimization. Probably a Gauss Newton like algorithm would find the minimum faster. We've chosen gradient descent because it is easy understandable and convenient to debug. However, a rework should definitely address this issue. Further we don't use OpenMP. The code is prepared for it but it is no activated because on the test system with an i7 processor the algorithm runs slower. The assumption is that it has to do with optimization and that for some reason the compiler can't vectorize the code when OpenMP is used. On an ARM iMX8QM based system activating OpenMP showed a speedup of around 3. However, even with this speed up the algorithm run with 10fps. Therefore, we did not document this test in more detail. However, two things would be interesting to analyze. Can the compiler vectorize all critical parts of the code and can in parallel enable OpenMP. If we would achieve a speed up of at least 2 with OpenMP frame rates of > 60fps should be achievable.\\\\
+The accuracy of our implementation is behind modern SLAM implementations. This could be improved by projection old keypoints into the current frame. We don't do that at the moment because of speed concerns and to keep the algorithm simple. However, it could lead to more stable results because some kind of local loop closing would be possible.\\\\
+We implemented a 3D viewer which can be used over a network connection. This approach would allow us to debug devices that are further away e.g. via Wifi or Ethernet. The viewer could be optimized by only asking for differences from the target and not for all keyframes. This would reduce the bandwidth when e.g. using Wifi. However, as a proof of concept this seems to be a good approach.\\\\
+We showed an easy way to generate test scenes by using Blender animations. This allows us to make debugging much easier because we know all movements in detail and we can have predefined movements in exactly one direction. Such scenes help debugging algorithms a lot and makes also the comparison of results easy. Generating such scenes is simple, cheap and quick.\\\\
+A demo application shows what is possible with SLAM. It is a simple augmented reality application that can be used as a quick demo to show what SLAM can be used for.\\\\
+The current library is in the state of a proof of concept. It is far from productive but it shows that SVO works and that it is promising. The implementation showed to be faster than ORB SLAM but it is not as robust yet. The current state could be used as starting point for further development. It is open source and has only dependencies to OpenCV. This makes it much easier to compile it for other platforms like ARM based devices.
 
-%\subsubsection{3D cloud refinement}
-%After refining the pose we still have a small reprojection error. We can try to minimize this error by adjusting the 3D position for each point. Here we do the same thing as in equation \ref{eq:pose_refinement} but we now change the 3D point position instead of the pose. Because we need to do that for all point this is more computational expensive than the previous step. Instead of Levenberg-Marquardt we use normal Gradient-Descent in this step, because the here described problem is an underdeterminated problem. However, we can still find a local minimum. This step follows section V.B in \cite{svo2}. However, pose and 3D cloud is only updated for the last camera frame. We do not bundle adjust the whole trajectory.
-%
-%\subsection{Mapping}
-%
-%Mapping can be solved in a separate thread. The mapping thread decides if a new keyframe must be insert. If no keyframe is required, we can use the current frame to update the depth of the 3D cloud by adjusting the inverse depth with a Kalman Filter. Mapping is not solved yet.
-%
-%\begin{thebibliography}{1}
-%
-%  \bibitem{svo}
-%  Christian Forster et al\\
-%  \textit{SVO: Semi-Direct Visual Odometry for Monocular and Multi-Camera Systems}\\
-%  doi:10.1109/TRO.2016.2623335
-%
-%  \bibitem{svo2}
-%  Christian Forster et al\\
-%  \textit{SVO: Semi-Direct Visual Odometry for Monocular and Multi-Camera Systems}\\
-%  doi:10.1109/TRO.2016.2623335
-%
-%  \bibitem{lucas_kandae}
-%  OpenCV\\
-%  \textit{Optical Flow}\\
-%  https://docs.opencv.org/4.0.1/d7/d8b/tutorial\_py\_lucas\_kanade.html
-%
-%
-%  \bibitem{inverse_compositional}
-%  S. Baker and I. Matthews\\
-%  \textit{Lucas-kanade 20 years on: A unifying framework}
-%  Int. J. Comput. Vis., 56(3):221–255, 2004.
-%
-%  \bibitem{se3_explain}
-%  José Luis Blanco Claraco\\
-%  \textit{A tutorial on SE(3) transformation parameterizations and on-manifold optimization José Luis Blanco Claraco}
-%  https://w3.ual.es/personal/jlblanco/, Last update 18/03/2019
-%
-%  \bibitem{taylor_series}
-%  Wikipedia\\
-%  \textit{Taylor series}
-%  https://en.wikipedia.org/wiki/Taylor\_series
-%
-%  \bibitem{rvc}
-%  Peter Corke\\
-%  \textit{Robotics, Vision and Control}\\
-%  Springer, ISBN 978-3-319-54413-7, chapter 11+12, page 319+
-%
-%\end{thebibliography}
+\printbibliography
 
 \end{document}
