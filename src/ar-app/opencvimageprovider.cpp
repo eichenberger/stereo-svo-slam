@@ -8,7 +8,8 @@
 using namespace cv;
 using namespace std;
 
-OpenCVImageProvider::OpenCVImageProvider(QObject *parent) : QObject(parent), surface(nullptr)
+OpenCVImageProvider::OpenCVImageProvider(QObject *parent, bool show_points) : QObject(parent), surface(nullptr),
+    show_points(show_points)
 {
     pixmap = QPixmap(752, 480);
     pixmap.fill(QColor("white"));
@@ -29,7 +30,7 @@ void OpenCVImageProvider::setVideoSurface(QAbstractVideoSurface *s)
 static void draw_keypoints(const Frame &frame, Mat &out)
 {
 
-    cvtColor(frame.stereo_image.left[0].clone(), out,  COLOR_GRAY2RGB);
+    cvtColor(frame.stereo_image.left[0], out,  COLOR_GRAY2RGB);
     const vector<KeyPoint2d> &kps = frame.kps.kps2d;
     const vector<KeyPointInformation> &info = frame.kps.info;
     for (size_t i = 0; i < kps.size(); i++) {
@@ -52,7 +53,10 @@ void OpenCVImageProvider::setImage(const Frame &frame)
 
     Mat image;
 
-    draw_keypoints(frame, image);
+    if (show_points)
+        draw_keypoints(frame, image);
+    else
+        cvtColor(frame.stereo_image.left[0], image,  COLOR_GRAY2RGB);
     QImage _image(image.data,
                   image.cols, image.rows,
                   static_cast<int>(image.step),

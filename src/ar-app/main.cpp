@@ -103,6 +103,7 @@ int main(int argc, char **argv)
             {{"i", "hidrawimu"}, "econ: HID device to read the imu values(/dev/hidrawX)", "hidrawimu"},
             {{"e", "exposure"}, "econ: The exposure for the camera 1-30000", "exposure"},
             {{"d", "hdr"}, "econ: Use HDR video"},
+            {{"p", "points"}, "Draw keypoints in image"},
             });
 
 
@@ -139,7 +140,7 @@ int main(int argc, char **argv)
     QQuickView view;
     view.setResizeMode(QQuickView::SizeRootObjectToView);
 
-    opencvImageProvider = new OpenCVImageProvider;
+    opencvImageProvider = new OpenCVImageProvider(nullptr, parser.isSet("points"));
 
     qmlRegisterType<OpenCVImageProvider>("OpenCVImageProvider", 1, 0, "OpenCVImageProvider");
 

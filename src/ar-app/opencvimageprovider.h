@@ -15,7 +15,7 @@ class OpenCVImageProvider : public QObject
     Q_OBJECT
     Q_PROPERTY( QAbstractVideoSurface* videoSurface READ videoSurface WRITE setVideoSurface )
 public:
-    OpenCVImageProvider(QObject *parent = nullptr);
+    OpenCVImageProvider(QObject *parent = nullptr, bool show_points = false);
 
     QAbstractVideoSurface* videoSurface() const;
     void setVideoSurface( QAbstractVideoSurface* s );
@@ -29,6 +29,7 @@ public slots:
 private:
     QPixmap pixmap;
     QAbstractVideoSurface* surface;
+    bool show_points;
 };
 
 #endif // OPENCVIMAGEPROVIDER_H

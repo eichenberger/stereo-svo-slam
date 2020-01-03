@@ -3,5 +3,6 @@
         <file>main.qml</file>
         <file>AnimatedEntity.qml</file>
         <file>ObjectEntity.qml</file>
+        <file>tux.dae</file>
     </qresource>
 </RCC>
