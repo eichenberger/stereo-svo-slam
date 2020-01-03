@@ -236,7 +236,7 @@ bool SlamApp::stop()
             Vec3f robot_angles;
             // We want to compare to what blender gives us. Unforunatley
             // the order is changed there and we need to convert
-            Rodrigues(rot_mat_x*rot_mat_y*rot_mat_z, robot_angles);
+            Rodrigues((rot_mat_y*rot_mat_x)*rot_mat_z, robot_angles);
 
             trajectory_stream << *_time_stamp << "," << pose.x << "," << pose.y << "," << pose.z << "," <<
                 robot_angles[0] << "," << robot_angles[1] << "," << robot_angles[2] << endl;

@@ -53,7 +53,7 @@ Vec3f PoseManager::get_robot_angles() const
     // The normal order would be rot_mat_z*rot_mat_y*rot_mat_x.
     // However, for e.g. opengl or blender the order is vice versa.
     // This is a hacky convertion.
-    Rodrigues(rot_mat_x*rot_mat_y*rot_mat_z, robot_angles);
+    Rodrigues(rot_mat_z*(rot_mat_x*rot_mat_y), robot_angles);
 
     return robot_angles;
 }
