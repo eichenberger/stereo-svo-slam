@@ -1,6 +1,7 @@
 #include <vector>
 #include <cassert>
 #include <cmath>
+#include <execution>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/calib3d.hpp>
@@ -276,17 +277,10 @@ float PoseEstimatorCallback::do_calc(const PoseManager &pose_manager) const
     cout << endl;
 #endif
 
-    vector<float> diffs;
     // Difference will always be positive (absdiff)
-    get_total_intensity_diff(previous_stereo_image.left[level],
+    float diff_sum = get_total_intensity_diff(previous_stereo_image.left[level],
             current_stereo_image.left[level],
-            level_keypoints2d, kps2d, level_camera_settings.window_size, diffs);
-
-    // Don't use OMP -> SSE
-    float diff_sum = 0;
-    for (size_t i = 0; i < diffs.size(); i++) {
-        diff_sum += diffs[i];
-    }
+            level_keypoints2d, kps2d, level_camera_settings.window_size);
 
 #ifdef SUPER_VERBOSE
     cout << "Diff sum: " << diff_sum <<  std::endl;
@@ -434,7 +428,6 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
 
     START_MEASUREMENT();
     vector<float> diffs(kps2d.size()*PATCH_SIZE*PATCH_SIZE);
-//#pragma omp parallel for default(none) shared(diffs, kps2d, previous_image, current_image)
     for (size_t i = 0; i < kps2d.size(); i++) {
         // For OMP
         vector<float>::iterator diff = diffs.begin() + i*PATCH_SIZE*PATCH_SIZE;
@@ -444,16 +437,6 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
         for (size_t r = 0; r < PATCH_SIZE; r++)
         {
             for (size_t c = 0; c < PATCH_SIZE; c++, diff++ , kp2d.x++, kp2d_ref.x++) {
-#if 0
-                Mat int1, int2;
-
-                cv::getRectSubPix(previous_image, Size(2,2),
-                        kp2d_ref, int1, CV_32F);
-                cv::getRectSubPix(current_image, Size(2,2),
-                        kp2d, int2, CV_32F);
-
-                *diff = sum(int2-int1)(0);
-#else
 
                 if ((kp2d_ref.x-0.5) < 0 || (kp2d.x-0.5) < 0 ||
                         (kp2d_ref.y - 0.5) < 0  || (kp2d.y-0.5) < 0 ||
@@ -467,7 +450,6 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
                     float int2 = get_patch_sum(current_image, kp2d);
                     *diff = int2 - int1;
                 }
-#endif
             }
             kp2d.y++;
             kp2d_ref.y++;
@@ -479,33 +461,13 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
     END_MEASUREMENT("Calculate diffs");
 
     START_MEASUREMENT();
-    Matx16f _residual;
-    // OMP can't reduce matrices, therfore do it manually
-    float &r1 = _residual(0,0);
-    float &r2 = _residual(0,1);
-    float &r3 = _residual(0,2);
-    float &r4 = _residual(0,3);
-    float &r5 = _residual(0,4);
-    float &r6 = _residual(0,5);
-//#pragma omp parallel for default(none) shared(diffs, gradient_times_jacobians, kps2d) reduction(-: r1, r2, r3, r4, r5, r6)
-    for (size_t i = 0; i < kps2d.size(); i++) {
-        // For OMP
-        size_t j = i*PATCH_SIZE*PATCH_SIZE;
-        vector<float>::iterator diff = diffs.begin() + i*PATCH_SIZE*PATCH_SIZE;
-        for (size_t r = 0; r < PATCH_SIZE; r++)
-        {
-            for (size_t c = 0; c < PATCH_SIZE; c++, diff++, j++) {
-                Matx16f &_grad_times_jac = (*gradient_times_jacobians)[j];
-                Matx16f residual_kp = _grad_times_jac*(*diff);
-                r1 -= residual_kp(0);
-                r2 -= residual_kp(1);
-                r3 -= residual_kp(2);
-                r4 -= residual_kp(3);
-                r5 -= residual_kp(4);
-                r6 -= residual_kp(5);
-            }
-        }
+    Matx16f _residual(Matx16f::zeros());
+    for (size_t i = 0; i < diffs.size(); i++) {
+        Matx16f &_grad_times_jac = (*gradient_times_jacobians)[i];
+        Matx16f residual_kp = _grad_times_jac*diffs[i];
+        _residual -= residual_kp;
     }
+
     Matx61f  residual = _residual.t();
     END_MEASUREMENT("Calculate residuals");
 

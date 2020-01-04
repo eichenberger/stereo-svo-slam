@@ -95,41 +95,27 @@ float get_intensity_diff(const cv::Mat &image1, const cv::Mat &image2,
         const KeyPoint2d &keypoint1, const KeyPoint2d &keypoint2,
         size_t patch_size)
 {
-#if 0
-    Size _patchSize(patch_size, patch_size);
-    Point2f _center;
-    _center.x = keypoint1.x;
-    _center.y = keypoint1.y;
-    Mat patch1, patch2;
-    getRectSubPix(image1, _patchSize, _center, patch1, CV_32F);
-    _center.x = keypoint2.x;
-    _center.y = keypoint2.y;
-    getRectSubPix(image2, _patchSize, _center, patch2, CV_32F);
-
-    Mat diff;
-    absdiff(patch1, patch2, diff);
-
-    return sum(diff)[0];
-#else
     return _get_intensity_diff(image1, image2, keypoint1, keypoint2, patch_size);
-#endif
 
 }
 
 
-void get_total_intensity_diff(const cv::Mat &image1, const cv::Mat &image2,
+float get_total_intensity_diff(const cv::Mat &image1, const cv::Mat &image2,
         const vector<struct KeyPoint2d> &keypoints1,
         const vector<struct KeyPoint2d> &keypoints2,
-        size_t patchSize,
-        vector<float> &diff)
+        size_t patchSize)
 {
-    diff.resize(keypoints1.size());
+    float diff = 0;
+
+    // This is too fast. Overhead of omp or tbb is too big
 //#pragma omp parallel for default(none) shared(keypoints1, keypoints2, diff) firstprivate(image1, image2, patchSize)
     for (unsigned i = 0; i < keypoints1.size(); i++) {
-        KeyPoint2d kp1 = keypoints1[i];
-        KeyPoint2d kp2 = keypoints2[i];
+        const KeyPoint2d &kp1 = keypoints1[i];
+        const KeyPoint2d &kp2 = keypoints2[i];
         float _diff = _get_intensity_diff(image1, image2, kp1, kp2, patchSize);
-        diff[i] = _diff;
+        diff += _diff;
     }
+
+    return diff;
 }
 
