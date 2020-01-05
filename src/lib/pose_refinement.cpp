@@ -264,7 +264,7 @@ float PoseRefiner::update_pose(const KeyPoints &keypoints,
                 prev_cost = new_cost;
                 break;
             }
-#if 1
+#if 0
             else {
                 i = maxIter;
                 break;
