@@ -353,7 +353,6 @@ void DepthCalculator::calculate_depth(Frame &frame,
         cv::drawMarker(right_copy, Point(right_pos[j].x, right_pos[j].y), _color);
 #endif
 
-        kp_info[i].confidence = 1.0;
         kp_info[i].keyframe_id = keyframe_count;
         kp_info[i].keypoint_index = i;
         kp_info[i].ignore_temporary = true;

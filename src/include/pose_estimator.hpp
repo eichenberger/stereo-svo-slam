@@ -9,6 +9,10 @@
 
 class PoseEstimatorCallback;
 
+/*!
+ * \brief Class that does pose estimation based on sparse image alignment (internal use)
+ */
+
 class PoseEstimator
 {
 public:
@@ -17,8 +21,9 @@ public:
                 const KeyPoints &previous_keypoints,
                 const CameraSettings &camera_settings);
 
-
-
+    /*!
+     * Estimate the pose based on an initial guess
+     */
     float estimate_pose(const PoseManager &pose_manager_guess, PoseManager &estimaged_pose);
 
 private:

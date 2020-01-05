@@ -10,6 +10,12 @@
 
 class PoseRefinerCallback;
 
+/*!
+ * \brief Do pose refinement based on optical flow (internal use)
+ *
+ * Handle pose refinement by first doing optical flow and then minimizes
+ * the rerpojection error
+ */
 class PoseRefiner
 {
 public:

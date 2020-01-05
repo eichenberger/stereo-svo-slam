@@ -288,7 +288,7 @@ float PoseEstimatorCallback::do_calc(const PoseManager &pose_manager) const
     // Difference will always be positive (absdiff)
     float diff_sum = get_total_intensity_diff(previous_stereo_image.left[level],
             current_stereo_image.left[level],
-            level_keypoints2d, kps2d, level_camera_settings.window_size);
+            level_keypoints2d, kps2d, level_camera_settings.window_size_pose_estimator);
 
 #ifdef SUPER_VERBOSE
     cout << "Diff sum: " << diff_sum <<  std::endl;

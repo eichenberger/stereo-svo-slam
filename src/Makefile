@@ -12,7 +12,7 @@ QT_INC_DIR ?= /usr/include/x86_64-linux-gnu/qt5
 
 QMAKE ?= qmake
 
-.PHONY: test clean lib python
+.PHONY: all app ar-app python test clean lib doc 
 
 export
 
@@ -33,6 +33,9 @@ ar-app: lib
 
 test:
 	$(MAKE) -C test all
+
+doc:
+	doxygen
 
 clean:
 	$(MAKE) -C lib clean

@@ -12,8 +12,6 @@ VideoInput::VideoInput(const std::string &video_path,
 
     cap = new VideoCapture(video_path);
 
-    cap->set(CAP_PROP_FRAME_WIDTH, camera_settings.image_width);
-    cap->set(CAP_PROP_FRAME_HEIGHT, camera_settings.image_height);
     fps = cap->get(CAP_PROP_FPS);
 }
 
@@ -32,8 +30,10 @@ bool VideoInput::read(cv::Mat &left, cv::Mat &right, float &time_stamp)
         cvtColor(image, image, cv::COLOR_BGR2GRAY);
     }
 
-    right = image(Rect(0, 0, camera_settings.image_width, camera_settings.image_height));
-    left = image(Rect(camera_settings.image_width, 0, camera_settings.image_width, camera_settings.image_height));
+    int image_width = cap->get(CAP_PROP_FRAME_WIDTH)/2;
+    int image_height = cap->get(CAP_PROP_FRAME_HEIGHT);
+    right = image(Rect(0, 0, image_width, image_height));
+    left = image(Rect(image_width, 0, image_width, image_height));
 
     this->time_stamp += 1.0/fps;
     time_stamp = this->time_stamp;

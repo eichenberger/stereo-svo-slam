@@ -4,14 +4,9 @@
 
 #include "stereo_slam_types.hpp"
 
-class Match
-{
-public:
-    uint32_t x;
-    uint32_t y;
-    uint32_t err;
-};
-
+/*!
+ * \brief Class that estimates depth (internal use)
+ */
 class DepthCalculator
 {
 public:

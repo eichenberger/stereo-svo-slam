@@ -8,6 +8,9 @@
 using namespace cv;
 using namespace std;
 
+/*!
+ * \brief Detect corner points and edgleds (internal use)
+ */
 class CornerDetector
 {
 public:

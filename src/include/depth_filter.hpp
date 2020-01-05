@@ -5,6 +5,9 @@
 
 #include "stereo_slam_types.hpp"
 
+/*!
+ * \brief Update point cloud, detect outliers (internal use)
+ */
 class DepthFilter
 {
 public:

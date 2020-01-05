@@ -18,20 +18,11 @@ void ImageInput::read_settings(const std::string &settings)
     camera_settings.cx = fs["Camera1.cx"];
     camera_settings.cy = fs["Camera1.cy"];
     camera_settings.baseline = fs["Camera.baseline"];
-    camera_settings.image_width = fs["Camera.image_width"];
-    camera_settings.image_height = fs["Camera.image_height"];
-    camera_settings.window_size = fs["Camera.window_size"];
+    camera_settings.window_size_pose_estimator = fs["Camera.window_size_pose_estimator"];
     camera_settings.window_size_opt_flow = fs["Camera.window_size_opt_flow"];
     camera_settings.window_size_depth_calculator = fs["Camera.window_size_depth_calculator"];
     camera_settings.max_pyramid_levels = fs["Camera.max_pyramid_levels"];
     camera_settings.min_pyramid_level_pose_estimation = fs["Camera.min_pyramid_level_pose_estimation"];
-
-    camera_settings.dist_window_k0 = fs["Camera.dist_window_k0"];
-    camera_settings.dist_window_k1 = fs["Camera.dist_window_k1"];
-    camera_settings.dist_window_k2 = fs["Camera.dist_window_k2"];
-    camera_settings.dist_window_k3 = fs["Camera.dist_window_k3"];
-    camera_settings.cost_k0 = fs["Camera.cost_k0"];
-    camera_settings.cost_k1 = fs["Camera.cost_k1"];
 
     camera_settings.k1 = fs["Camera1.k1"];
     camera_settings.k2 = fs["Camera1.k2"];

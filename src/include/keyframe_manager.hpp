@@ -5,6 +5,11 @@
 
 #include "stereo_slam_types.hpp"
 
+/*!
+ * \brief Manages key frames (internal use only)
+ *
+ * Decides when to insert new keyframes, allows to create new keyfames, etc.
+ */
 class KeyFrameManager {
 public:
     KeyFrameManager(const CameraSettings &camera_settings);

@@ -41,7 +41,7 @@ Camera.grid_height: 50
 Camera.grid_width: 40
 Camera.search_x: 60
 Camera.search_y: 6
-Camera.window_size: 4
+Camera.window_size_pose_estimator: 4
 Camera.window_size_opt_flow: 35
 Camera.window_size_depth_calculator: 35
 Camera.max_pyramid_levels: 5

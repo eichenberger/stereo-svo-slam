@@ -354,11 +354,3 @@ Pose StereoSlam::update_pose(const Pose &pose, const Vec6f &speed,
 
     return filtered_pose;
 }
-
-double StereoSlam::get_current_time() {
-    // TODO: This is a hack because we can't call getTimeSec without stop...
-    time_measure.stop();
-    double current_time = time_measure.getTimeSec();
-    time_measure.start();
-    return current_time;
-}

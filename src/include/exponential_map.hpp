@@ -3,6 +3,9 @@
 
 #include <opencv2/opencv.hpp>
 
+/*!
+ * \brief Caclulate the exponential map (internal use)
+ */
 static inline void exponential_map(const cv::Mat &twist, cv::Mat &pose)
 {
     cv::Vec3f v(twist.ptr<float>(0));

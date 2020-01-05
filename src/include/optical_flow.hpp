@@ -5,6 +5,10 @@
 
 #include "stereo_slam_types.hpp"
 
+
+/*!
+ * \brief Wrapper for opencv optical flow (internal use)
+ */
 class OpticalFlow {
 
 public:
