@@ -1,7 +1,6 @@
 #include <vector>
 #include <cassert>
 #include <cmath>
-#include <execution>
 
 #include <opencv2/opencv.hpp>
 #include <opencv2/calib3d.hpp>
@@ -193,6 +192,12 @@ float PoseEstimator::estimate_pose_at_level(const PoseManager &pose_manager_gues
                 prev_cost = new_cost;
                 break;
             }
+#if 0
+            else {
+                i = maxIter;
+                break;
+            }
+#else
             else if (fabs(new_cost - prev_cost) < 1.0) {
                 // Change below 1px
                 cout << "Estimator drop out because of small change after" << i << " loops" << endl;
@@ -200,8 +205,11 @@ float PoseEstimator::estimate_pose_at_level(const PoseManager &pose_manager_gues
                 break;
             }
             else {
+                // Even dividing k is not standard gauss newton it improves
+                // the results a bit
                 k /= 2;
             }
+#endif
         }
     }
 
@@ -428,28 +436,28 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
 
     START_MEASUREMENT();
     vector<float> diffs(kps2d.size()*PATCH_SIZE*PATCH_SIZE);
+    vector<float>::iterator diff = diffs.begin();
+    const int half_patch_size = PATCH_SIZE/2;
     for (size_t i = 0; i < kps2d.size(); i++) {
         // For OMP
-        vector<float>::iterator diff = diffs.begin() + i*PATCH_SIZE*PATCH_SIZE;
-
-        Point2f kp2d(kps2d[i].x-PATCH_SIZE/2, kps2d[i].y-PATCH_SIZE/2);
-        Point2f kp2d_ref(level_keypoints2d[i].x-PATCH_SIZE/2, level_keypoints2d[i].y-PATCH_SIZE/2);
+        Point2f kp2d(kps2d[i].x-half_patch_size, kps2d[i].y-half_patch_size);
+        Point2f kp2d_ref(level_keypoints2d[i].x-half_patch_size, level_keypoints2d[i].y-half_patch_size);
         for (size_t r = 0; r < PATCH_SIZE; r++)
         {
-            for (size_t c = 0; c < PATCH_SIZE; c++, diff++ , kp2d.x++, kp2d_ref.x++) {
+            for (size_t c = 0; c < PATCH_SIZE; c++, kp2d.x++, kp2d_ref.x++, diff++) {
 
-                if ((kp2d_ref.x-0.5) < 0 || (kp2d.x-0.5) < 0 ||
+                if (!((kp2d_ref.x-0.5) < 0 || (kp2d.x-0.5) < 0 ||
                         (kp2d_ref.y - 0.5) < 0  || (kp2d.y-0.5) < 0 ||
                         (kp2d_ref.x + 1.5) > previous_image.cols ||
                         (kp2d.x + 1.5) > current_image.cols ||
                         (kp2d_ref.y + 1.5) > previous_image.rows||
-                        (kp2d.y + 1.5) > current_image.rows)
-                    *diff = 0;
-                else {
+                        (kp2d.y + 1.5) > current_image.rows)){
                     float int1 = get_patch_sum(previous_image, kp2d_ref);
                     float int2 = get_patch_sum(current_image, kp2d);
                     *diff = int2 - int1;
                 }
+                else
+                    *diff = 0;
             }
             kp2d.y++;
             kp2d_ref.y++;

@@ -264,14 +264,23 @@ float PoseRefiner::update_pose(const KeyPoints &keypoints,
                 prev_cost = new_cost;
                 break;
             }
+#if 0
+            else {
+                i = maxIter;
+                break;
+            }
+#else
             else if (fabs(new_cost - prev_cost) < 0.0001) {
                 cout << "Refinement drop out because of small change after" << i << " loops" << endl;
                 i = maxIter;
                 break;
             }
             else {
+                // Even dividing k is not standard gauss newton it improves
+                // the results a bit
                 k /= 2;
             }
+#endif
         }
     }
     refined_pose = x0;

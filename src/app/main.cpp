@@ -123,7 +123,11 @@ static void process_image(SlamApp *app) {
 
     StereoSlam *slam = app->slam;
     Frame frame;
-    slam->get_frame(frame);
+    if (!slam->get_frame(frame)) {
+        cout << "No frame available" << endl;
+        return;
+    }
+
     KeyFrame keyframe;
     slam->get_keyframe(keyframe);
     draw_frame(keyframe, frame);
