@@ -18,8 +18,10 @@
 \predate{\par\begin{center}\Large}
 \postdate{\end{center}}
 %%end novalidate
-\def\@advisors{}
-\newcommand{\advisors}[1]{\def\@advisors{#1}}
+\def\@advisor{}
+\newcommand{\advisor}[1]{\def\@advisor{#1}}
+\def\@expert{}
+\newcommand{\expert}[1]{\def\@expert{#1}}
 \def\@department{}
 \newcommand{\department}[1]{\def\@department{#1}}
 \def\@thesistype{}
@@ -34,8 +36,9 @@
   \vfill\par
   \begin{flushright}
     \sffamily
-    \@advisors\par
-    \@department, BFH
+    Advisor: \@advisor\par
+    Expert: \@expert\par
+    Departement: \@department, BFH
   \end{flushright}
 }
 

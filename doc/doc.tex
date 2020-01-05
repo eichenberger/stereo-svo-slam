@@ -18,9 +18,10 @@
 \setlength{\parindent}{0pt}
 
 \title{ORB Slam Point Cloud generation on Apalis iMX8}
-\author{Stefan Eichenberger}
+\author{Stefan Eichenberger\\<eichest@gmail.com>}
 \date{January 2020}
-\advisors{Marcus Hudritsch}
+\advisor{Prof. Marcus Hudritsch}
+\expert{Dr. Harald Studer (Optimo Medical AG)}
 \department{TSM CPVR Lab}
 
 \lstset{
@@ -40,7 +41,7 @@
 \chapter{Introduction}
 
 Humans use different sensors to estimate the pose of the head inside a room. Everyone ever tried to stand on one foot and closed the eyes knows that closing eyes makes finding the balance harder. From this we can guess that our eyes are an import factor for finding the pose for our brain. In this thesis we try to find a way to use the same optical information from a camera to estimate the pose of the camera inside a room. This is called visual odometry (VO). Most algorithms that implement visual odometry also require SLAM (Simultaneous Localization and Mapping). Such algorithms create a map of the environment while constantly estimating the camera pose. Therefore, we use this terms interchangeably in this document. Knowing the position of an object is important in a lot of different applications and becomes more and more important towards autonomous navigation. Examples of such applications are e.g. drone navigation, robot navigation or augmented reality. All this application require a flexible and ideally mobile device. Therefore a PC with a big power supply can't be used. This is why such an algorithm should ideally be able to run on embedded devices without the requirement of having powerful GPUs or CPUs available.\\
-The CPVR lab of the Bern university of applied science today uses an algorithm called ORB SLAM for projects related to augmented reality. They were able to tweak the algorithm to achieve an acceptable frame rate of 10-20 frames per second(fps) on mobile phones. However, a faster frame rate would mean that no interpolation is needed or the algorithm could even run on slower devices. Therefore, we evaluate and test a different algorithm for the SLAM problem in this document which is called Semi-Dens Visual Odometry (SVO) \cite{svo}.  The duration one frame is processed by SVO on an i7 processor is 3.44ms when running on two threads according to their paper \cite{svo2}. Even thought SVO SLAM is open source, the reference implementation is over 4 years old and has tons of 3th party dependencies. There is a newer version available called SVO2 \cite{svo2} but this implementation is closed source. However, it is based on the original implementation of SVO. In this document we describe our own implementation of the SVO algorithm but we focus on stereo camera SLAM only while the original implementation was meant for monocular cameras. We will analyse the robustness of the SVO and how suitable it is for embedded systems.
+The CPVR lab of the Bern university of applied science today uses an algorithm called ORB SLAM \cite{orbslam} for projects related to augmented reality. They were able to tweak the algorithm to achieve an acceptable frame rate of 10-20 frames per second(fps) on mobile phones. However, a faster frame rate would mean that no interpolation is needed or the algorithm could even run on slower devices. Therefore, we evaluate and test a different algorithm for the SLAM problem in this document which is called Semi-Dens Visual Odometry (SVO) \cite{svo}.  The duration one frame is processed by SVO on an i7 processor is 3.44ms when running on two threads according to their paper \cite{svo2}. Even thought SVO SLAM is open source, the reference implementation is over 4 years old and has tons of 3th party dependencies. There is a newer version available called SVO2 \cite{svo2} but this implementation is closed source. However, it is based on the original implementation of SVO. In this document we describe our own implementation of the SVO algorithm but we focus on stereo camera SLAM only while the original implementation was meant for monocular cameras. We will analyse the robustness of the SVO and how suitable it is for embedded systems.
 
 \section{SLAM}
 
