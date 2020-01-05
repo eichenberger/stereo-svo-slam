@@ -12,7 +12,7 @@ QT_INC_DIR ?= /usr/include/x86_64-linux-gnu/qt5
 
 QMAKE ?= qmake
 
-.PHONY: all app ar-app python test clean lib doc 
+.PHONY: all app ar-app lib qt-viewer python test clean doc 
 
 export
 
@@ -31,6 +31,10 @@ ar-app: lib
 	cd ar-app && $(QMAKE)
 	$(MAKE) -C ar-app
 
+qt-viewer:
+	cd qt-viewer && $(QMAKE)
+	$(MAKE) -C qt-viewer
+
 test:
 	$(MAKE) -C test all
 
@@ -42,3 +46,4 @@ clean:
 	$(MAKE) -C test clean
 	$(MAKE) -C app clean
 	$(MAKE) -C ar-app clean
+	$(MAKE) -C qt-viewer clean
