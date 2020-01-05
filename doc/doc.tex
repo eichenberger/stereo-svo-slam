@@ -835,7 +835,40 @@ We can reuse the exact same definition for the Jacobian as we did for pose estim
 
 \chapter{Implementation}\label{ch:implementation}
 
-In this chapter we discuss the implementation that was written during this thesis. It shows which parts of the algorithm are implemented where to give an overall picture of the implementation.
+In this chapter we discuss the implementation that was written during this thesis. It should give a ruff overview of the code base. The whole project is GNU Makefile based. Table \ref{tab:envvars} shows the environment variables be used to control the make process.
+\begin{table}[H]
+  \centering
+  \begin{tabular}{|l|l|}
+    Variable & Description\\
+    \hline
+    OPENCV\_INC\_DIR & Include directory for OpenCV (opencv2/..)\\
+    OPENCV\_LIB\_DIR & Where to find the opencv libraries if not in standard path\\
+    QT\_INC\_DIR & Where to find the QT include files if not in standard path\\
+    QMAKE & Which qmake should be used\\
+    CXX & Which compiler should be use\\
+    CXXFLAGS & Additional compiler flags (e.g. -O0/-O3)\\
+    LDFLAGS & Additional linker flags (e.g.  additional library paths)
+  \end{tabular}
+\caption{Environment variables for GNU Make}
+\label{tab:envvars}
+\end{table}
+
+\section{Library}
+
+The stereo SVO Library (libstereosvo) is written as shared library. It can be used in other project by dynamically linking against it.
+
+\begin{figure}[H]
+  \includegraphics[width=1.0\textwidth]{img/class_diagram.png}
+  \caption{Blender classroom scene}\label{fig:class_diagram}
+\end{figure}
+
+Figure \ref{fig:class_diagram} shows the most important classes of the library. There are a lot of other files and data types available. However, they support the main classes in doing their work. An application must create an objection based on StereoSlam. When creating the object we need to specify the camera parameters (see attached documentation). After that we can already feed new images by calling it's method new\_image. The getter function can be used to optain the current frame (with pose information), all keyframes (including keypoints), the trajectory or to update the pose. Updating the pose can be used to feed data from an IMU. Currently this is not tested very well. However, it is possible to feed gyro data which helps to improve the stability of the tracker.
+
+\section{Test application}
+
+\section{Demo application}
+
+\section{Additional tools}
 
 \chapter{Results}
 
@@ -859,15 +892,15 @@ Figure \ref{fig:blender_classroom_simple_diff} shows the trajectory difference m
 \begin{table}[H]
   \centering
   \begin{tabular}{|c|c|c|c|c|c|c|}
-  impl & err x & err y & err z & err rx & err ry & err rz\\
-  \hline
-  Our SVO & 0.031 & 0.013 & 0.073 & 0.205 & 0.610 & 0.285\\
-  Edgled SVO & 0.344 & 0.099 & 0.273 & 0.989 & 12.941 & 1.430\\
-  Original SVO & 0.300 & 0.120 & 0.488 & 1.169 & 6.123 & 1.390\\
-  ORB SLAM& 0.023 & 0.015 & 0.023 & 0.222 & 0.302 & 0.204
-\end{tabular}
-\caption{Maximum errors in meter (x,y,z) and Degrees (rx,ry,rz)}
-\label{tab:maximas}
+    impl & err x & err y & err z & err rx & err ry & err rz\\
+    \hline
+    Our SVO & 0.031 & 0.013 & 0.073 & 0.205 & 0.610 & 0.285\\
+    Edgled SVO & 0.344 & 0.099 & 0.273 & 0.989 & 12.941 & 1.430\\
+    Original SVO & 0.300 & 0.120 & 0.488 & 1.169 & 6.123 & 1.390\\
+    ORB SLAM& 0.023 & 0.015 & 0.023 & 0.222 & 0.302 & 0.204
+  \end{tabular}
+  \caption{Maximum errors in meter (x,y,z) and Degrees (rx,ry,rz)}
+  \label{tab:maximas}
 \end{table}
 
 \begin{table}[H]
