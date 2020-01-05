@@ -853,18 +853,42 @@ In this chapter we discuss the implementation that was written during this thesi
 \label{tab:envvars}
 \end{table}
 
+The git repository is organized as follows:
+\begin{table}[H]
+  \centering
+  \begin{tabular}{|l|l|}
+    Directory & Description\\
+    \hline
+    doc & Documentation (current document)\\
+    src  & The source code\\
+    src/app & The source code for the test application\\
+    src/ar-app & The source code for the demo augmented reality app\\
+    src/lib & The source code for the library\\
+    src/python & The source code for the python wrapper and python demo\\
+    src/qt-viewer & The source code for the Qt 3D Viewer\\
+    test & Some test and helper scripts that are irrelevant
+  \end{tabular}
+\caption{Repository organization}
+\label{tab:organization}
+\end{table}
+
+
 \section{Library}
 
 The stereo SVO Library (libstereosvo) is written as shared library. It can be used in other project by dynamically linking against it.
 
 \begin{figure}[H]
   \includegraphics[width=1.0\textwidth]{img/class_diagram.png}
-  \caption{Blender classroom scene}\label{fig:class_diagram}
+  \caption{Class diagram for the Stereo SVO Library}\label{fig:class_diagram}
 \end{figure}
 
 Figure \ref{fig:class_diagram} shows the most important classes of the library. There are a lot of other files and data types available. However, they support the main classes in doing their work. An application must create an objection based on StereoSlam. When creating the object we need to specify the camera parameters (see attached documentation). After that we can already feed new images by calling it's method new\_image. The getter function can be used to optain the current frame (with pose information), all keyframes (including keypoints), the trajectory or to update the pose. Updating the pose can be used to feed data from an IMU. Currently this is not tested very well. However, it is possible to feed gyro data which helps to improve the stability of the tracker.
 
 \section{Test application}
+
+The test application can be used to test the algorithm and to debug it. It allows to use different input sources like video, EuRoC and camera. It also offers a WebSocket interface which allows the Qt Viewer to catch information about the current state of the application. Information that can be received are current camera pose, all keyframe poses, keypoints and trajectory.
+
+\section{Qt Viewer}
 
 \section{Demo application}
 
