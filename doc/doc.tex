@@ -42,7 +42,7 @@
 \chapter{Introduction}
 
 Humans use different sensors to estimate the pose of the head inside a room. Everyone ever tried to stand on one foot and closed the eyes knows that closing eyes makes finding the balance harder. From this we can guess that our eyes are an import factor for finding the pose for our brain. In this thesis we try to find a way to use the same optical information from a camera to estimate the pose of the camera inside a room. This is called visual odometry (VO). Most algorithms that implement visual odometry also require SLAM (Simultaneous Localization and Mapping). Such algorithms create a map of the environment while constantly estimating the camera pose. Therefore, we use this terms interchangeably in this document. Knowing the position of an object is important in a lot of different applications and becomes more and more important towards autonomous navigation. Examples of such applications are e.g. drone navigation, robot navigation or augmented reality. All this application require a flexible and ideally mobile device. Therefore a PC with a big power supply can't be used. This is why such an algorithm should ideally be able to run on embedded devices without the requirement of having powerful GPUs or CPUs available.\\
-The CPVR lab of the Bern university of applied science today uses an algorithm called ORB SLAM \cite{orbslam} for projects related to augmented reality. They were able to tweak the algorithm to achieve an acceptable frame rate of 10-20 frames per second(fps) on mobile phones. However, a faster frame rate would mean that no interpolation is needed or the algorithm could even run on slower devices. Therefore, we evaluate and test a different algorithm for the SLAM problem in this document which is called Semi-Dens Visual Odometry (SVO) \cite{svo}.  The duration one frame is processed by SVO on an i7 processor is 3.44ms when running on two threads according to their paper \cite{svo2}. Even thought SVO SLAM is open source, the reference implementation is over 4 years old and has tons of 3th party dependencies. There is a newer version available called SVO2 \cite{svo2} but this implementation is closed source. However, it is based on the original implementation of SVO. In this document we describe our own implementation of the SVO algorithm but we focus on stereo camera SLAM only while the original implementation was meant for monocular cameras. We will analyse the robustness of the SVO and how suitable it is for embedded systems.
+The CPVR lab at the Bern university of applied science uses an algorithm called ORB SLAM \cite{orbslam} for projects related to augmented reality. They were able to tweak the algorithm to achieve an acceptable frame rate of 10-20 frames per second(fps) on mobile phones. However, a faster frame rate would mean that no interpolation is needed or the algorithm can run on slower devices. Therefore, we evaluate and test a different algorithm for the SLAM problem in this document which is called Semi-Dens Visual Odometry (SVO) \cite{svo}.  The second SVO paper \cite{svo2} from the same author states that the duration to process one frame on a modern processor is below 5ms when running on two CPUs. Even thought SVO SLAM is open source, the reference implementation is over 4 years old and has tons of 3th party dependencies. There is a newer version available based on the second paper  but this implementation is closed source. However, it is based on the original idea of SVO. In this document we describe our own implementation of the SVO algorithm but we focus on stereo camera SLAM, while the original implementation is meant for monocular cameras. We will analyse the robustness of the SVO and how suitable it is to run it on an embedded system which can also be used mobile.
 
 \section{SLAM}
 
@@ -433,7 +433,7 @@ All parameters in equation \ref{eq:lk_dp} are known and can be calculated for a 
 \begin{equation}
   \Delta H=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix})
 \end{equation}
-H is called the Hessian matrix. Unfortunately we need to calculate this matrix in each iteration. The inverse compositional Lucas Kanade algorithm tries to solve this problem by wrapping the template to the current image instead of the current image to the template.
+H is called the Hessian matrix. It is the same formulation used by Gauss-Newton optimization. Therefore, we use Gauss-Newton when using $\Delta p$ for the update step \cite{inverse_compositional} during optimization. Unfortunately we need to calculate the Hessian matrix in each iteration. The inverse compositional Lucas Kanade algorithm tries to solve this problem by wrapping the template to the current image instead of the current image to the template.
 
 \section{Inverse compositional Lucas Kanade}
 
@@ -548,7 +548,7 @@ Compared to the normal Lucas-Kanade algorithm the Hessian Matrix H is now consta
 Because we only have to calculate the Hessian matrix once, the inverse computational Lucas Kanade is more efficient then the Lucas Kanade algorithm.\\
 In this chapter we saw how we calculate the optical flow by using a warp matrix. As we will later see this is used by SVO in the pose refinement step. In the next section we describe how optical flow can be used to find a 3D pose instead of a warp matrix.
 
-\section{Pose estimation}\label{sec:pose_estimation}
+\section{Pose Estimation}\label{sec:pose_estimation}
 For a first estimate of the pose we use some kind of optical flow algorithm. However, we directly try to find the 3D pose instead of the warp matrix. Also we don't try to find a warp matrix for each individual patch but for all patches in the image. We start again with the idea of minimizing the intensity differences over a patch of pixels shown in equation \ref{eq:pe_problem}.
 \begin{equation}\label{eq:pe_problem}
   \sum_x\sum_y(I_{k-1}(x'',y'')-I_{k}(x',y'))^2
@@ -560,7 +560,7 @@ For a first estimate of the pose we use some kind of optical flow algorithm. How
   I_{k}          &:  \text{Current image}
 \end{align*}
 
-This time we use 3D points instead of pixel posiitons. Therefore, we use a projection matrix instead of a warp matrix. The projection matrix $p$ is shown in equation \ref{eq:pe_warped}. 
+This time we use 3D points instead of pixel positions. Therefore, we use a projection matrix instead of a warp matrix. The projection matrix $p$ is shown in equation \ref{eq:pe_warped}. 
 
 \begin{equation}\label{eq:pe_warped}
   \begin{split}
@@ -647,7 +647,7 @@ We reformulate the problem by using Lie algebra. The idea is to transform the an
       x''\\
       y''
     \end{pmatrix}
-    =e^{\xi}*p\\
+    =h(e^{\xi}*p)\\
     \xi=\begin{pmatrix}
       v_x\\
       v_y\\
@@ -659,6 +659,7 @@ We reformulate the problem by using Lie algebra. The idea is to transform the an
   \end{gathered}
 \end{equation}
 \begin{align*}
+  h      &:  \text{Mapping function from u,v,s to x,y}\\
   e      &:  \text{Exponential map}\\
   \xi    &:  \text{Pose change between reference frame and current frame as vector in SE(3)}\\
   p      &:  \text{point in 3D cloud}
@@ -698,37 +699,38 @@ $\xi$ in \ref{eq:pe_lie} is the change in angle and position in Lie algebra. We 
 
 We use $\Delta t_x,\Delta t_y,\Delta t_z,\Delta r_x,\Delta r_y,\Delta r_z$ as our gradient for optimizing the pose. To get $\xi$ we again do the first order Taylor approximation as shown in equation \ref{eq:pe_taylor}).
 \begin{equation}\label{eq:pe_taylor}
-  \sum_x\sum_y(I_{k-1}(x,y)+\nabla I_{k-1}*\frac{\sigma e^{\xi}*p}{\sigma \xi}*\xi-I_{k}(x',y'))^2
+  \sum_x\sum_y(I_{k-1}(x,y)+\nabla I_{k-1}*\frac{\sigma h(e^{\xi}*p)}{\sigma \xi}*\xi-I_{k}(x',y'))^2
 \end{equation}
 \begin{align*}
-  x,y        &: \text{Original pixel position in template}\\
-  x',y'      &: \text{Pixel position in current image}\\
-  I_{k-1}    &: \text{Template image}\\
-  I_{k}      &: \text{Current image}\\
-  \nabla I  &: \text{Gradient in image I at position x',y'}\\
-  \xi        &: \text{Twist formulated in Lie algebra}\\
-  p          &: \text{point in 3D space}  
+  h      			&:  \text{Mapping function from u,v,s to x,y}\\
+  x,y        	&: \text{Original pixel position in template}\\
+  x',y'      	&: \text{Pixel position in current image}\\
+  I_{k-1}    	&: \text{Template image}\\
+  I_{k}      	&: \text{Current image}\\
+  \nabla I  	&: \text{Gradient in image I at position x',y'}\\
+  \xi        	&: \text{Twist formulated in Lie algebra}\\
+  p          	&: \text{point in 3D space}  
 \end{align*}
 
 We again derive equation \ref{eq:pe_taylor} from $\xi$ and set it to zero as shown in equation \ref{eq:pe_derivative}. This finally allows us to find $\xi$.
 
 \begin{equation}\label{eq:pe_derivative}
-  2\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma e^{\xi}p}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k-1}\frac{\sigma e^{\xi} p}{\sigma \xi}\xi-I_{k-1}(x,y)\end{bmatrix}
+  2\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma h(e^{\xi}p)}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k-1}\frac{\sigma h(e^{\xi} p)}{\sigma \xi}\xi-I_{k-1}(x,y)\end{bmatrix}
 \end{equation}
 
 We want to find $\xi$ which leads us to equation \ref{eq:pe_xi}.
 
 \tiny
 \begin{equation}\label{eq:pe_xi}
-  \xi=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma e^{\xi}p}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k-1}\frac{\sigma e^{\xi}p}{\sigma \xi}\end{bmatrix})^{-1}
-  \sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma e^{\xi}p}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}') - I_{k-1}(x,y)\end{bmatrix}
+  \xi=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma h(e^{\xi}p)}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k-1}\frac{\sigma h(e^{\xi}p)}{\sigma \xi}\end{bmatrix})^{-1}
+  \sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma h(e^{\xi}p)}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}') - I_{k-1}(x,y)\end{bmatrix}
 \end{equation}
 \normalsize
 
-We now only have to find a solution for $\frac{\sigma e^{\xi}p}{\sigma \xi}$ to be able to caclulate $\xi$. This Jacobian matrix is shown in equation \ref{eq:se3_jacobian} \cite{se3_explain}.
+We now only have to find a solution for $\frac{\sigma h(e^{\xi}p)}{\sigma \xi}$ to be able to caclulate $\xi$. This Jacobian matrix is shown in equation \ref{eq:se3_jacobian} \cite{se3_explain}.
 
 \begin{equation}\label{eq:se3_jacobian}
-  \frac{e^{\xi}p}{\delta \xi}=
+  \frac{h(e^{\xi}p)}{\delta \xi}=
   \begin{pmatrix}
     f_x & f_y
   \end{pmatrix}
@@ -834,7 +836,7 @@ Now we derive the Taylor approximation to be able to minimize it. This is shown 
   \end{gathered}
 \end{equation}
 
-We can reuse the exact same definition for the Jacobian as we did for pose estimation in equation \ref{eq:se3_jacobian}.
+We can reuse the same definition for the Jacobian as we did for pose estimation in equation \ref{eq:se3_jacobian}. The only difference is that this time we use the repojection error instead of the intensity gradient to calculate the gradient.
 
 \chapter{Implementation}\label{ch:implementation}
 
