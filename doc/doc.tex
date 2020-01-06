@@ -10,6 +10,7 @@
 \usepackage[hidelinks]{hyperref}
 \usepackage{url}
 \usepackage[backend=biber]{biblatex}
+\usepackage{makecell}
 
 \addbibresource{bibtex.bib}
 
@@ -94,6 +95,7 @@ The purpose of this thesis is to implement SVO SLAM as open source library. Base
 
 \section{Outline}
 
+This document is organised as follows. In chapter \ref{ch:svo} we describe the SVO algorithm. However, we don't describe the mathematical details in depth because to not keep the chapter smaller. Chapter \ref{ch:depth} will describe how we receive depth information from a stereo camera. In chapter \ref{ch:opt_flow} we describe the idea of optical flow. We first start with an intuitive section and then move forward to the mathematical details. In chapter \ref{ch:pose_refinement} we find the information about how the pose can refined after a first estimate. The details about how we implement the algorithm is subject of chapter \ref{ch:implementation}. We then compare the results of the implementation with previous work in chapter \ref{ch:results}. The final results are discussed in the last chapter \ref{ch:discussion}.
 
 \section{Planing}
 The master thesis is honored with 27 ECTS. 1 ECTS consumes 30h which results in a total of 810h. Assuming 8.5 working hours per day, we have to spend 95.29 working days. Because the thesis is done part time a full year can be used. We assume one year has 48 weeks. During the first 16 weeks only 1.5 days can be used for the master thesis (because of additional modules). This means during the first 16 weeks we only work 24 days on the project. 71.29 days are left for the last 32 weeks. This results in 2.228 days work during the 32 weeks. Figure \ref{fig:gantt} shows the initial as well as the final planing. Unfortunately the implementation of the library took more time than expected. Therefore, the plane detection and mesh creation was removed completely from what is implemented. If this would be required an additional library like the open source project Point Cloud Library \cite{pcl} could be used.
@@ -106,7 +108,7 @@ The master thesis is honored with 27 ECTS. 1 ECTS consumes 30h which results in 
 
 As the final planing shows we first started to with a Python based implementation of the algorithm. The idea was that Python code is more readable and better suited for experimenting. However, the problem was that the code was slow even when using Numpy to accelerate matrix multiplications. Therefore, a completely C++ based implementation of the library has been written. However, for debugging a Python wrapper was developed in parallel. Reviewing this decision, this was a mistake because a lot of time was spent for debugging the Python wrapper. In the final version it is still available and it can be built. However, it is tested poorly and not documented at all. Further there was no plan to write a 3D viewer. However, to make it more flexible a viewer was developed which can receive data over Network to keep the code bases separated and to allow remote analysis of 3D data. Because of this two issues the scope was reduced and the focus was set on the library.
 
-\chapter{SVO}
+\chapter{SVO}\label{ch:svo}
 In this chapter we describe the basic idea behind SVO SLAM. We don't dive into the mathematical details yet. As we will see most parts of the algorithm are based on the idea of optical flow. Therefore, we will handle this topic in chapter \ref{ch:opt_flow}.
 
 \section{Architecture}
@@ -742,7 +744,7 @@ We now only have to find a solution for $\frac{\sigma e^{\xi}p}{\sigma \xi}$ to 
 
 Given the Jacobian, all 3D points we can now calculate the gradient for a given pose and then iteratively optimize the pose pased on the gradient. Becasue we again use the Inverse Compositional Lucas Kanade approach, the Hessian only needs to be calculated once per optimization step and not for each iteration.
 
-\chapter{Pose refinement}\label{ch:pose_refinement}
+\chapter{Pose Refinement}\label{ch:pose_refinement}
 
 Pose refinement is used to decrease the drift over time and to increase the accuracy of the pose estimation. In a first step we use optical flow to locate keypoints from the keyframe in the current image. Then we try to minimize the reprojection error shown in equation \ref{eq:refinement_reprojection}.
 \begin{equation}\label{eq:refinement_reprojection}
@@ -879,23 +881,131 @@ The git repository is organized as follows:
 The stereo SVO Library (libstereosvo) is written as shared library. It can be used in other project by dynamically linking against it.
 
 \begin{figure}[H]
+  \centering
   \includegraphics[width=1.0\textwidth]{img/class_diagram.png}
   \caption{Class diagram for the Stereo SVO Library}\label{fig:class_diagram}
 \end{figure}
 
 Figure \ref{fig:class_diagram} shows the most important classes of the library. There are a lot of other files and data types available. However, they support the main classes in doing their work. An application must create an objection based on StereoSlam. When creating the object we need to specify the camera parameters (see attached documentation). After that we can already feed new images by calling it's method new\_image. The getter function can be used to optain the current frame (with pose information), all keyframes (including keypoints), the trajectory or to update the pose. Updating the pose can be used to feed data from an IMU. Currently this is not tested very well. However, it is possible to feed gyro data which helps to improve the stability of the tracker.
 
+\subsection{Stereo SLAM}
+
+The Stereo SLAM class implements the basic algorithm described in \ref{ch:svo} and shown in \ref{fig:svo_slam}. Figure \ref{fig:flow_stereo_slam} shows a slightly changed flow chart to align better with the naming in the implementation. It calls the depth calculator if new keyframes are needed, estimates the pose and updates the point cloud. However, the work is delegated to its sub objects. It also provides an interface to receive information about the current state (see figure \ref{fig:class_diagram}. The interfaces are described in more detail in the separate source code documentation.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.3]{img/flow_stereo_slam.png}
+  \caption{Stereo SLAM Flow}\label{fig:flow_stereo_slam}
+\end{figure}
+
+
+\subsection{Depth Calculator}
+
+The depth calculator divides the image into grids and searches for new keypoints, merges keypoints from previous keyframes and estimates the depth. It is only used when a new keyframe is required. Figure \ref{fig:flow_depth_calculator} shows the flow diagram of the depth calculation.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.3]{img/flow_depth_calculator.png}
+  \caption{Depth Calculator Flow}\label{fig:flow_depth_calculator}
+\end{figure}
+
+\subsection{Pose Estimator}
+
+The pose estimator does a first estimate of the pose based on the previous image. It does that by using sparse image alignment described in section \ref{sec:sia}. Figure \ref{fig:flow_pose_estimator} shows the flow diagram for the pose estimator.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.3]{img/flow_pose_estimator.png}
+  \caption{Pose Estimator Flow}\label{fig:flow_pose_estimator}
+\end{figure}
+
+\subsection{Pose Refiner}
+
+The pose refiner updates the pose by taking the keyframes into account where a keypoint has first been seen. This reduces the drift and makes the pose estimation more stable. It uses the algorithm described in chapter \ref{ch:pose_refinement}. Figure \ref{fig:flow_pose_refiner} shows the flow diagram of the pose refiner.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[scale=0.3]{img/flow_pose_refiner.png}
+  \caption{Pose Refiner Flow}\label{fig:flow_pose_refiner}
+\end{figure}
+
+\subsection{Depth Filter}
+
+The depth filter removes outlier and updates the 3D point position of keypoints. It is completely different from what the original implementation does. The reason is that they work with seeds which we don't require because we use stereo cameras. We don't have seeds but we can improve the 3D points if we have bigger camera movements than the camera baseline is. Figure \ref{fig:flow_depth_filter} shows two flows. The first flow a describes the outlier detection while the second flow b describes the 3D point update.
+
+\begin{figure}[H]
+  \centering
+  \subfloat[Outlier detecction]{\includegraphics[scale=0.3]{img/flow_depth_filter_outlier.png}}
+  \qquad
+  \subfloat[3D Point Update]{\includegraphics[scale=0.3]{img/flow_depth_filter_update.png}}
+  \caption{Depth Filter Flow}\label{fig:flow_depth_filter}
+\end{figure}
+
 \section{Test application}
 
-The test application can be used to test the algorithm and to debug it. It allows to use different input sources like video, EuRoC and camera. It also offers a WebSocket interface which allows the Qt Viewer to catch information about the current state of the application. Information that can be received are current camera pose, all keyframe poses, keypoints and trajectory.
+\begin{figure}[H]
+  \includegraphics[width=0.9\textwidth]{img/test_app.png}
+  \caption{Image from the Test Application}\label{fig:test_app}
+\end{figure}
+
+The test application can be used to test the algorithm and to debug it. It allows to use different input sources like video, EuRoC and camera. It also offers a WebSocket interface which allows the Qt Viewer to catch information about the current state of the application. Information that can be received are current camera pose, all keyframe poses, keypoints and trajectory. Figure \ref{fig:test_app} shows an example output of the application. The left side shows the last keyframe with all keypoints that were visible there and the right image show the actual frame. In the keyframe it shows the following numbering a:b. A is the keyframe id where the frame was first seen and b is the index of the keypoint in the keyframe where it was first seen. In the current frame it shows the following information a:b:+/-:x,y,z;inliers,outliers. A and b are again the keypoint ids + means the keypoint is currently used (- would mean it wont be used) then follows the x,y,z position and the last two numbers say how many times the point was counted as inlier or as outlier. The numbers are small but it's possible to zoom in to make them bigger. This numbers are interesting when debugging the application. By pressing a key other than q we can freeze the processing to analyse the current state. By pressing q we can stop the application.\\
+Additionally to the above output the test application offers a Websocket \cite{websocket} backend. Through this backend it is possible for the Qt Viewer to read out 3D data like current pose, keyframes and trajectory. The Websocket idea is shown in figure \ref{fig:websocket}.
+
+\begin{figure}[H]
+  \includegraphics[width=0.9\textwidth]{img/websocket.png}
+  \caption{Websocket Connection}\label{fig:websocket}
+\end{figure}
+
+It is possible to access via Websocket URLs. Table \ref{tab:websocketapi} shows the implemented commands and URLs. For the trajectory it will send x1,y1,z1,rx1,ry1,rz1,x2,y2,z2,... The test application will open a Websocket port on port 8001.
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{|l|l|l|}
+    URL & Command & Response \\
+    \hline
+    keypoints & get & \makecell[l]{\{\\"colors":[\{"b":139,"g":69,"r":103\},\dots],\\"keypoints":[\{"x":-4.8,"y":-0.9,"z":6.1\},\dots],\\pose":\{"rx":0.4,"ry":0.1,"rz":-0.9,"x":-1.8,"y":0.2,"z":0.1\}\\\}}\\
+    \hline
+    pose & get & \makecell[l]{\{"pose":\{"rx":-9.1,"ry":0.0,"rz":-0.0,"x":-1.2,"y":0.0,"z":-2.0\}\}}\\
+    \hline
+    trajectory & get & \makecell[l]{\{"trajectory":[0,0,0,0,0,0,0.1,0.1,0.1,0.1,0.1,0.1,0.1,\dots]\}}\\
+  \end{tabular}
+  \caption{Websocket commands}
+  \label{tab:websocketapi}
+\end{table}
 
 \section{Qt Viewer}
+\begin{figure}[H]
+  \centering
+  \subfloat[Viewer with reduced keyframes]{\includegraphics[width=0.45\textwidth]{img/qt_viewer1.png}}
+  \qquad
+  \subfloat[Viewer with all keyframes]{\includegraphics[width=0.45\textwidth]{img/qt_viewer2.png}}
+  \caption{Qt Viewer}\label{fig:qt_viewer}
+\end{figure}
+
+We can use the Qt Viewer shown in figure \ref{fig:qt_viewer} to display 3D information calculated by the Test Application. We can navigate with the mouse to move trough the 3D room. The data is not received automatically. We need to click connect, get pose, etc. to trigger an action. This allows us to keep a snapshot of a scene to analyse the current state. All points have the same color as in the test application. Keyframes are shown as blue rectangles, the current frame pose is shown in green. The trajectory is shown as red line. When pressing the connect button it will automatically connect to localhost on port 8001, which is where the Test Application is listening on.
 
 \section{Demo application}
+\begin{figure}[H]
+  \centering
+  \subfloat[Demo application first view]{\includegraphics[width=0.45\textwidth]{img/demo_app1.png}}
+  \qquad
+  \subfloat[Demo application different view]{\includegraphics[width=0.45\textwidth]{img/demo_app2.png}}
+  \caption{Demo Application}\label{fig:demo_application}
+\end{figure}
+
+The demo application shown in figure \ref{fig:demo_application} is a simple augmented reality application that demonstrates one usecase. If we move the camera the Tux should stay at the same place. It is possible to disable the painting of the keypoints by not providing the -p option when starting the application. Only the econ camera is supported as input.
 
 \section{Additional tools}
 
-\chapter{Results}
+There are a few other tools available which will not be documented in more detail because they are in bad shape or not intended for further use.
+
+\subsection{Python wrapper}
+There is a Python wrapper under src/python which uses Cython to generate bindings. It allows us to use libstereoslam from within Python. A demo application is provided as main.py. It provides a similar feature set as the Test Application.
+
+\subsection{Scripts}
+There are several scripts under test which can be used to record videos from the econ camera in the right format. To print the results for the next section, etc.
+
+\chapter{Results}\label{ch:results}
 
 For testing the algorithm with a reference implementation we use a synthetic scene generated by Blender. The advantage of having synthetic scenes is that we can test some well defined movements where we exactly know the trajectory. We compare our implementation with SVO edgelet \cite{svo_edgled} as well as the original SVO implementation \cite{svo}. This is based on the reference SVO implementation. However, it is using newer versions of OpenCV, libegien, etc. They added edgelets tracking which is missing in the original SVO sources and they added a GUI to observe the tracking. However, it's much slower than the original implementation on the other side it seems to be more robust than the original implementation. Unfortunately the reference implementation are quite prone to changes in z and angle changes. Therefore, a simplified scene was generate to have at least some reference. All measurements were done on an Intel i7-8550U processor a version without OpenMP was used (see \ref{ch:implementation}).
 
@@ -1043,7 +1153,7 @@ EuRoC is a widely used testset for SLAM algorithms \cite{euroc}. Figure \ref{fig
 
 As we can see in figure \ref{fig:euroc} we have a huge drift over the whole sequence. In the end we measure an error of more than one meter in each direction. However, this was measured without doing a lot of parameter tuning. SVO2 states that they can achieve an RMSW of only 8 cm. SVO 1 where this thesis is based on can't follow the sequence. It is possible that better results could be achieved with our implementation by tweaking the parameters but it's unrealistic to get close to what SVO2 measured. The average frame rate was 37.13 fps.
 
-\chapter{Discussion}
+\chapter{Discussion}\label{ch:discussion}
 
 We showed that the principle of SVO works and can be faster than e.g. ORB SLAM. Our implementation does not achieve the same frame rate as the reference implementation. There can be a lot of reasons why this happens. First we only use gradient descent for optimization. Probably a Gauss Newton like algorithm would find the minimum faster. We've chosen gradient descent because it is easy understandable and convenient to debug. However, a rework should definitely address this issue. Further we don't use OpenMP. The code is prepared for it but it is no activated because on the test system with an i7 processor the algorithm runs slower. The assumption is that it has to do with optimization and that for some reason the compiler can't vectorize the code when OpenMP is used. On an ARM iMX8QM based system activating OpenMP showed a speedup of around 3. However, even with this speed up the algorithm run with 10fps. Therefore, we did not document this test in more detail. However, two things would be interesting to analyze. Can the compiler vectorize all critical parts of the code and can in parallel enable OpenMP. If we would achieve a speed up of at least 2 with OpenMP frame rates of > 60fps should be achievable.\\\\
 The accuracy of our implementation is behind modern SLAM implementations. This could be improved by projection old keypoints into the current frame. We don't do that at the moment because of speed concerns and to keep the algorithm simple. However, it could lead to more stable results because some kind of local loop closing would be possible.\\\\
