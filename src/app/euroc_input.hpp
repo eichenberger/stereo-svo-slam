@@ -6,15 +6,27 @@
 
 #include "image_input.hpp"
 
+/*!
+ * \brief Class for euroc video input
+ *
+ * This class accepts a path to the euroc mav0 folder and then starts to
+ * read the images from there.
+ */
 class EurocInput: public ImageInput
 {
 public:
+    /*!
+     * \brief Create the EurocInput object
+     *
+     * @param[i] image_path Where to find the images (mav0 folder)
+     * @param[i] settings The settings file (.yaml)
+     */
     EurocInput(const std::string &image_path, const std::string &settings);
 
 
     virtual bool read(cv::Mat &left, cv::Mat &right, float &time_stamp);
     virtual void get_camera_settings(CameraSettings &camera_settings);
-    void jump_to(int frame_number);
+    void jump_to(int frame_number); //!< Jump to a specific frame
 
 private:
     size_t read_count;

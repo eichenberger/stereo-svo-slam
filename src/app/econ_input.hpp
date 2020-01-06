@@ -15,9 +15,23 @@ struct ImuData{
     float gyro_z;
 };
 
+/*!
+ * \brief Class for Econ Tara video input
+ *
+ * This class accepts a path to the video file, the hidraw device to control
+ * exposer etc, the YAML settings file and the
+ */
 class EconInput: public ImageInput
 {
 public:
+    /*!
+     * \brief Create the EconInput object
+     *
+     * @param[i] camera_path The video device e.g. /dev/video0
+     * @param[i] hidraw_path The hidraw path to control the camera (exposure) e.g. /dev/hidraw0
+     * @param[i] settings The settings file (.yaml)
+     * @param[i] hidraw_imu_path The hidraw path where we can find the IMU data e.g. /dev/hidraw1
+     */
     EconInput(const std::string &camera_path, const std::string &hidraw_path,
             const std::string &settings, const std::string &hidraw_imu_path = "");
 

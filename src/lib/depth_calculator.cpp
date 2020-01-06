@@ -163,12 +163,11 @@ void DepthCalculator::calculate_depth(Frame &frame,
     vector<vector<KeyPoint2d>> keypoints_pyr;
     vector<vector<KeyPointInformation>> kp_info_pyr;
 
+    // Remove keypoints that are not within the image
+    find_bad_keypoints(frame);
 
     detect_keypoints_on_each_level(frame.stereo_image,
             camera_settings, keypoints_pyr, kp_info_pyr);
-
-    // Remove keypoints that are not within the image
-    find_bad_keypoints(frame);
 
     vector<KeyPoint2d> _keypoints2d;
     vector<KeyPointInformation> _kp_info;
