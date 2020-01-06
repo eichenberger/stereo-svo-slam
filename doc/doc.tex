@@ -34,7 +34,7 @@
 
 \maketitle
 \begin{abstract}
-  Simultaneous location and mapping (SLAM) is a technology used for robot navigation and augmented reality. Today most SLAM libraries are either proprietary or not ready for embedded systems. In this thesis we try to write a library which is open source and achieves frame rates of above 30 fps when running on an embedded devices.
+  Simultaneous location and mapping (SLAM) is a technology used for robot navigation and augmented reality. Today most SLAM libraries are either proprietary or not ready for embedded systems. In this thesis we will write and analyse a library which is open source and can be used on embedded devices.
 \end{abstract}
 
 \tableofcontents
@@ -118,6 +118,7 @@ Figure \ref{fig:svo_slam} shows the architecture of SVO and our implementation. 
 \begin{figure}[H]
   \centering
   \subfloat[Original SVO]{\includegraphics[height=0.25\textheight]{img/svo1_flow.png}}
+	\qquad
   \subfloat[Our SVO]{\includegraphics[height=0.25\textheight]{img/our_svo_slam.png}}
   \caption{Orignal SVO SLAM vs modified version}\label{fig:svo_slam}
 \end{figure}
@@ -129,7 +130,9 @@ The original SVO implementation uses a monocular camera. It's therefore not poss
   \item{Do Sobel filtering of the image in horizontal direction}
   \item{Divide image in 16x16 blocks}
   \item{Select one FAST corner in each block}
-    \subitem{If no FAST corner can be found, use point with biggest gradient as keypoint}
+		\begin{enumerate}
+			\item{If no FAST corner can be found, use point with biggest gradient as keypoint}
+		\end{enumerate}
   \item{Calculate depth for each keypoint}
   \item{Transform the keypoint depth to world coordinates by using the camera pose}
 \end{enumerate}
