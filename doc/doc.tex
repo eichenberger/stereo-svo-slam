@@ -241,7 +241,7 @@ Outlier detection is based on two steps. During refinement the intensity differe
 We use a second mechanism to detect outliers after pose refinement. We use the stereo image and calculate the disparity for a keypoint $d_{current}$. We then transfer the global 3D keypoint to local coordinates. By calculating $d_{expected}=z_{local}/baseline$ we get the expected disparity. We count the estimate as inlier if the difference is smaller than 2.5 pixel $5*abs(d_{current}-d_{expected})<2.5$. We take the standard deviation of 0.5 pixel for disparity and want to include 99.99\% which corresponds to 5 Tau. If a point has more outlier than inlier we remove it from the available keypoints. This mechanism eliminates weak keypoints that have low contrast.
 
 \subsection{Point Refinement}
-As mentioned before, SVO \cite{svo} was created for monocular cameras. Therefore, it is necessary to have multiple images at multiple positions to get an initial guess of the 3D cloud. The algorithm initializes each keypoint with an average depth, estimates the new pose based on this depths and updates the depth based on the new pose. The keypoints are first threaded as seeds and if the certainty of depth is good enough the point is added to the 3D map. The whole 3D point estimation only works if there is movement in x or y direction. For the first n frames is no point cloud available. Because we use a stereo camera we can estimate a 3D depth from the first frame on (as we see in section \ref{sec:initialization}). However, we can improve the position of a 3D point over time. In section \ref{sec:refinement} we got a better estimate of the keypoint location in the current image by using optical flow. We then refined the pose based on this information. However, because the 3D points are not exactly accurate we still have an error between the point found by optical flow and the point found by re-projection. If the camera moves more than the baseline of the camera we profit from this movement to get a better estimate of the 3D position. We do this by using a Kalman filter with the update step shown in equation \ref{eq:point_refinement}. The measurement error is smaller the bigger the movement is. For the first measurement we know that the disparity has the size of the baseline of the camera. This means instead of $\sqrt{\Delta x^2+\Delta y^2}$ we just take the baseline in meter. The disparity has a close to normal distribution. Therefore, we use the inverse depth to update our Kalman filter. This is why we use $z^{-1}$ in the formula.
+As mentioned before, SVO \cite{svo} was created for monocular cameras. Therefore, it is necessary to have multiple images at multiple positions to get an initial guess of the 3D cloud. The algorithm initializes each keypoint with an average depth, estimates the new pose based on this depths and updates the depth based on the new pose. The keypoints are first threaded as seeds and if the certainty of depth is good enough the point is added to the 3D map. The whole 3D point estimation only works if there is movement in x or y direction. For the first n frames is no point cloud available. Because we use a stereo camera we can estimate a 3D depth from the first frame on (as we see in section \ref{sec:initialization}). However, we can improve the position of a 3D point over time. In section \ref{sec:refinement} we got a better estimate of the keypoint location in the current image by using optical flow. We then refined the pose based on this information. However, because the 3D points are not exactly accurate we still have an error between the point found by optical flow and the point found by re-projection. If the camera moves more than the baseline of the camera we profit from this movement to get a better estimate of the 3D position. We do this by using a Kalman filter with the update step shown in equation \ref{eq:point_refinement}. The measurement error is smaller the bigger the movement is. For the first measurement we know that the disparity has the size of the baseline of the camera. This means instead of $\sqrt{\Delta x^2+\Delta y^2}$ we just take the baseline in meter. The disparity has a close to normal distribution with an approximate deviation of 0.5 pixel. Therefore, we use the inverse depth to update our Kalman filter. This is why we use $z^{-1}$ in the formula. The deviation of 0.5 pixel comes due to the fact that we have a maximum resolution of 1 pixel. So the expected error is ~0.5 pixel. 
 \begin{equation}\label{eq:point_refinement}
   \begin{gathered}
     z^{-1}(t)=z(t-1)+w(t)\\
@@ -258,7 +258,7 @@ As mentioned before, SVO \cite{svo} was created for monocular cameras. Therefore
 
 \chapter{Depth Estimation}\label{ch:depth}
 
-To find the depth at a certain point (.e.g. keypoint) we match the intensities of the left and right images for a certain patch. Because we vertically aligned the camera, the algorithm starts matching the right image at pixel position of the left image and searches from there to the right as shown in figure \ref{fig:disparity}. The position with the smallest intensity difference between left and right is where we calculate the distance. We call the distance between the left and right image disparity. An object far away has less disparity than an object near to the camera. A point at infinity will have a disparity of zero. Because camera images are normally noisy it's not possible to just use one pixel instead a whole patch should be used to reduce the influence of noise. For the Econ Tara at 752x480 a patch size of 31x31 pixel works well. The patch size was found empirically.
+To find the depth at a certain point (.e.g. keypoint) we match the intensities of the left and right images for a patch of pixels (e.g. a square of 31x31 pixel). Because we vertically aligned the camera, the algorithm starts matching the right image at pixel position of the left image and searches from there to the right as shown in figure \ref{fig:disparity}. The position with the smallest intensity difference between left and right is what we call disparity. An object far away has less disparity than an object close to the camera. A point at infinity will have a disparity of zero. Because camera images are noisy it's not possible to just use one pixel instead a whole patch is used to reduce the influence of noise. For the Econ Tara at 752x480 a patch size of 31x31 pixel works well. The patch size was found empirically.
 
 \begin{figure}[H]
   \begin{center}
@@ -267,7 +267,7 @@ To find the depth at a certain point (.e.g. keypoint) we match the intensities o
   \caption{Disparity with epipolar (horizontal) line, left: left image, right: right image with transparent left image}\label{fig:disparity}
 \end{figure}
 
-From the disparity we can calculate the depth (distance from the camera) by using the formula shown in equation \ref{eq:depth_disp}.
+From disparity we can calculate the depth by using equation \ref{eq:depth_disp}.
 
 \begin{equation}\label{eq:depth_disp}
   Z=\frac{f_m*b*s_{px}}{d}=\frac{f_x*b}{d}
@@ -281,7 +281,7 @@ From the disparity we can calculate the depth (distance from the camera) by usin
   s_{px}  &: \text{Pixel size in meter}
 \end{align*}
 
-If we know the pose of the camera we can transform the depth to the global coordinate system. First we need to find calculate the X and Y position in the 3D space with camera as (0,0,0). This is shown in equation \ref{eq:depth_xy}.
+If we know the pose of the camera we can transform the depth to the global coordinate system. First we need to calculate the X and Y position in the 3D space with camera as (0,0,0). This is shown in equation \ref{eq:depth_xy}.
 
 \begin{equation}\label{eq:depth_xy}
   \begin{gathered}
@@ -296,7 +296,7 @@ If we know the pose of the camera we can transform the depth to the global coord
   x,y      &: \text{2D point in image}
 \end{align*}
 
-Now we can simply transform the 3D point with camera as reference to the global coordinate system by using the camera pose. This is shown in equation \ref{eq:depth_global}.
+Now we can transform the 3D point from the cameras local coordinate system to the global coordinate system by using the camera pose. This is shown in equation \ref{eq:depth_global}.
 
 \begin{equation}\label{eq:depth_global}
   \begin{pmatrix}
@@ -327,14 +327,17 @@ Now we can simply transform the 3D point with camera as reference to the global 
   t_{x,y,z}  &: \text{Camera location}
 \end{align*}
 
-
-
 \chapter{Optical Flow}\label{ch:opt_flow}
-To speed up the optimization a predefined gradient can be calculated. The method to find such a gradient is related to the Lucas-Kanade optical flow method. Instead of searching a Warp matrix we search a transformation matrix in this scenario. We have two images $I_{k-1}$ and $I_{k}$. We know the pose of image k-1 $T_{k-1}$ . We search the pose $T_k$.\\
-While the inverse compositional Lucas Kanade algorithm tries to find the optimal Warp matrix. We try to find the optimal pose.
+Lets assume we have an image I1 at time t-1 and an image I2 at time t. We know the position of a point P1 in image 1. We use Lucas Kanade Optical Flow to find the position P2 of the point in image 2. It does that by minimizing the intensity difference between I1 at P1 and I2 at P2. Figure \ref{fig:optical_flow} shows the problem we want to solve. We call the change in position of the point optical flow.
+
+\begin{figure}[H]
+	\includegraphics[width=1.0\textwidth]{img/optical_flow.png}
+	\caption{Optical Flow: Where did point P1 in image I1 move to in Image I2?}\label{fig:optical_flow}
+\end{figure}
+
 \section{Lucas Kanade Intuitive}
 
-As mentioned in the previous section Lucas Kanade is an algorithm to estimate the optical flow. In the simplest case it just tells us where a certain pixel was in the image before and where it is now. It does that in a efficient way by using the intensity gradients. This section tries to describe how this works in an intuitive but simplified way while the next section will describe it in a more mathematical way.\\
+Lucas Kanade Optical Flow tries to answer where a point moves between two images as shown in figure \ref{fig:optical_flow}. In the simplest case it just tells us where a certain pixel was in the image before and where it is now. It does that in an efficient way by using intensity gradients. This section describes how this works in an intuitive but simplified way while the next section will describe it in a more mathematical way.\\
 Let's assume the simplest scenario where we can only move in one direction (left or right). Figure \ref{fig:optical_flow_intuitive} shows this simple scenario. Let's first focus on the case where we have a small movement (a). We first calculate the intensity gradients in the template (first row). Then we calculate the intensity difference (last row) between the current image (second row) and the first image. Now we multiply the gradient times the intensity difference this will give us the direction in which we have to move. Here we assume that moving the current image to left means - and moving it to right +. Now we move in the direction of the gradient and will calculate the intensity difference again. If it increases we moved too much and we have to reduce the step size if it decreases we are fine and we can calculate the new gradient again based on the new intensity difference. After some iterations the intensity change from one iteration to the other should be minimal. We have found the horizontal movement of our image. We already describe the inverse compositional Lucas Kanade algorithm because we calculate the gradients on the template. The ``normal'' Lucas Kanade would calculate the gradients on the current image. This has the disadvantage that we need to calculate the gradients after each iteration and it's therefore less computational efficient.\\
 What we can see in \ref{fig:optical_flow_intuitive} (b) that it's impossible to track movements over bigger distances. If the patch we compare does not connect to the area where the new image has moved, we are unable to move in the right direction. As we can see it's even possible that we move in the wrong direction (b). To overcome this problem we can downsample the image as shown in (c). We only downsampled in horizontal direction for visability. In reality the whole image would be downsampled by factor 2,4,8,16, etc. This is called an optical pyramid. As we can see in (c) after we downsampled the image by factor two we have again a valid gradient which points in the right direction. The idea is that we start to optimized in the lowest level if we converge we optimize again one level higher and so on. With this idea it is possible to track flows over higher distances while still being efficient.
 
