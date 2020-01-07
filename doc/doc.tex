@@ -113,11 +113,11 @@ As the final planning shows we first started with a Python based implementation 
 Initially there was no plan to write a 3D viewer. However, to make it more flexible we developed a viewer which can receive data over Network to keep the code base separated and to allow remote analysis of 3D data. Because of this two issues and changes we reduced the scope, and we set the focus to the library.
 
 \chapter{SVO}\label{ch:svo}
-The subject of this chapter is the basic idea behind SVO SLAM. We don't dive into the mathematical details yet. As we will see most parts of the algorithm are based on the idea of optical flow. Therefore, we will handle this topic in chapter \ref{ch:opt_flow}.
+The subject of this chapter is the basic idea behind SVO SLAM. We don't dive into the mathematical details yet. We will see that most parts of the algorithm are based on the idea of optical flow. Therefore, we will handle this topic in chapter \ref{ch:opt_flow}.
 
 \section{Architecture}
 
-Figure \ref{fig:svo_slam} shows the architecture of SVO and our implementation. In this figure we see a lot of differences between the original implementation and what we do. However, the two main steps which are sparse model based image alignment and pose refinement are the same. Our implementation does not use multi-threading so everything is done sequential. This may surprise but has the advantage of not having to synchronize and is also more deterministic. However, it's not the whole truth. Some parts of the code are prepared to use OpenMP for multiprocessing. The idea is that the main steps are executed sequential but they use the features of multi-core processors just for each step. Using this approach we hope to spread the load more equally over all processors on modern systems instead of using separate tasks which may not scale. Further, because we focus on stereo cameras the mapping task is not required in the same depth as in SVO. We will describe this differences in a later section.
+Figure \ref{fig:svo_slam} shows the architecture of SVO compared to our implementation. In this figure we see a lot of differences between the original implementation and what we do. However, the two main steps which are sparse model based image alignment and pose refinement are the same. Our implementation does not use multi-threading so everything is done sequential. This may surprise but has the advantage of not having to synchronize and is also more deterministic. Because we focus on stereo cameras, we do not require the mapping task in the same depth as in the original implementation. Therefore, it this task is also less time consuming. 
 
 \begin{figure}[H]
   \centering
@@ -128,24 +128,36 @@ Figure \ref{fig:svo_slam} shows the architecture of SVO and our implementation. 
 \end{figure}
 
 \section{Keyframe Generation}\label{sec:initialization}
-The original SVO implementation uses a monocular camera. It's therefore not possible to estimate depth in the first picture. There must be a movement that the algorithm can estimate the depth of keypoints. However, in this thesis we use a stereo camera with a known baseline. Therefore, we can estimate the depth of a keepoint from the first image. To generate a new keyframe we perform the following steps:
+The original SVO implementation uses a monocular camera. It's therefore not possible to estimate depth with the first picture. There must be a movement that the algorithm can estimate the depth of keypoints. However, in this thesis we use a stereo camera with a known baseline. Therefore, we can estimate the depth of a keepoint from the first image. To generate a new keyframe, we perform the following steps:
 \begin{enumerate}
   \item{Search FAST keypoints in the image \cite{fast}}
   \item{Do Sobel filtering of the image in horizontal direction}
-  \item{Divide image in 16x16 blocks}
+  \item{Divide image in nxm blocks}
   \item{Select one FAST corner in each block}
 		\begin{enumerate}
-			\item{If no FAST corner can be found, use point with biggest gradient as keypoint}
+			\item{If we can't find a FAST corner, we use the point with the biggest gradient from Sobel filtering as keypoint}
 		\end{enumerate}
-  \item{Calculate depth for each keypoint}
+	\item{Reuse keypoint found in previous keyframes. Only insert new keypoints in empty blocks}
+  \item{Calculate depth for each new keypoint}
   \item{Transform the keypoint depth to world coordinates by using the camera pose}
 \end{enumerate}
 
-The mathematical details on how to calculate the depth and the world coordinates from a stereo camera is described in chapter \ref{ch:depth}.
+The mathematical detail on how we calculate the depth and the world coordinates from a stereo image we can see in chapter \ref{ch:depth}.
 
 \section{Sparse Image Alignment}\label{sec:sia}
 
-From the keyframe generation step we get an initial point cloud. We use this point cloud to estimate the pose and motion of the camera. We try to find a Pose that minimizes the photometric error of small patches around the keypoints. We do this by minimizing the formula shown in equation \ref{eq:intensity}. We use equation \ref{eq:camera_model} to project the 3D point cloud to the current frame. By using Gradient Descent we can minimize the intensity difference by changing the values of the extrinsic matrix $r_{ij}$ and $t_{x,y,z}$. As initial guess for the pose we use the current pose and add the motion model. The motion model is the difference between the pose in the previous frame ($t-1$) and frame $t-2$. If we have an additional IMU available we can also improve the motion model by adding information from this sensor (e.g. angle velocity).
+\begin{figure}
+  \centering
+	\subfloat[Sparse Image Alignment with previous frame $I_{k-1}$ and current frame $I_{k}$. Keypoint position u' found with projection with $T_{k,k-1}$]{\includegraphics[scale=0.4]{img/pose_estimation_sparse.png}}
+	\quad
+	\subfloat[Optical Flow with keyframes $I_{r1,2}$. New keypoint position u' found with optical flow]{\includegraphics[scale=0.4]{img/pose_estimation_opt_flow.png}}
+	\quad
+	\subfloat[Pose $T_{\omega,k}$ refinement based on difference between keypoint position from sparse image alignemnt and optical flow]{\includegraphics[scale=0.4]{img/pose_estimation_refinement.png}}
+	\caption{Pose Estimation \cite{svo}}\label{fig:pose_estimation}
+\end{figure}
+
+
+From the keyframe generation step we get an initial point cloud. We use this point cloud to estimate the pose and motion of the camera. We try to find a pose that minimizes the photometric error of small patches around the keypoints. The photometric error is the intensity difference between two subsequent images. We do this by minimizing the formula shown in equation \ref{eq:intensity}. We use equation \ref{eq:camera_model} to project the 3D point cloud to the current frame. This step is shown in figure \ref{fig:pose_estimation}a. T corresponds to our extrinsic matrix written as rotation and translation matrix in equation \ref{eq:camera_model}. By using Gradient Descent we can minimize the intensity difference by changing the values of the extrinsic matrix $r_{ij}$ and $t_{x,y,z}$. As an initial guess for the pose we use the current pose and add the motion model. The motion model is the difference between the pose in the previous frame $t-1$ and frame $t-2$. If we have an additional IMU available, we can also improve the motion model by adding information from this sensor (e.g. angle velocity from gyroscope).
 
 \begin{equation}\label{eq:camera_model}
   \begin{gathered}
@@ -187,7 +199,7 @@ From the keyframe generation step we get an initial point cloud. We use this poi
   u,v,s     &: \text{Image coordinates with scale s}\\
   x,y       &: \text{Keypoint projection from 3D cloud}\\
   r_{ij}    &: \text{Camera rotation matrix}\\
-  t_{x,y,z} &: \text{Camera location}
+  t_{x,y,z} &: \text{Camera translation}
 \end{align*}
 
 \begin{equation}\label{eq:intensity}
@@ -201,11 +213,11 @@ From the keyframe generation step we get an initial point cloud. We use this poi
   n              &: \text{Over all keypoints}  
 \end{align*}
 
-The SVO paper \cite{svo2} describes this step in section IV.A. By performing the sparse image alignment we get a first estimate of the pose. However, because we estimate the current pose by using the previous frame we will get a drift in the long term. Therefore, we need to refine the pose by using the keyframe as reference. This is what we describe in the next section. Section \ref{sec:pose_estimation} will describe the mathematical details on how this optimization works.
+The SVO paper \cite{svo} describes this step in section IV.A. By performing the sparse image alignment we get a first estimate of the pose. However, because we estimate the current pose by using the previous frame we will get a drift in the long term. Therefore, we need to refine the pose by using the keyframes as reference. This is what we describe in the next section. Section \ref{sec:pose_estimation} will describe the mathematical details on how this optimization works.
 
 \section{Pose Refinement}\label{sec:refinement}
 
-The refinement step is necessary to reduce the drift over time by using the keyframe where a keypoint has first been seen. First we use the inverse compositional Lucas Kanade algorithm to find the new position of the point in the current image. By using the pose of the sparse image alignment we can already get an estimate of the position by doing a projection of the 3D cloud to the current image. Then we use optical flow to get a more accurate point position. We mark points that move more than 3 pixels as outliers because the sparse image alignment and the projection step should already be more accurate. We then optimize the pose so that the reprojection of the 3D point gets minimal (equation \ref{eq:refinement_problem}.
+The refinement step is necessary to reduce the drift over time by using the keyframe where we first saw the keypoint. We use the inverse compositional Lucas Kanade algorithm to find an updated position of the point in the current image. We show this step in figure \ref{fig:pose_estimation}b. By using the pose from the sparse image alignment we get an estimate of the 2D point position in the current image by doing a projection from the 3D cloud to the current image. Then we use optical flow to get a more accurate 2D point position. We then start to optimize the pose by minimizing the re-projection error shown in equation \ref{eq:refinement_problem}. We show this process in figure \ref{fig:pose_estimation}b.
 
 \begin{equation}\label{eq:refinement_problem}
   minimize(\sum_n ((x'-x)^2+(y'-y)^2))
@@ -215,21 +227,21 @@ The refinement step is necessary to reduce the drift over time by using the keyf
   x,y     &: \text{Keypoint projection from 3D cloud with camera pose see \ref{eq:camera_model}}
 \end{align*}
 
-Chapter \ref{ch:opt_flow} describes optical flow and Lucas Kanade in more details. Chapter \ref{ch:pose_refinement} describes how we can calculate the gradient for minimizing the reprojection error in equation \ref{eq:refinement_problem}.
+Chapter \ref{ch:opt_flow} describes optical flow and Lucas Kanade in more details. Chapter \ref{ch:pose_refinement} describes how we calculate the gradient for minimizing the re-projection error in equation \ref{eq:refinement_problem}.
 
-\section{Keyframe insertion}
-If less than 75\% of the keypoints are tracable we need to insert a new keyframe based on the previous frame. In comparison SVO inserts a new keyframe if the movement is more than 12\% of the average depth. In a first step we try to do it as described, however maybe this needs to change in the future. See \cite{svo2} section X.D for the implementation details.
+\section{Keyframe Insertion}
+If less than 66\% of all keypoints are visible in the current frame we need to insert a new keyframe. The process of adding a new keyframe is described in section \ref{sec:initialization}.
 
 \section{Update 3D Points}
 
-The update of the 3D points is completely different from what SVO \cite{svo} does. The reason is that we can measure the keypoint depth in the first frame by using the stereo images. SVO uses a bayesian filter approach to estimate the keypoint depth over time. We instead use a mechanism to detect outliers and a simple Kalman Filter to update the 3D position of 3D keypoints.
+The update of the 3D points is different from what SVO \cite{svo} describes. The reason is that we can measure the keypoint depth in the first frame by using the stereo images. SVO uses a bayesian filter approach to estimate the keypoint depth over time. We instead use a mechanism to detect outliers and a simple Kalman Filter to update the 3D position of 3D keypoints.
 
-\subsection{Outlier detection}
-The outlier detection has two steps. During refinement the intensity difference returned by optical flow is checked. If it exceeds an empirically determined value of 20 it will mark the point as outlier. This can happen if points get occluded by objects and are therefore not visible in the new image anymore. Another mechanism that doesn't mark a point as outlier but masks it during refinement is if a point moves more than 9pixels. This can happen if there is low texture at the keypoint and it moves therefore more than expected. However, such points can still help to improve the position during sparse image alignment.\\
-A second mechanism to detect outliers is used before point refinement. The mechanism calculates does a depth estimation with the current image and then checks if the new estimated 3D point near the previous estimated 3D point. It uses the variance of 0.5 pixel and transfers this into a difference in point location. If the previous estimated 3D point is within the current estimate +- 5 Tau the point is assumed as inlier. If it's not within this estimate it's estimated as outlier. We count the inlier and outlier. If we see more outlier than inlier for one keypoint we remove it from the list of available keypoints. This helps us to detect points that have a bad estimate or are in areas with low texture.
+\subsection{Outlier Detection}
+Outlier detection is based on two steps. During refinement the intensity difference returned by optical flow is checked. If it exceeds an empirically determined value of 20 it will mark a point as outlier. This can happen if points get occluded by objects and are therefore not visible in the new image anymore. Another mechanism that doesn't mark a point as outlier but masks it during refinement is if a point moves more than 9pixels. This can happen if there is low texture at the keypoint and it moves therefore more than expected. It therefore can't be used for pose refinement. However, such points can still help to improve the position during sparse image alignment.\\
+We use a second mechanism to detect outliers after pose refinement. We use the stereo image and calculate the disparity for a keypoint $d_{current}$. We then transfer the global 3D keypoint to local coordinates. By calculating $d_{expected}=z_{local}/baseline$ we get the expected disparity. We count the estimate as inlier if the difference is smaller than 2.5 pixel $5*abs(d_{current}-d_{expected})<2.5$. We take the standard deviation of 0.5 pixel for disparity and want to include 99.99\% which corresponds to 5 Tau. If a point has more outlier than inlier we remove it from the available keypoints. This mechanism eliminates weak keypoints that have low contrast.
 
 \subsection{Point Refinement}
-As we saw before SVO \cite{svo} uses monocular cameras. For that it is necessary to have multiple images at multiple positions to get a initial guess of the 3D cloud. The algorithm initializes each keypoint with an average depth, estimates the new pose based on this depths and updates the depth based on the new pose. The keypoints are first threaded as seeds and only if the certainty of the depth is high enough the point is added into the 3D map. The whole 3D point estimation only works if there is movement in x or y direction and for the first n frames there is no point cloud available. Because we use a stereo camera we are not affected by that (as we saw in section \ref{sec:initialization}). However, we can improve the position of a 3D point over time. In section \ref{sec:refinement} we got a better estimate of the keypoint location in the current image by using optical flow. We then refined the pose based on this information. However, because the 3D points are 100\% accurate we still have some error between the point found by optical flow and the point from the reprojection. If the camera moved more than the baseline of the camera we may profit from this movement to get a better estimate of the 3D position. We do this by using a Kalman filter with the update step shown in equation \ref{eq:point_refinement}. The measurement error is smaller the bigger the movement is. For the first measurement we know that the disparity has the size of the baseline of the camera. This means instead of $\sqrt{\Delta x^2+\Delta y^2}$ we just take the baseline in meter. Only the disparity has an approximate normal distribution. Therefore we can't predict the depth but the inverse depth based on the current measurement. This is why we use $z^{-1}$ in the formula.
+As mentioned before, SVO \cite{svo} was created for monocular cameras. Therefore, it is necessary to have multiple images at multiple positions to get an initial guess of the 3D cloud. The algorithm initializes each keypoint with an average depth, estimates the new pose based on this depths and updates the depth based on the new pose. The keypoints are first threaded as seeds and if the certainty of depth is good enough the point is added to the 3D map. The whole 3D point estimation only works if there is movement in x or y direction. For the first n frames is no point cloud available. Because we use a stereo camera we can estimate a 3D depth from the first frame on (as we see in section \ref{sec:initialization}). However, we can improve the position of a 3D point over time. In section \ref{sec:refinement} we got a better estimate of the keypoint location in the current image by using optical flow. We then refined the pose based on this information. However, because the 3D points are not exactly accurate we still have an error between the point found by optical flow and the point found by re-projection. If the camera moves more than the baseline of the camera we profit from this movement to get a better estimate of the 3D position. We do this by using a Kalman filter with the update step shown in equation \ref{eq:point_refinement}. The measurement error is smaller the bigger the movement is. For the first measurement we know that the disparity has the size of the baseline of the camera. This means instead of $\sqrt{\Delta x^2+\Delta y^2}$ we just take the baseline in meter. The disparity has a close to normal distribution. Therefore, we use the inverse depth to update our Kalman filter. This is why we use $z^{-1}$ in the formula.
 \begin{equation}\label{eq:point_refinement}
   \begin{gathered}
     z^{-1}(t)=z(t-1)+w(t)\\
