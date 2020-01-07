@@ -339,29 +339,42 @@ Lets assume we have an image I1 at time t-1 and an image I2 at time t. We know t
 
 Lucas Kanade Optical Flow tries to answer where a point moves between two images as shown in figure \ref{fig:optical_flow}. In the simplest case it just tells us where a certain pixel was in the image before and where it is now. It does that in an efficient way by using intensity gradients. This section describes how this works in an intuitive but simplified way while the next section will describe it in a more mathematical way.\\
 Let's assume the simplest scenario where we can only move in one direction (left or right). Figure \ref{fig:optical_flow_intuitive} shows this simple scenario. Let's first focus on the case where we have a small movement (a). We first calculate the intensity gradients in the template (first row). Then we calculate the intensity difference (last row) between the current image (second row) and the first image. Now we multiply the gradient times the intensity difference this will give us the direction in which we have to move. Here we assume that moving the current image to left means - and moving it to right +. Now we move in the direction of the gradient and will calculate the intensity difference again. If it increases we moved too much and we have to reduce the step size if it decreases we are fine and we can calculate the new gradient again based on the new intensity difference. After some iterations the intensity change from one iteration to the other should be minimal. We have found the horizontal movement of our image. We already describe the inverse compositional Lucas Kanade algorithm because we calculate the gradients on the template. The ``normal'' Lucas Kanade would calculate the gradients on the current image. This has the disadvantage that we need to calculate the gradients after each iteration and it's therefore less computational efficient.\\
-What we can see in \ref{fig:optical_flow_intuitive} (b) that it's impossible to track movements over bigger distances. If the patch we compare does not connect to the area where the new image has moved, we are unable to move in the right direction. As we can see it's even possible that we move in the wrong direction (b). To overcome this problem we can downsample the image as shown in (c). We only downsampled in horizontal direction for visability. In reality the whole image would be downsampled by factor 2,4,8,16, etc. This is called an optical pyramid. As we can see in (c) after we downsampled the image by factor two we have again a valid gradient which points in the right direction. The idea is that we start to optimized in the lowest level if we converge we optimize again one level higher and so on. With this idea it is possible to track flows over higher distances while still being efficient.
+What we can see in \ref{fig:optical_flow_intuitive} (b) that it's impossible to track movements over bigger distances. If the patch in the reference image does not connect to where the patch moved, we are unable to find the right gradient. As we see it's even possible that we move in the wrong direction. To reduce this problem we can downsample the image as shown in (c). For illustration reasons we reduced the resolution only in horizontal direction. In reality the whole image would be downsampled by factor 2,4,8,16, etc. The array of images with different resolutions is called an optical pyramid. As we see in (c) after we downsampled the image by factor two we have again a valid gradient which points in the right direction. The idea is that we start to optimized on the lowest level. If we converge we optimize one level up and so on. With this idea it is possible to track flows over higher distances while still being efficient.
 
 \begin{figure}[H]
   \centering
-  \subfloat[Lucas Kanade small move]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_1.png}}
-  \subfloat[Lucas Kanade big move]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_2.png}}
-  \subfloat[Lucas Kanade big move down sampled]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_3.png}}
-  \caption{Optical Flow Intuitive}\label{fig:optical_flow_intuitive}
+  \subfloat[Small move where we find the right gradient green]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_1.png}}
+	\quad
+  \subfloat[Bigger move where we find an invalid gradient red]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_2.png}}
+	\quad
+	\subfloat[Bigger move as in b but down sampled in horizontal direction. We find the right gradient green]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_3.png}}
+	\caption{Optical Flow Intuitive:\\
+		First row: reference image with gradients, Second row: current image, Last row:  diff image\\
+		l: gradient points left, r: gradient points right\\
+		+: current pixel - reference pixel < 0, +: current pixel - reference pixel > 0\\
+		-*l=r,-*r=l\\
+		Big arrow = sum of gradients (e.g. l+l+l=l, r+r+l=r)
+	}\label{fig:optical_flow_intuitive}
 \end{figure}
 
-We can extend the above scenario from a movement in one dimension easily to two dimensions as shown in figure \ref{fig:optical_flow_2d}. We simply calculate the gradient in the vertical direction as well. By doing this we can track movements in x and y direction. We easily see that not all values in the patch help to find the right gradient. Some gradients in the patch point in the wrong direction. However, in total the gradient points in the right direction. By using image pyramids we can reduce the influence of such miss matches.
+We extend the above scenario from a one dimensional movement to a two dimensional movement as shown in figure \ref{fig:optical_flow_2d}. We calculate the gradient in the vertical direction as well. By doing this we can track movements in x and y direction. We see that not all values in the patch help to find the right gradient. Some gradients in the patch point in the wrong direction. However, in total the gradient points in the right direction. By using image pyramids we can again reduce the influence of such miss matches.
 \begin{figure}[H]
   \includegraphics[width=1.0\textwidth]{img/optical_flow_2d.png}
-  \caption{Optical Flow Intuitive 2D: +: current-previous intensity > 0, -: current-previous intensity < 0, u: gradient points up, d: gradient points down, l: gradient points left, r: gradient points right, red: wrong direction, green: right direction, blue: no influence, yellow arrow: final gradient}\label{fig:optical_flow_2d}
+  \caption{Optical Flow Intuitive 2D:\\
+		First column: reference image with gradients, Second column: current image, Third column: diff image\\
+		+: current-previous intensity > 0, -: current-previous intensity < 0\\
+		u: gradient points up, d: gradient points down\\
+		l: gradient points left, r: gradient points right\\
+		red: wrong direction, green: right direction, blue: no influence, yellow arrow: final gradient}\label{fig:optical_flow_2d}
 \end{figure}
 
-We showed that optical flow can track two dimensional movements. However, it doesn't track rotations and shearing. This will introduce dependencies between x and y movements which become non-linear. In the next section we extend the intuitive approach so that we can solve non-linear problems.
+We showed that optical flow can track two dimensional movements. However, it doesn't track rotations and shearing. This will introduce dependencies between x and y movements which become non-linear. In the next section we extend the intuitive approach so that we can solve non-linear problems. Unfortunately, this can't be described in an intuitive way. Therefore, it will be described mathematically.
 
 \section{Lucas Kanade Mathematical}
 
-In the previous section we showed the basic idea of optical flow. It is oversimplified and can only track movements in x and y direction. In this section we extend this idea so that more complicated movements can be tracked.\\
-
+In the previous section we showed the basic idea of optical flow. It is oversimplified and can only track movements in x and y direction. In this section we extend the idea to more complicated movements.\\
 Instead of linear movements in x and y direction we want to find a warp matrix which describes a affine transformation of a patch from one image to the other (equation \ref{eq:lk_warp}).
+
 \begin{equation}\label{eq:lk_warp}
   p=\begin{pmatrix}
     p_{11} & p_{12} & p_{13} \\
