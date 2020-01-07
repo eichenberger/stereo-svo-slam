@@ -18,7 +18,7 @@
 
 \setlength{\parindent}{0pt}
 
-\title{ORB Slam Point Cloud generation on Apalis iMX8}
+\title{Open source SLAM library for embedded systems}
 \author{Stefan Eichenberger\\<eichest@gmail.com>}
 \date{January 2020}
 \advisor{Prof. Marcus Hudritsch}
@@ -30,12 +30,15 @@
 }
 
 \begin{document}
-\title{Open source SLAM library for embedded systems}
 
 \maketitle
 \begin{abstract}
   Simultaneous location and mapping (SLAM) is a technology used for robot navigation and augmented reality. Today most SLAM libraries are either proprietary or not ready for embedded systems. In this thesis we will write and analyse a library which is open source and can be used on embedded devices.
 \end{abstract}
+
+\section*{Executive Summary}
+Simultaneous Location and Mapping (SLAM) is widely used for robot navigation and augmented reality. Often this algorithms need a high performance graphics card or a high performance processor. For industrial and robotics purposes we have constraints in space, temperature and power consumption. Therefore less power consuming devices with less CPU performance are required. In this thesis we implement and analyse an algorithm called SVO which the authors claim is capable to run on embedded devices. The reference implementation uses monocular cameras, while we use a stereo camera. We show that the algorithm is heavily based on the idea of optical flow which is a well known principle in computer vision. The implemented algorithm performs 4 tasks. It maintains a 3D point cloud which is used to guess the camera pose. Then it does a pose estimation based on the 3D cloud which is used as first estimated for the pose. This is called sparse image alignment and uses a modified version of optical flow which directly outputs a pose instead of a warp matrix. To make the guess more accurate it then refines the pose by using standard optical flow followed by a minimization of the re-projection error. In a last step it performs a 3D point cloud update where it tries to refine the cloud by taking the new pose into account.\\
+We show that the algorithm works as described and is able to estimate the 3D pose. We will see that the algorithm performs indeed faster than a comparable SLAM algorithm called ORB SLAM. However, the current implementation is less accurate than ORB. We conclude that SVO shows great promise as a SLAM algorithm for embedded devices. However, the current implementation is not production ready and would need improvements.
 
 \tableofcontents
 
@@ -109,7 +112,7 @@ The master thesis is honored with 27 ECTS. 1 ECTS consumes 30h which results in 
 As the final planing shows we first started to with a Python based implementation of the algorithm. The idea was that Python code is more readable and better suited for experimenting. However, the problem was that the code was slow even when using Numpy to accelerate matrix multiplications. Therefore, a completely C++ based implementation of the library has been written. However, for debugging a Python wrapper was developed in parallel. Reviewing this decision, this was a mistake because a lot of time was spent for debugging the Python wrapper. In the final version it is still available and it can be built. However, it is tested poorly and not documented at all. Further there was no plan to write a 3D viewer. However, to make it more flexible a viewer was developed which can receive data over Network to keep the code bases separated and to allow remote analysis of 3D data. Because of this two issues the scope was reduced and the focus was set on the library.
 
 \chapter{SVO}\label{ch:svo}
-In this chapter we describe the basic idea behind SVO SLAM. We don't dive into the mathematical details yet. As we will see most parts of the algorithm are based on the idea of optical flow. Therefore, we will handle this topic in chapter \ref{ch:opt_flow}.
+The subject of this chapter is the basic idea behind SVO SLAM. We don't dive into the mathematical details yet. As we will see most parts of the algorithm are based on the idea of optical flow. Therefore, we will handle this topic in chapter \ref{ch:opt_flow}.
 
 \section{Architecture}
 
