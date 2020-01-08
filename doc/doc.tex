@@ -1027,6 +1027,7 @@ The depth filter removes outlier and updates the 3D point position of keypoints 
 \section{Test application}
 
 \begin{figure}[H]
+  \centering
   \includegraphics[width=0.9\textwidth]{img/test_app.png}
   \caption{Image from the Test Application}\label{fig:test_app}
 \end{figure}
@@ -1035,6 +1036,7 @@ We can use the test application to test and debug the algorithm. It allows us to
 Additionally to the above output the test application offers a Websocket \cite{websocket} backend. Through this backend it is possible for the Qt Viewer to read out 3D data like current pose, keyframes and trajectory. The Websocket idea is shown in figure \ref{fig:websocket}.
 
 \begin{figure}[H]
+  \centering
   \includegraphics[width=0.9\textwidth]{img/websocket.png}
   \caption{Websocket Connection}\label{fig:websocket}
 \end{figure}
@@ -1095,6 +1097,7 @@ All measurements in this chapter are done on an Intel i7-8550U processor.
 
 \section{Classroom}
 \begin{figure}[H]
+  \centering
   \includegraphics[width=1.0\textwidth]{img/blender_classroom_scene.png}
   \caption{Blender classroom scene}\label{fig:blender_classroom_scene}
 \end{figure}
@@ -1102,6 +1105,7 @@ All measurements in this chapter are done on an Intel i7-8550U processor.
 For the first test we use the Blender Classroom Scene \cite{blender}. A snapshot of this scene is shown in figure \ref{fig:blender_classroom_scene}. An image for the left and right camera was rendered to have a valid stereo image input. We change the position and angles in the scene as shown in figure \ref{fig:blender_classroom_simple_traj}. The test video is part of the repository under test/blender-classroom.mkv. The is called test/blender-classroom.csv. We compare our implementation with SVO \cite{svo}, SVO edgelet \cite{svo_edglet} and ORB SLAM \cite{orbslam}. SVO edgledt additionally uses edglets which is missing in the original SVO sources. Because SVO and ORB SLAM have dependencies to old libraries we move the implementation to a Docker container. The Dockerfile is available in the test folder. 
 
 \begin{figure}[H]
+  \centering
   \includegraphics[width=1.0\textwidth]{img/blender_classroom_simple_traj.png}
   \caption{Blender classroom trajectory}\label{fig:blender_classroom_simple_traj}
 \end{figure}
@@ -1154,6 +1158,7 @@ Figure \ref{fig:blender_classroom_simple_diff} shows the trajectory difference m
 As we see in the results all implementations struggle to track the ry angle and the z movement. Both is expected because by changing ry we can often correct small movements along the x axis. Further, when moving along the z axis we are not able to refine the 3D point positions because we don't get any change along the x or y axis. This makes it impossible for monocular systems to insert new keypoints.
 
 \begin{figure}[H]
+	\centering
   \subfloat[Our implementation]{\includegraphics[width=0.5\textwidth]{img/blender_classroom_simple_our_diff.png}}
   \subfloat[SVO Edgled implementation]{\includegraphics[width=0.5\textwidth]{img/blender_classroom_simple_ref_diff.png}}\\
   \subfloat[SVO Original implementation]{\includegraphics[width=0.5\textwidth]{img/blender_classroom_simple_orig_diff.png}}
@@ -1224,7 +1229,7 @@ As we see in figure \ref{fig:blender_barcelona_diff} both algorithm struggle for
 
 \begin{figure}[H]
   \includegraphics[width=1.0\textwidth]{img/euroc_scene.png}
-  \caption{EuRoC Scene}\label{fig:euroc_scene}
+  \caption{EuRoC Machine Hall 2 Scene}\label{fig:euroc_scene}
 \end{figure}
 
 EuRoC is a widely used dataset for SLAM algorithms \cite{euroc}. Figure \ref{fig:euroc_scene} shows an image from EuRoC Machine Hall 2. The SVO2 paper \cite{svo2} compares some measurements based on EuRoC. Our measurements are not in the range of any modern SLAM algorithm. The problem is that the current implementation doesn't do an relocation (local or global). Therefore, it can't profit if it sees the same scene more than once what increases the drift. For completeness an initial result is shown anyhow for EuRoC Machine Hall 2.
@@ -1248,7 +1253,7 @@ A demo application shows the possibilities of SLAM. It is a simple augmented rea
 The current library is in the state of a proof of concept. It is far from production ready but it shows that SVO works and that it is promising. The implementation showed to be faster than ORB SLAM but it is not as robust yet. The current state could be used as starting point for further development. It is open source and has only dependencies to OpenCV. This makes it easier to compile it for other platforms and systems.\\\\
 The CPVR lab today uses ORB SLAM for their augmented reality projects. The benefit of SVO would only be performance wise but not in terms of accuracy. Therefore, the effort to port their current projects to SVO doesn't seem to be justifiable. However, for future project a combination of SVO and ORB SLAM could be an efficient solution for mobile devices. SVO could be used for tracking between keyframes, while ORB SLAM could be used to do re-location. Inserting new keyframes and computing descriptors would still be done by ORB SLAM but the pose estimation would only involve sparse image alignment and pose refinement without triangulation. This could speed up the frame processing by factor 2-3.\\\\
 For embedded devices which have less performance than mobile phones SVO should be preferred choice. First results of our implementation proofed that it is faster than ORB SLAM. Tweaking and optimizing the code would probably allow frame rates of around 20-30 fps which is fast enough for most tasks.\\\\
-We conclude that SVO shows great potential for use on embedded devices. The current implementation would need more tuning to achieve higher frame rates. However, it shows that it is faster than e.g. indirect SLAM algorithms like ORB SLAM.
+We conclude that SVO shows great potential for use on embedded devices. The current implementation would need more tuning to achieve higher frame rates. However, it already shows that it is faster than e.g. indirect SLAM algorithms like ORB SLAM.
 
 \printbibliography
 
