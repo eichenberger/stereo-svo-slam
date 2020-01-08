@@ -203,14 +203,15 @@ From the keyframe generation step we get an initial point cloud. We use this poi
 \end{align*}
 
 \begin{equation}\label{eq:intensity}
-  \sum_n\sum_x\sum_y(I_{k-1}(x'',y'')-I_{k}(x',y'))^2
+	\sum_i^a\sum_{x=i-m/2}^m\sum_{y=i-n/2}^n(I_{k-1}(x'',y'')-I_{k}(x',y'))^2
 \end{equation}
 \begin{align*}
-  x'',y''        &: \text{Warped pixel position in the template}\\
-  x',y'          &: \text{Pixel position in the current image}\\
-  I_{k-1}        &: \text{Template image}\\
-  I_{k}          &: \text{Current image}\\
-  n              &: \text{Over all keypoints}  
+	m,n				 &: \text{Patch size}\\
+  x'',y''    &: \text{Warped pixel position in the template}\\
+  x',y'      &: \text{Pixel position in the current image}\\
+  I_{k-1}    &: \text{Template image}\\
+  I_{k}      &: \text{Current image}\\
+  a          &: \text{For all keypoints}  
 \end{align*}
 
 The SVO paper \cite{svo} describes this step in section IV.A. By performing the sparse image alignment we get a first estimate of the pose. However, because we estimate the current pose by using the previous frame we will get a drift in the long term. Therefore, we need to refine the pose by using the keyframes as reference. This is what we describe in the next section. Section \ref{sec:pose_estimation} will describe the mathematical details on how this optimization works.
@@ -328,26 +329,29 @@ Now we can transform the 3D point from the cameras local coordinate system to th
 \end{align*}
 
 \chapter{Optical Flow}\label{ch:opt_flow}
-Lets assume we have an image I1 at time t-1 and an image I2 at time t. We know the position of a point P1 in image 1. We use Lucas Kanade Optical Flow to find the position P2 of the point in image 2. It does that by minimizing the intensity difference between I1 at P1 and I2 at P2. Figure \ref{fig:optical_flow} shows the problem we want to solve. We call the change in position of the point optical flow.
+
+In this chapter we describe Lucas Kanade Optical Flow in more detail. This algorithm tries to find the movement of one or several points from one image to another. Lets assume we have an image I1 at time t-1 and an image I2 at time t. We know the position of a point P1 in image 1. We use Lucas Kanade Optical Flow to find the position P2 of the point in image 2. Figure \ref{fig:optical_flow} shows the problem we want to solve. We call the position change of the point optical flow.
 
 \begin{figure}[H]
 	\includegraphics[width=1.0\textwidth]{img/optical_flow.png}
-	\caption{Optical Flow: Where did point at position P1 in image I1 move in image I2?}\label{fig:optical_flow}
+	\caption{Optical Flow: Where did the point at position P1 in image I1 move in image I2?}\label{fig:optical_flow}
 \end{figure}
+
+This chapter is split into 4 section. The first section describes the idea of Lucas Kanade in an intuitive but oversimplified way. Section two describes the original Lucas Kanade algorithm while section three focuses on the Invers Compositional Lucas Kanade algorithm. In the last section we see an extension to guess a 3D pose. This method is used in the sparse image alignment step.
 
 \section{Lucas Kanade Intuitive}
 
-Lucas Kanade Optical Flow tries to answer where a point moves between two images as shown in figure \ref{fig:optical_flow}. In the simplest case it just tells us where a certain pixel was in the image before and where it is now. It does that in an efficient way by using intensity gradients. This section describes how this works in an intuitive but simplified way while the next section will describe it in a more mathematical way.\\
-Let's assume the simplest scenario where we can only move in one direction (left or right). Figure \ref{fig:optical_flow_intuitive} shows this simple scenario. Let's first focus on the case where we have a small movement (a). We first calculate the intensity gradients in the template (first row). Then we calculate the intensity difference (last row) between the current image (second row) and the first image. Now we multiply the gradient times the intensity difference this will give us the direction in which we have to move. Here we assume that moving the current image to left means - and moving it to right +. Now we move in the direction of the gradient and will calculate the intensity difference again. If it increases we moved too much and we have to reduce the step size if it decreases we are fine and we can calculate the new gradient again based on the new intensity difference. After some iterations the intensity change from one iteration to the other should be minimal. We have found the horizontal movement of our image. We already describe the inverse compositional Lucas Kanade algorithm because we calculate the gradients on the template. The ``normal'' Lucas Kanade would calculate the gradients on the current image. This has the disadvantage that we need to calculate the gradients after each iteration and it's therefore less computational efficient.\\
-What we can see in \ref{fig:optical_flow_intuitive} (b) that it's impossible to track movements over bigger distances. If the patch in the reference image does not connect to where the patch moved, we are unable to find the right gradient. As we see it's even possible that we move in the wrong direction. To reduce this problem we can downsample the image as shown in (c). For illustration reasons we reduced the resolution only in horizontal direction. In reality the whole image would be downsampled by factor 2,4,8,16, etc. The array of images with different resolutions is called an optical pyramid. As we see in (c) after we downsampled the image by factor two we have again a valid gradient which points in the right direction. The idea is that we start to optimized on the lowest level. If we converge we optimize one level up and so on. With this idea it is possible to track flows over higher distances while still being efficient.
+Lucas Kanade Optical Flow tries to answer where a point moves between two images as shown in figure \ref{fig:optical_flow}. It does that in an efficient way by using intensity gradients. This section describes how this works in an intuitive but simplified way while the next section will describe it in a more mathematical way. In the next sentences the term intensity gradient is used for gradients that can e.g. be found by a Sobel filter, while the position gradient describes a direction of movement. \\
+Let's assume the simplest scenario where we can only move in one direction (left or right). Figure \ref{fig:optical_flow_intuitive} shows this simple scenario. Let's first focus on the case where we have a small movement \ref{fig:optical_flow_intuitive}a. We first calculate the intensity gradients in the template for a small patch of 3x4 pixel (first row). Then we calculate the intensity difference (last row) between the current image (second row) and the first image. Now we multiply the intensity gradient times the intensity difference this will give us the direction in which we have to move (position gradient). Here we assume that moving the current patch to left means - and moving it to right +. Now we move in the direction of the position gradient and will calculate the intensity difference again. If it increases we moved too much and we have to reduce the step size if it decreases we found a better position. We can now start a new iteration by calculating the intensity differences at the new position of the patch. After several iterations the intensity change from one iteration to the other will be minimal. We found the horizontal movement of our patch. Here we described the Inverse Compositional Lucas Kanade algorithm because we calculate the intensity gradients on the template. The ``normal'' Lucas Kanade would calculate the intensity gradients on the current image. This has the disadvantage that we need to calculate the intensity gradients after each iteration and is therefore less efficient.\\
+What we see in \ref{fig:optical_flow_intuitive}b that it's impossible to track movements over bigger distances. If the patch in the reference image does not connect to where the patch moved, we are unable to find the correct gradient. As we see it's even possible that we move in the wrong direction. To solve this problem we can downsample the images as shown in figure \ref{fig:optical_flow_intuitive}c. For illustration reasons we reduced the resolution only in horizontal direction. In reality the whole image would be downsampled by factor 2,4,8,16, etc. The array of images with different resolutions is called an optical pyramid. As we see in figure \ref{fig:optical_flow_intuitive}c we find a valid gradient by using the downsampled image. The idea is that we start to optimized at the lowest level. If we converge we optimize at the next level and so on. With this idea it is possible to track flows over bigger distances while still being efficient.
 
 \begin{figure}[H]
   \centering
-  \subfloat[Small move where we find the right gradient green]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_1.png}}
+  \subfloat[Small move where we find the correct gradient green]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_1.png}}
 	\quad
   \subfloat[Bigger move where we find an invalid gradient red]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_2.png}}
 	\quad
-	\subfloat[Bigger move as in b but down sampled in horizontal direction. We find the right gradient green]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_3.png}}
+	\subfloat[Bigger move as in b but down sampled in horizontal direction. We find the correct gradient green]{\includegraphics[height=0.2\textheight]{img/optical_flow_intuitive_3.png}}
 	\caption{Optical Flow Intuitive:\\
 		First row: reference image with gradients, Second row: current image, Last row:  diff image (current-reference)\\
 		l: gradient points left, r: gradient points right\\
@@ -357,7 +361,8 @@ What we can see in \ref{fig:optical_flow_intuitive} (b) that it's impossible to 
 	}\label{fig:optical_flow_intuitive}
 \end{figure}
 
-We extend the above scenario from a one dimensional movement to a two dimensional movement as shown in figure \ref{fig:optical_flow_2d}. We calculate the gradient in the vertical direction as well. By doing this we can track movements in x and y direction. We see that not all values in the patch help to find the right gradient. Some gradients in the patch point in the wrong direction. However, in total the gradient points in the right direction. By using image pyramids we can again reduce the influence of such miss matches.
+We extend the above scenario from a one dimensional movement to a two dimensional movement as shown in figure \ref{fig:optical_flow_2d}. This time we also calculate the gradient in the vertical direction. By doing this we can track movements in x and y direction.
+
 \begin{figure}[H]
   \includegraphics[width=1.0\textwidth]{img/optical_flow_2d.png}
   \caption{Optical Flow Intuitive 2D:\\
@@ -368,12 +373,11 @@ We extend the above scenario from a one dimensional movement to a two dimensiona
 		red: wrong direction, green: right direction, blue: no influence, yellow arrow: final gradient}\label{fig:optical_flow_2d}
 \end{figure}
 
-We showed that optical flow can track two dimensional movements. However, it doesn't track rotations and shearing. This will introduce dependencies between x and y movements which become non-linear. In the next section we extend the intuitive approach so that we can solve non-linear problems. Unfortunately, this can't be described in an intuitive way. Therefore, it will be described mathematically.
+We showed that optical flow can track two dimensional movements. However, it doesn't track rotations and shearing effects. This will introduce dependencies between x and y movements which become non-linear. In the next section we extend the intuitive approach so that we can solve non-linear problems. Because this non-linearities are hard to show, we will describe it mathematically.
 
 \section{Lucas Kanade Mathematical}
 
-In the previous section we showed the basic idea of optical flow. It is oversimplified and can only track movements in x and y direction. In this section we extend the idea to more complicated movements.\\
-Instead of linear movements in x and y direction we want to find a warp matrix which describes a affine transformation of a patch from one image to the other (equation \ref{eq:lk_warp}).
+In the previous section we showed the basic idea of optical flow. It is oversimplified and can only track movements in x and y direction. In this section we extend the idea to more complicated movements. Instead of linear movements in x and y direction we want to find a warp matrix which describes a affine transformation of a patch from one image to another (equation \ref{eq:lk_warp}).
 
 \begin{equation}\label{eq:lk_warp}
   p=\begin{pmatrix}
@@ -385,19 +389,20 @@ Instead of linear movements in x and y direction we want to find a warp matrix w
   p        &:  \text{warp matrix}\\
   p_{ij}  &:  \text{parameter of warp matrix}
 \end{align*}
-This warp matrix describes movements along the x and y axis($p_{11},p_{22}$, a rotation ($p_{13},p_{21}$) and shearing ($p_{13},p_{23}$). The goal of Lucas Kanade is to find this warp matrix. It does that by minimizing the Intensity difference between patch of pixels in a template (reference image) and a patch of pixels with the same size in the current image as shown in equation \ref{eq:lk_problem}. 
+This warp matrix describes movements along the x and y axis($p_{11},p_{22}$, a rotation ($p_{13},p_{21}$) and shearing ($p_{13},p_{23}$). The goal of Lucas Kanade is to find this warp matrix. It does that by minimizing the Intensity difference between a patch of pixels in the template (reference image) and a patch of pixels with the same size in the current image as shown in equation \ref{eq:lk_problem}. 
 
 \begin{equation}\label{eq:lk_problem}
-  \sum_x\sum_y(I_{k}(x',y')-I_{k-1}(x,y))^2
+	minimize(\sum_x^m\sum_y^n(I_{k}(x',y')-I_{k-1}(x,y))^2)
 \end{equation}
 \begin{align*}
-  x,y        &:  \text{Pixel position in template}\\
-  x',y'      &:  \text{Pixel position in current image}\\
-  I_{k-1}    &:  \text{Template image}\\
-  I_{k}      &:  \text{Current image}
+	m,n				 &: \text{Patch size}\\
+  x,y        &: \text{Pixel position in template}\\
+  x',y'      &: \text{Pixel position in current image}\\
+  I_{k-1}    &: \text{Template image}\\
+  I_{k}      &: \text{Current image}
 \end{align*}
 
-We describe the transformation of a pixel from the reference image to the current image as a matrix multiplication as shown in equation \ref{eq:lk_warped}. Because \ref{eq:lk_problem} is a nonlinear problem we have to solve it with a nonlinear solver (e.g. Gauss-Newton or Gradient Descent). The problem is solved by iteratively changing the warp matrix in the direction of a gradient until the difference of the intensities are minimal:
+We describe the transformation of a pixel from the reference image to the current image as a matrix multiplication as shown in equation \ref{eq:lk_warped}. Because \ref{eq:lk_problem} is a nonlinear problem we have to solve it with a nonlinear solver (e.g. Gauss-Newton or Gradient Descent). The problem is solved by iteratively changing the warp matrix in the direction of the gradient until the difference of the intensities are minimal:
 \begin{equation}\label{eq:lk_warped}
   \begin{gathered}
     \begin{pmatrix}
@@ -423,39 +428,40 @@ We describe the transformation of a pixel from the reference image to the curren
   \end{gathered}
 \end{equation}
 \begin{align*}
-  W(x;p+\Delta p)  &:  \text{Warp function}\\
-  x',y'            &:  \text{Pixel position in current image}\\
-  x,y              &:  \text{Pixel position in template}\\
-  p_{ij}          &:  \text{parameter of warp matrix}\\
-  \Delta p_{ij}    &:  \text{change of $p_{ij}$ per iteration}
+  W								&: \text{Warp function}\\
+  x',y'           &: \text{Pixel position in current image}\\
+  x,y             &: \text{Pixel position in template}\\
+  p_{ij}          &: \text{parameter of warp matrix}\\
+  \Delta p_{ij}   &: \text{change of $p_{ij}$ per iteration}
 \end{align*}
 
-After each iteration we set $p=p_{n-1}+\Delta p$ where p stands for all $p_{ij}$. We can solve this problem by approximating the gradient heuristically. However, this is slow. Therefore, we need a direct computational approach to find the gradient. This is what Lucas Kanade describes. \\
-Equation \ref{eq:lk_problem} describes the Lucas Kanade problem which is non linear. It's not possible to find $\Delta p$ algebraicly which would be our gradient. Therefore, we need to linearise the problem by doing a first order Taylor approximation as shown in equation \ref{eq:lk_taylor}. $\nabla I$ corresponds here to the exterior derivative when using the chain rule while $\frac{\sigma W}{\sigma p}$ corresponds to the inner derivative. $\Delta p$ is the factor used for Taylor series (see \cite{taylor_series}).
+After each iteration we set $p=p_{n-1}+\Delta p$ where p stands for all $p_{ij}$. We can solve this problem by approximating the gradient heuristically. However, this is slow. Therefore, we need a direct computational approach to find the gradient. This is what Lucas Kanade describes.\\
+Equation \ref{eq:lk_problem} describes the Lucas Kanade problem which is non linear. It's not possible to find $\Delta p$ algebraicly which would be our gradient. Therefore, we need to linearise the problem by doing a first order Taylor approximation as shown in equation \ref{eq:lk_taylor}. $\nabla I$ corresponds to the exterior derivative when using the chain rule while $\frac{\sigma W}{\sigma p}$ corresponds to the inner derivative. $\Delta p$ is the factor used for Taylor series (see \cite{taylor_series}).
 
 \begin{equation}\label{eq:lk_taylor}
-  \sum_x\sum_y(I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k}*\frac{\sigma W}{\sigma p}*\Delta p-I_{k-1}(x,y))^2
+  \sum_x^m\sum_y^n(I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k}*\frac{\sigma W}{\sigma p}*\Delta p-I_{k-1}(x,y))^2
 \end{equation}
 \begin{align*}
-  x,y        &:  \text{Pixel position in template}\\
-  x',y'      &:  \text{Pixel position in current image}\\
-  I_{k-1}    &:  \text{Template image}\\
-  I_{k}      &:  \text{Current image}\\
+	m,n				 &: \text{Patch size}\\
+  x,y        &: \text{Pixel position in template}\\
+  x',y'      &: \text{Pixel position in current image}\\
+  I_{k-1}    &: \text{Template image}\\
+  I_{k}      &: \text{Current image}\\
   \nabla I  &:  \text{Gradient in image I at position x',y'}
 \end{align*}
-We want to find $\Delta p$ which is our gradient. To make this work we have to derive equation \ref{eq:lk_taylor}. This gives us:
+We want to find $\Delta p$ which is our gradient. We derive equation \ref{eq:lk_taylor}. This gives us:
 \begin{equation}
-  2*\sum_x\sum_y\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k}*\frac{\sigma W}{\sigma p}*\Delta p-I_{k-1}(x,y)\end{bmatrix}
+  2*\sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k}*\frac{\sigma W}{\sigma p}*\Delta p-I_{k-1}(x,y)\end{bmatrix}
 \end{equation}
-We can now find $\Delta p$ by moving it to the left:
+We now find $\Delta p$ by moving it to the left:
 \tiny
 \begin{equation}\label{eq:lk_dp}
-  \Delta p=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k}\frac{\sigma W}{\sigma p}\end{bmatrix})^{-1}
-  \sum_x\sum_y\begin{bmatrix}\nabla I_{k}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}I_{k-1}(x,y) - I_{k}(x_{i-1}',y_{i-1}'\end{bmatrix}
+  \Delta p=(\sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k}\frac{\sigma W}{\sigma p}\end{bmatrix})^{-1}
+  \sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}I_{k-1}(x,y) - I_{k}(x_{i-1}',y_{i-1}'\end{bmatrix}
 \end{equation}
 \normalsize
 
-To  get $\frac{\sigma W}{\sigma p}$ we take equation \ref{eq:lk_warped} and do a partial derivation for each p which gives us equation \ref{eq:lk_warped_derivative}.
+We get $\frac{\sigma W}{\sigma p}$ by using equation \ref{eq:lk_warped} and do a partial derivation for each p. This gives us the Jacobian matrix shown in equation \ref{eq:lk_warped_derivative}.
 \begin{equation}\label{eq:lk_warped_derivative}
   \frac{\sigma W}{\sigma p}=
   \begin{pmatrix}
@@ -464,26 +470,26 @@ To  get $\frac{\sigma W}{\sigma p}$ we take equation \ref{eq:lk_warped} and do a
   \end{pmatrix}
 \end{equation}
 
-All parameters in equation \ref{eq:lk_dp} are known and can be calculated for a given x,y and p. However, the following part of equation \ref{eq:lk_dp} is time consuming to calculate and has to be inverted:
+All parameters in equation \ref{eq:lk_dp} are known and can be calculated for a given x,y and p. However, the following part of equation \ref{eq:lk_dp} is time consuming to calculate:
 \begin{equation}
-  \Delta H=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix})
+	H^{-1}=(\sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma p}\end{bmatrix})^{-1}
 \end{equation}
-H is called the Hessian matrix. It is the same formulation used by Gauss-Newton optimization. Therefore, we use Gauss-Newton when using $\Delta p$ for the update step \cite{inverse_compositional} during optimization. Unfortunately we need to calculate the Hessian matrix in each iteration. The inverse compositional Lucas Kanade algorithm tries to solve this problem by wrapping the template to the current image instead of the current image to the template.
+$H$ is called the Hessian matrix. It is the same formulation used by Gauss-Newton optimization. Therefore, this is the optimization method of choice for finding the minima. We need to calculate the Hessian matrix for each iteration. Because this is time consuming normally the Inverse Compositional Lucas Kanade algorithm is used. It tries to solve the problem by warping the template to the current image instead of the current image to the template. We will see that in the next section.
 
-\section{Inverse compositional Lucas Kanade}
-
-The inverse compositional Lucase Kanade algorithm does more or less the same as the normal Lucas Kanade algorithm but it searches the inverse warp update at each iteration. The problem basically stays the same but we switch the role of the template with the one of the image which first doesn't have any effect:
+\section{Inverse Compositional Lucas Kanade}
+The problem the Inverse Compositional Lucas Kanade algorithm solves stays the same as before. However, we switch the role of the template and the image as shown in equation \ref{eq:iclk_problem}.
 \begin{equation}\label{eq:iclk_problem}
-  \sum_x\sum_y(I_{k-1}(x'',y'')-I_{k}(x',y'))^2
+	minimize(\sum_x^m\sum_y^n(I_{k-1}(x'',y'')-I_{k}(x',y'))^2)
 \end{equation}
 \begin{align*}
-  x'',y''    &:  \text{Warped pixel position in the template}\\
-  x',y'      &:  \text{Pixel position in the current image}\\
-  I_{k-1}    &:  \text{Template image}\\
-  I_{k}      &:  \text{Current image}
+	m,n				 &: \text{Patch size}\\
+  x'',y''    &: \text{Warped pixel position in the template}\\
+  x',y'      &: \text{Pixel position in the current image}\\
+  I_{k-1}    &: \text{Template image}\\
+  I_{k}      &: \text{Current image}
 \end{align*}
 
-What is different this time is that we warp the template with $\Delta p$ as shown in equation \ref{eq:inv_lk_warp}. 
+This time we warp the template with $\Delta p$ as shown in equation \ref{eq:inv_lk_warp}. 
 \begin{equation}\label{eq:inv_lk_warp}
   \begin{gathered}
     \begin{pmatrix}
@@ -529,7 +535,7 @@ What is different this time is that we warp the template with $\Delta p$ as show
   p_{ij}        &:  \text{parameter of warp matrix}\\
 \end{align*}
 
-With this we separate the update step from the warping of the image. The update step is now shown in equation \ref{eq:iclk_update}. Note that this time the update step is not additive as for normal Lucas Kanade. This is where the word compositional comes from. We can argue that this time the new warp depends on the old warps rotation because the template is always free from rotation. This can be expressed with a matrix multiplication also shown in equation \ref{eq:iclk_update}.
+We separate the update step from the warping of the image. The update step is now shown in equation \ref{eq:iclk_update}. Note that the update step is not additive as for Lucas Kanade. We can argue this is because the new warp depends on the old warps rotation. The template is always free from rotation. We can expressed this with the matrix multiplication shown in equation \ref{eq:iclk_update}.
 \begin{equation}\label{eq:iclk_update}
   \begin{gathered}
     W(x;p)=W(W(x;\Delta p)^{-1}; p)\\
@@ -550,49 +556,51 @@ With this we separate the update step from the warping of the image. The update 
   \end{gathered}
 \end{equation}
 
-From equation \ref{eq:iclk_problem} we need to do the first order Taylor approximation as we did for the normal Lucas Kanade algorithm. This is shown in equation \ref{eq:iclk_taylor}.
+From equation \ref{eq:iclk_problem} we need to do the first order Taylor approximation as we did for the normal Lucas Kanade algorithm (equation \ref{eq:iclk_taylor}).
 \begin{equation}\label{eq:iclk_taylor}
-  \sum_x\sum_y(I_{k-1}(x,y)+\nabla I_{k-1}*\frac{\sigma W}{\sigma p}*\Delta p-I_{k}(x',y'))^2
+  \sum_x^m\sum_y^m(I_{k-1}(x,y)+\nabla I_{k-1}*\frac{\sigma W}{\sigma p}*\Delta p-I_{k}(x',y'))^2
 \end{equation}
 \begin{align*}
-  x,y        &:  \text{Original pixel position in template}\\
-  x',y'      &:  \text{Pixel position in current image}\\
-  I_{k-1}    &:  \text{Template image}\\
-  I_{k}      &:  \text{Current image}\\
+	m,n				 &: \text{Patch size}\\
+  x,y        &: \text{Original pixel position in template}\\
+  x',y'      &: \text{Pixel position in current image}\\
+  I_{k-1}    &: \text{Template image}\\
+  I_{k}      &: \text{Current image}\\
   \nabla I  &:  \text{Gradient in image I at position x',y'}
 \end{align*}
 
 We derive equation \ref{eq:iclk_taylor} and set it to zero so that we can minimize the problem (equation \ref{eq:iclk_derivative}).
 \begin{equation}\label{eq:iclk_derivative}
-  2\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k-1}\frac{\sigma W}{\sigma p}\Delta p-I_{k-1}(x,y)\end{bmatrix}
+  2\sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k-1}\frac{\sigma W}{\sigma p}\Delta p-I_{k-1}(x,y)\end{bmatrix}
 \end{equation}
 
 This allows us to find the gradient $\Delta p$ (equation \ref{eq:iclk_dp}) for the non linear optimization.
 \tiny
 \begin{equation}\label{eq:iclk_dp}
   \Delta p=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma p}\end{bmatrix})^{-1}
-  \sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}') - I_{k-1}(x,y)\end{bmatrix}
+  \sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma p}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}') - I_{k-1}(x,y)\end{bmatrix}
 \end{equation}
 \normalsize
 
 Compared to the normal Lucas-Kanade algorithm the Hessian Matrix H is now constant for all iterations and we don't have to do the expensive calculation at every iteration:
 \begin{equation}
-  \Delta H=\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}\nabla I_{k-1}*\frac{\sigma W}{\sigma p}\end{bmatrix}
+  \Delta H=\sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k-1}*\frac{\sigma W}{\sigma p}\end{bmatrix}^T*\begin{bmatrix}\nabla I_{k-1}*\frac{\sigma W}{\sigma p}\end{bmatrix}
 \end{equation}
 
-Because we only have to calculate the Hessian matrix once, the inverse computational Lucas Kanade is more efficient then the Lucas Kanade algorithm.\\
-In this chapter we saw how we calculate the optical flow by using a warp matrix. As we will later see this is used by SVO in the pose refinement step. In the next section we describe how optical flow can be used to find a 3D pose instead of a warp matrix.
+Because we only have to calculate the Hessian matrix once, the Inverse Compositional Lucas Kanade is more efficient then the Lucas Kanade algorithm.\\
+In this chapter we saw how we calculate the optical flow by using a warp matrix. This mechanism is used in SVO for the pose refinement step when calculating the optical flow. In the next section we describe how optical flow can be used to find a 3D pose instead of a warp matrix which is used for the sparse image alignment of SVO.
 
-\section{Pose Estimation}\label{sec:pose_estimation}
-For a first estimate of the pose we use some kind of optical flow algorithm. However, we directly try to find the 3D pose instead of the warp matrix. Also we don't try to find a warp matrix for each individual patch but for all patches in the image. We start again with the idea of minimizing the intensity differences over a patch of pixels shown in equation \ref{eq:pe_problem}.
+\section{Sparse Image Alignment}\label{sec:pose_estimation}
+For a first estimate of the pose SVO uses a modified idea of optical flow. However, we directly try to find the 3D pose instead of the warp matrix. Also we don't try to find a warp matrix for each individual patch but for all patches in the image. We start again with the idea of minimizing the intensity differences over a patch of pixels shown in equation \ref{eq:pe_problem}.
 \begin{equation}\label{eq:pe_problem}
-  \sum_x\sum_y(I_{k-1}(x'',y'')-I_{k}(x',y'))^2
+	minimize(\sum_x^m\sum_y^n(I_{k-1}(x'',y'')-I_{k}(x',y'))^2)
 \end{equation}
 \begin{align*}
-  x'',y''    &:  \text{Warped pixel position in the template}\\
-  x',y'      &:  \text{Pixel position in the current image}\\
-  I_{k-1}        &:  \text{Template image}\\
-  I_{k}          &:  \text{Current image}
+	m,n				 &: \text{Patch size}\\
+  x'',y''    &: \text{Warped pixel position in the template}\\
+  x',y'      &: \text{Pixel position in the current image}\\
+  I_{k-1}    &: \text{Template image}\\
+  I_{k}      &: \text{Current image}
 \end{align*}
 
 This time we use 3D points instead of pixel positions. Therefore, we use a projection matrix instead of a warp matrix. The projection matrix $p$ is shown in equation \ref{eq:pe_warped}. 
@@ -634,13 +642,12 @@ This time we use 3D points instead of pixel positions. Therefore, we use a proje
 \end{split}
 \end{equation}
 \begin{align*}
-  u,v,s      &:  \text{Pixel position scaled with s}\\
-  X,Y,Z      &:  \text{3D Pixel position}\\
-  p_{ij}    &:  \text{Projection matrix}\\
+  u,v,s     &: \text{Pixel position scaled with s}\\
+  X,Y,Z     &: \text{3D Pixel position}\\
+  p_{ij}		&: \text{Projection matrix}\\
 \end{align*}
 
-We would need to find 12 gradients if we use the formulation in equation \ref{eq:pe_projection} for the inverse compositional Lucas Kanade. However, the rotational factors $r_{nm}$ in equation \ref{eq:pe_warped} depend on each other. We could express the whole matrix based on 6 unknowns which are 3 times rotation and 3 times translation. Unfortunately it is easy to see that this formulation gets rather complex and it's nearly impossible to find a Jacobian for such a matrix.\\
-
+We need to find 12 gradients if we use the formulation in equation \ref{eq:pe_projection} for the inverse compositional Lucas Kanade. However, the rotational factors $r_{nm}$ in equation \ref{eq:pe_warped} depend on each other. We could express the whole matrix based on 6 unknowns which are 3 times rotation and 3 times translation. It is easy to see that this formulation gets rather complex and it's nearly impossible to find a Jacobian for such a matrix.\\
 \begin{equation}\label{eq:pe_projection}
   \begin{gathered}
     \begin{pmatrix}
@@ -675,7 +682,7 @@ We would need to find 12 gradients if we use the formulation in equation \ref{eq
   p_{ij}    &:  \text{Projection matrix}\\
 \end{align*}
 
-We reformulate the problem by using Lie algebra. The idea is to transform the angles and translations into another space where we can find a Jacobian. The optimization is done in this space. The result of the optimization is transformed from Lie algebra back to angles and translations which we can use to update the pose for the next iteration. The problem we need to solve stays the same as in equation \ref{eq:pe_problem}. However we need to find $x''$ and $y''$ differently. We use the following formulation:
+We reformulate the problem by using Lie algebra \cite{se3_explain}. We use two terms SE(3) and se(3). SE(3) describes our ``normal'' projection matrices with a rotational and transitional part as shown in equation \ref{eq:pe_warped}. If we use Lie algebra we write se(3) instead of SE(3). We move from se(3) to SE(3) by using the exponential map and from SE(3) to se(3) by using the logarithm map. We do the optimization in se(3) space. The result of the optimization is moved from se(3) to SE(3) which results in angles and translations. We use them to update the pose for the next iteration. The problem we need to solve stays the same as in equation \ref{eq:pe_problem}. However we need to find $x''$ and $y''$ differently. We use the following formulation:
 \begin{equation}\label{eq:pe_lie}
   \begin{gathered}
     \begin{pmatrix}
@@ -694,13 +701,15 @@ We reformulate the problem by using Lie algebra. The idea is to transform the an
   \end{gathered}
 \end{equation}
 \begin{align*}
-  h      &:  \text{Mapping function from u,v,s to x,y}\\
-  e      &:  \text{Exponential map}\\
-  \xi    &:  \text{Pose change between reference frame and current frame as vector in SE(3)}\\
-  p      &:  \text{point in 3D cloud}
+  h														&: \text{Mapping function from u,v,s to x,y}\\
+  e      											&: \text{Exponential map}\\
+  \xi    											&: \text{Pose change between reference frame and current frame as vector in SE(3)}\\
+  p      											&: \text{point in 3D cloud}\\
+	v_x,v_y,v_z									&: \text{Position change in se3}\\
+	\omega_x,\omega_y,\omega_z	&: \text{Angle change in se3}
 \end{align*}
 
-$\xi$ in \ref{eq:pe_lie} is the change in angle and position in Lie algebra. We can transfer from Lie algebra back to SE(3) which is our ``normal'' space by using the exponential map $e$. The exponential map is the pendant to the Euler function for matrices. In our case it has the closed form solution shown in \ref{eq:pe_closed_form} \cite{rvc}.
+$\xi$ in \ref{eq:pe_lie} is the change in angle and position in se(3). We can transfer from se(3) back to SE(3) by using the exponential map $e$. The exponential map is the pendant to the Euler function for matrices. In our case it has the closed form solution shown in \ref{eq:pe_closed_form} \cite{rvc}.
 
 \begin{equation}\label{eq:pe_closed_form}
   \begin{gathered}
@@ -734,10 +743,11 @@ $\xi$ in \ref{eq:pe_lie} is the change in angle and position in Lie algebra. We 
 
 We use $\Delta t_x,\Delta t_y,\Delta t_z,\Delta r_x,\Delta r_y,\Delta r_z$ as our gradient for optimizing the pose. To get $\xi$ we again do the first order Taylor approximation as shown in equation \ref{eq:pe_taylor}).
 \begin{equation}\label{eq:pe_taylor}
-  \sum_x\sum_y(I_{k-1}(x,y)+\nabla I_{k-1}*\frac{\sigma h(e^{\xi}*p)}{\sigma \xi}*\xi-I_{k}(x',y'))^2
+  \sum_x^m\sum_y^n(I_{k-1}(x,y)+\nabla I_{k-1}*\frac{\sigma h(e^{\xi}*p)}{\sigma \xi}*\xi-I_{k}(x',y'))^2
 \end{equation}
 \begin{align*}
-  h      			&:  \text{Mapping function from u,v,s to x,y}\\
+	m,n					&: \text{Patch size}\\
+  h      			&: \text{Mapping function from u,v,s to x,y}\\
   x,y        	&: \text{Original pixel position in template}\\
   x',y'      	&: \text{Pixel position in current image}\\
   I_{k-1}    	&: \text{Template image}\\
@@ -750,20 +760,19 @@ We use $\Delta t_x,\Delta t_y,\Delta t_z,\Delta r_x,\Delta r_y,\Delta r_z$ as ou
 We again derive equation \ref{eq:pe_taylor} from $\xi$ and set it to zero as shown in equation \ref{eq:pe_derivative}. This finally allows us to find $\xi$.
 
 \begin{equation}\label{eq:pe_derivative}
-  2\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma h(e^{\xi}p)}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k-1}\frac{\sigma h(e^{\xi} p)}{\sigma \xi}\xi-I_{k-1}(x,y)\end{bmatrix}
+  2\sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k-1}\frac{\sigma h(e^{\xi}p)}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k-1}\frac{\sigma h(e^{\xi} p)}{\sigma \xi}\xi-I_{k-1}(x,y)\end{bmatrix}
 \end{equation}
 
 We want to find $\xi$ which leads us to equation \ref{eq:pe_xi}.
 
 \tiny
 \begin{equation}\label{eq:pe_xi}
-  \xi=(\sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma h(e^{\xi}p)}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k-1}\frac{\sigma h(e^{\xi}p)}{\sigma \xi}\end{bmatrix})^{-1}
-  \sum_x\sum_y\begin{bmatrix}\nabla I_{k-1}\frac{\sigma h(e^{\xi}p)}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}') - I_{k-1}(x,y)\end{bmatrix}
+  \xi=(\sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k-1}\frac{\sigma h(e^{\xi}p)}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k-1}\frac{\sigma h(e^{\xi}p)}{\sigma \xi}\end{bmatrix})^{-1}
+  \sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k-1}\frac{\sigma h(e^{\xi}p)}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}') - I_{k-1}(x,y)\end{bmatrix}
 \end{equation}
 \normalsize
 
-We now only have to find a solution for $\frac{\sigma h(e^{\xi}p)}{\sigma \xi}$ to be able to caclulate $\xi$. This Jacobian matrix is shown in equation \ref{eq:se3_jacobian} \cite{se3_explain}.
-
+We have to find a solution for $\frac{\sigma h(e^{\xi}p)}{\sigma \xi}$ to be able to calculate $\xi$. This Jacobian matrix is shown in equation \ref{eq:se3_jacobian} (see \cite{se3_explain} for derivation).
 \begin{equation}\label{eq:se3_jacobian}
   \frac{h(e^{\xi}p)}{\delta \xi}=
   \begin{pmatrix}
@@ -779,11 +788,11 @@ We now only have to find a solution for $\frac{\sigma h(e^{\xi}p)}{\sigma \xi}$ 
   x,y,z    &:  \text{3D point position}\\
 \end{align*}
 
-Given the Jacobian, all 3D points we can now calculate the gradient for a given pose and then iteratively optimize the pose pased on the gradient. Becasue we again use the Inverse Compositional Lucas Kanade approach, the Hessian only needs to be calculated once per optimization step and not for each iteration.
+Given the Jacobian, all 3D points we can calculate the gradient for a given pose and then iteratively optimize the pose based on the gradient. Because we use the Inverse Compositional Lucas Kanade approach, the Hessian only needs to be calculated once per optimization step and not for each iteration.
 
 \chapter{Pose Refinement}\label{ch:pose_refinement}
 
-Pose refinement is used to decrease the drift over time and to increase the accuracy of the pose estimation. In a first step we use optical flow to locate keypoints from the keyframe in the current image. Then we try to minimize the reprojection error shown in equation \ref{eq:refinement_reprojection}.
+We use pose refinement in SVO to decrease the drift over time and to increase the accuracy of the sparse image alignment. In a first step we use Inverse Compositional Lucas Kanade to locate keypoints in the current image. Then we try to minimize the re-projection error shown in equation \ref{eq:refinement_reprojection}.
 \begin{equation}\label{eq:refinement_reprojection}
   \begin{gathered}
     minimize(\sum_n ((x'-x)^2+(y'-y)^2))\\
@@ -797,7 +806,7 @@ Pose refinement is used to decrease the drift over time and to increase the accu
   L,L'    &: \text{x,y and x',y' as vector}
 \end{align*}
 
-We could do that with e.g. heuristic gradient descent. However, this would be again computationally inefficient because for each iteration we would have to do up to 7 calculations. Therefore, we try to use a similar approach as we use for optical flow. We try to find the gradient mathematically. Let take again the equation \ref{eq:pe_projection}. We don't use the exact same definition but instead use the formulation shown in equation \ref{eq:refinement_projection}. Again we don't want to use this formulation directly. Some parameters depend on each other (rotational) and we can't find a Jacobian for this formulation.
+We can do that with e.g. heuristic gradient descent. However, this would is not efficient because for each iteration we have to do the same calculation seven times. Therefore, we use a similar approach as we use for optical flow. We try to find the gradient mathematically. Let take equation \ref{eq:pe_projection}. We don't use the same definition but instead use the formulation shown in equation \ref{eq:refinement_projection}. Similar to pose estimation we can't use this formulation directly because we can't find a Jacobian.
 
 \begin{equation}\label{eq:refinement_projection}
   \begin{gathered}
@@ -822,7 +831,7 @@ We could do that with e.g. heuristic gradient descent. However, this would be ag
   \Delta p_{ij}   &:  \text{Projection matrix change per iteration}\\
 \end{align*}
 
-We now formulate the problem again with the help of Lie algebra shown in equation \ref{eq:refinement_lie}.
+We formulate the problem with the help of Lie algebra as shown in equation \ref{eq:refinement_lie}.
 \begin{equation}\label{eq:refinement_lie}
   \begin{gathered}
     \begin{pmatrix}
@@ -862,23 +871,22 @@ We do a Taylor approximation of the inner part as shown in equation \ref{eq:refi
   (L'-h(p)+\frac{h(e^{\xi}*p)}{\xi}(\xi))^2
 \end{equation}
 
-Now we derive the Taylor approximation to be able to minimize it. This is shown in equation \ref{eq:refinement_derived}. Keep in mind that the gradient points towards maxima. Therefore, we would optimize in direction of the negative gradient.
+Now we derive the Taylor approximation which is shown in equation \ref{eq:refinement_derived}.
 \begin{equation}\label{eq:refinement_derived}
   \begin{gathered}
     (\frac{h(e^{\xi}*p)}{\xi})^T2*(L'-h(p)+\frac{h(e^{\xi}*p)}{\xi}(\xi))=0\\
     (\frac{h(e^{\xi}*p)}{\xi})^T(L'-h(p))+\frac{h(e^{\xi}*p)}{\xi}\frac{h(e^{\xi}*p)}{\xi}\xi=0\\
-    (\frac{h(e^{\xi}*p)}{\xi})^T(\frac{h(e^{\xi}*p)}{\xi})^{-1}(\frac{h(e^{\xi}*p)}{\xi})^T(h(p)-L')=\xi
+		((\frac{h(e^{\xi}*p)}{\xi})^T(\frac{h(e^{\xi}*p)}{\xi}))^{-1}(\frac{h(e^{\xi}*p)}{\xi})^T(h(p)-L')=\xi
   \end{gathered}
 \end{equation}
 
-We can reuse the same definition for the Jacobian as we did for pose estimation in equation \ref{eq:se3_jacobian}. The only difference is that this time we use the repojection error instead of the intensity gradient to calculate the gradient.
+We use the same definition for the Jacobian as we did for Sparse Image Alignment in equation \ref{eq:se3_jacobian}. This time we use the re-projection $h(p)-L^{'}$ error instead of the intensity gradient to calculate the update step. We use again Gauss-Newton optimization to iteratively minimize the re-projection error.
 
 \chapter{Implementation}\label{ch:implementation}
-In this chapter we discuss the implementation that was written during this thesis. It should give a ruff overview of the code base. All the source code written during this thesis as well as the document sources can be found on github under the following link:\\
+In this chapter we discuss the implementation that was written during this thesis. It should give a ruff overview of the code base. All the source code written during this thesis is available on Github under the following link:\\
 \url{https://github.com/eichenberger/stereo_svo_slam}
 
-
-The git repository is organized as follows:
+The repository is organized as follows:
 \begin{table}[H]
   \centering
   \begin{tabular}{|l|l|}
@@ -897,7 +905,7 @@ The git repository is organized as follows:
 \label{tab:organization}
 \end{table}
 
-The source code uses GNU Makefiles for compilation. Table \ref{tab:envvars} shows the environment variables be used to control the make process.
+The source code uses GNU Makefiles for compilation. Table \ref{tab:envvars} shows the environment variables used to control the make process.
 \begin{table}[H]
   \centering
   \begin{tabular}{|l|l|}
@@ -925,7 +933,7 @@ make python
 make qt-viewer
 \end{lstlisting}
 
-All applications beside the qt-viewer accept some command line arguments. It is possible to query the help text by providing a -h argument:\\
+All applications beside the qt-viewer accepts some command line arguments. It is possible to query the help text by providing with the -h argument:\\
 \begin{lstlisting}
 ./slam_app -h
 Usage: ./slam_app [options] camera
@@ -961,11 +969,11 @@ The stereo SVO Library (libstereosvo) is written as shared library. It can be us
   \caption{Class diagram for the Stereo SVO Library}\label{fig:class_diagram}
 \end{figure}
 
-Figure \ref{fig:class_diagram} shows the most important classes of the library. There are a lot of other files and data types available. However, they support the main classes in doing their work. An application must create an objection based on StereoSlam. When creating the object we need to specify the camera parameters (see attached documentation). After that we can already feed new images by calling it's method new\_image. The getter function can be used to optain the current frame (with pose information), all keyframes (including keypoints), the trajectory or to update the pose. Updating the pose can be used to feed data from an IMU. Currently this is not tested very well. However, it is possible to feed gyro data which helps to improve the stability of the tracker.
+Figure \ref{fig:class_diagram} shows the most important classes of the library. To start the SLAM system we must create an instance of StereoSlam. When creating the object we specify the camera parameters (see software documentation in appendix). After that we feed new images by calling the method new\_image. The getter functions are used to get the current frame (with pose information), all keyframes (including keypoints), the trajectory or to update the pose. We can use update\_pose to feed data from an IMU. The Test Application shows an example on how to use update\_pose.
 
 \subsection{Stereo SLAM}
 
-The Stereo SLAM class implements the basic algorithm described in \ref{ch:svo} and shown in \ref{fig:svo_slam}. Figure \ref{fig:flow_stereo_slam} shows a slightly changed flow chart to align better with the naming in the implementation. It calls the depth calculator if new keyframes are needed, estimates the pose and updates the point cloud. However, the work is delegated to its sub objects. It also provides an interface to receive information about the current state (see figure \ref{fig:class_diagram}. The interfaces are described in more detail in the separate source code documentation.
+The Stereo SLAM class implements the basic algorithm described in \ref{ch:svo} and shown in \ref{fig:svo_slam}. Figure \ref{fig:flow_stereo_slam} shows a slightly changed flow chart to align better with the naming in the implementation. It calls the depth calculator if new keyframes are needed, estimates the pose and updates the point cloud. However, the work is delegated to its sub objects. It also provides an interface to receive information about the current state (see figure \ref{fig:class_diagram}).
 
 \begin{figure}[H]
   \centering
@@ -1004,9 +1012,9 @@ The pose refiner updates the pose by taking the keyframes into account where a k
   \caption{Pose Refiner Flow}\label{fig:flow_pose_refiner}
 \end{figure}
 
-\subsection{Depth Filter}
+\subsection{Depth Filter}\label{sec:depth_filter}
 
-The depth filter removes outlier and updates the 3D point position of keypoints. It is completely different from what the original implementation does. The reason is that they work with seeds which we don't require because we use stereo cameras. We don't have seeds but we can improve the 3D points if we have bigger camera movements than the camera baseline is. Figure \ref{fig:flow_depth_filter} shows two flows. The first flow a describes the outlier detection while the second flow b describes the 3D point update.
+The depth filter removes outlier and updates the 3D point position of keypoints as described in section \ref{sec:depth_filter}. Figure \ref{fig:flow_depth_filter} shows two flows. The first flow a describes the outlier detection while the second flow b describes the 3D point update.
 
 \begin{figure}[H]
   \centering
@@ -1023,7 +1031,7 @@ The depth filter removes outlier and updates the 3D point position of keypoints.
   \caption{Image from the Test Application}\label{fig:test_app}
 \end{figure}
 
-The test application can be used to test the algorithm and to debug it. It allows to use different input sources like video, EuRoC and camera. It also offers a WebSocket interface which allows the Qt Viewer to catch information about the current state of the application. Information that can be received are current camera pose, all keyframe poses, keypoints and trajectory. Figure \ref{fig:test_app} shows an example output of the application. The left side shows the last keyframe with all keypoints that were visible there and the right image show the actual frame. In the keyframe it shows the following numbering a:b. A is the keyframe id where the frame was first seen and b is the index of the keypoint in the keyframe where it was first seen. In the current frame it shows the following information a:b:+/-:x,y,z;inliers,outliers. A and b are again the keypoint ids + means the keypoint is currently used (- would mean it wont be used) then follows the x,y,z position and the last two numbers say how many times the point was counted as inlier or as outlier. The numbers are small but it's possible to zoom in to make them bigger. This numbers are interesting when debugging the application. By pressing a key other than q we can freeze the processing to analyse the current state. By pressing q we can stop the application.\\
+We can use the test application to test and debug the algorithm. It allows us to use different input sources like video, EuRoC and camera. Figure \ref{fig:test_app} shows an example output of the application. The left side shows the last keyframe with all keypoints that were visible. The right image show the current frame. In the keyframe we show two numbers a:b. a is the keyframe id where the frame was first seen and b is the index of the keypoint in this keyframe. In the current frame it shows the information a:b:+/-:x,y,z;inliers,outliers. a and b are again the keypoint ids. + means the keypoint is currently used - means the opposite. x,y,z are the 3D position and the last two numbers say how many times the point was counted as inlier or as outlier. The numbers are small but it's possible to zoom in to make them bigger. This numbers are interesting when debugging the application. By pressing a key other than q we can freeze the output to analyse the current state. By pressing q we can quit the application.\\
 Additionally to the above output the test application offers a Websocket \cite{websocket} backend. Through this backend it is possible for the Qt Viewer to read out 3D data like current pose, keyframes and trajectory. The Websocket idea is shown in figure \ref{fig:websocket}.
 
 \begin{figure}[H]
@@ -1031,7 +1039,7 @@ Additionally to the above output the test application offers a Websocket \cite{w
   \caption{Websocket Connection}\label{fig:websocket}
 \end{figure}
 
-It is possible to access via Websocket URLs. Table \ref{tab:websocketapi} shows the implemented commands and URLs. For the trajectory it will send x1, y1, z1, rx1, ry1, rz1, x2, y2, z2, \dots The test application will open a Websocket on port 8001.
+Table \ref{tab:websocketapi} shows the implemented Websocket URLs and commands. For trajectory it will send x1, y1, z1, rx1, ry1, rz1, x2, y2, z2, \dots The test application will open a Websocket on port 8001.
 
 \begin{table}[H]
   \centering
@@ -1057,7 +1065,7 @@ It is possible to access via Websocket URLs. Table \ref{tab:websocketapi} shows 
   \caption{Qt Viewer}\label{fig:qt_viewer}
 \end{figure}
 
-We can use the Qt Viewer shown in figure \ref{fig:qt_viewer} to display 3D information calculated by the Test Application. We can navigate with the mouse to move trough the 3D room. The data is not received automatically. We need to click connect, get pose, etc. to trigger an action. This allows us to keep a snapshot of a scene to analyse the current state. All points have the same color as in the test application. Keyframes are shown as blue rectangles, the current frame pose is shown in green. The trajectory is shown as red line. When pressing the connect button it will automatically connect to localhost on port 8001, which is where the Test Application is listening on.
+We can use the Qt Viewer shown in figure \ref{fig:qt_viewer} to display 3D information calculated by the Test Application. We can navigate with the mouse to move trough the 3D room. The data is not received automatically. We need to click connect, get pose, etc. to trigger an action. This allows us to keep a snapshot of a scene and to analyse the current state. All points have the same color as displayed in the test application. Keyframes are shown as blue rectangles, the current frame pose is shown in green. The trajectory is shown as red line. When pressing the connect button it will automatically connect to localhost on port 8001 which is where the Test Application is listening on.
 
 \section{Demo application}
 \begin{figure}[H]
@@ -1072,17 +1080,18 @@ The demo application shown in figure \ref{fig:demo_application} is a simple augm
 
 \section{Additional tools}
 
-There are a few other tools available which will not be documented in more detail because they are in bad shape or not intended for further use.
+There are a few other tools available which will not be documented in more detail because they are in bad shape or not intended for common use.
 
 \subsection{Python wrapper}
-There is a Python wrapper under src/python which uses Cython to generate bindings. It allows us to use libstereoslam from within Python. A demo application is provided as main.py. It provides a similar feature set as the Test Application.
+There is a Python wrapper under src/python which uses Cython to generate bindings. It allows us to use libstereoslam from Python. A demo application is provided as main.py. It offers a similar feature set as the Test Application. However, it is slower and not well maintained.
 
 \subsection{Scripts}
-There are several scripts under test which can be used to record videos from the econ camera in the right format. To print the results for the next section, etc.
+There are several scripts under test which we can use to record videos from the econ camera in the right format, to plot results, to export trajectory from Blender, etc.
 
 \chapter{Results}\label{ch:results}
 
-For testing the algorithm with a reference implementation we use a synthetic scene generated by Blender. The advantage of having synthetic scenes is that we can test some well defined movements where we exactly know the trajectory. We compare our implementation with SVO edgelet \cite{svo_edgled} as well as the original SVO implementation \cite{svo}. This is based on the reference SVO implementation. However, it is using newer versions of OpenCV, libegien, etc. They added edgelets tracking which is missing in the original SVO sources and they added a GUI to observe the tracking. However, it's much slower than the original implementation on the other side it seems to be more robust than the original implementation. Unfortunately the reference implementation are quite prone to changes in z and angle changes. Therefore, a simplified scene was generate to have at least some reference. All measurements were done on an Intel i7-8550U processor a version without OpenMP was used (see \ref{ch:implementation}).
+For testing the algorithm with a reference implementation we use two synthetic scenes generated by Blender. The advantage of having synthetic scenes is that we can test well defined movements where we know the trajectory. Blender allows to render stereoscopic videos by following the manual \cite{blender_stereo}. It is possible to customize the baseline, focal length in the camera settings of Blender. The script test/blender-export-trajectory.py can be used to export the camera trajectory into a csv file which then can be used for comparison. The Test Application allows to export the trajectory of a scene by providing the -t argument.\\
+All measurements in this chapter are done on an Intel i7-8550U processor.
 
 \section{Classroom}
 \begin{figure}[H]
@@ -1090,7 +1099,7 @@ For testing the algorithm with a reference implementation we use a synthetic sce
   \caption{Blender classroom scene}\label{fig:blender_classroom_scene}
 \end{figure}
 
-For the first test we use the Blender Classroom Scene \cite{blender}. A snapshot from this scene is shown in figure \ref{fig:blender_classroom_scene}. An image for the left and right camera was rendered to have a valid stereo image input. We change the position and angles in this scene as shown in figure \ref{fig:blender_classroom_simple_traj}.
+For the first test we use the Blender Classroom Scene \cite{blender}. A snapshot of this scene is shown in figure \ref{fig:blender_classroom_scene}. An image for the left and right camera was rendered to have a valid stereo image input. We change the position and angles in the scene as shown in figure \ref{fig:blender_classroom_simple_traj}. The test video is part of the repository under test/blender-classroom.mkv. The is called test/blender-classroom.csv. We compare our implementation with SVO \cite{svo}, SVO edgelet \cite{svo_edglet} and ORB SLAM \cite{orbslam}. SVO edgledt additionally uses edglets which is missing in the original SVO sources. Because SVO and ORB SLAM have dependencies to old libraries we move the implementation to a Docker container. The Dockerfile is available in the test folder. 
 
 \begin{figure}[H]
   \includegraphics[width=1.0\textwidth]{img/blender_classroom_simple_traj.png}
@@ -1142,7 +1151,7 @@ Figure \ref{fig:blender_classroom_simple_diff} shows the trajectory difference m
 \label{tab:fps}
 \end{table}
 
-As we see in the results all implementations have a hard time to track the ry angle and the z movment. Both is expected because the with a change in ry we can often correct small movments along the x axis. When moving along the z axis we are not able to refine the 3D point positions because we don't get any change along the x or y axis. This makes it impossible for monocular systems to insert new keypoints.
+As we see in the results all implementations struggle to track the ry angle and the z movement. Both is expected because by changing ry we can often correct small movements along the x axis. Further, when moving along the z axis we are not able to refine the 3D point positions because we don't get any change along the x or y axis. This makes it impossible for monocular systems to insert new keypoints.
 
 \begin{figure}[H]
   \subfloat[Our implementation]{\includegraphics[width=0.5\textwidth]{img/blender_classroom_simple_our_diff.png}}
@@ -1159,7 +1168,7 @@ As we see in the results all implementations have a hard time to track the ry an
   \caption{Blender Barcelona scene}\label{fig:blender_barcelona_scene}
 \end{figure}
 
-For the second test we use an outdoor synthetic scene called Barcelona \cite{blender}. Here we only compare ORB SLAM with our SVO implementation because the monocular SLAMs are unable to track such complicated movements. Figure \ref{fig:blender_barcelona_traj} shows the trajectory. The challenges for the tracker are long z movement and big changes in angle.
+For the second test we use an outdoor synthetic scene called Barcelona \cite{blender}. Here we compare ORB SLAM with our SVO implementation because the monocular SLAMs are unable to track this movements. Figure \ref{fig:blender_barcelona_traj} shows the planned trajectory. The challenges for the tracker are long z movement and big changes in angle. The test video can be found in the repository under test/blender-barcelona.mkv and the trajectory under test/blender-barcelona.csv.
 
 \begin{figure}[H]
   \includegraphics[width=1.0\textwidth]{img/blender_barcelona_traj.png}
@@ -1211,14 +1220,14 @@ As we see in figure \ref{fig:blender_barcelona_diff} both algorithm struggle for
   \caption{Blender Barcelona Scene errors. Distances in meter, angels in Degree.}\label{fig:blender_barcelona_diff}
 \end{figure}
 
-\section{EuRoC}
+\section{EuRoC Machine Hall 2}
 
 \begin{figure}[H]
   \includegraphics[width=1.0\textwidth]{img/euroc_scene.png}
   \caption{EuRoC Scene}\label{fig:euroc_scene}
 \end{figure}
 
-EuRoC is a widely used testset for SLAM algorithms \cite{euroc}. Figure \ref{fig:euroc_scene} shows an image from EuRoC Machine Hall 2. The SVO2 paper \cite{svo2} compares some measurements based on EuRoC. Our measurements are not in the range of any modern SLAM algorithm. However, the problem is that the current implementation doesn't use past keyframes. Therefore, it can't profit if it sees the same scene more than once what increases the drift. For completeness an initial result is shown here for EuRoC Machine Hall 2.
+EuRoC is a widely used testset for SLAM algorithms \cite{euroc}. Figure \ref{fig:euroc_scene} shows an image from EuRoC Machine Hall 2. The SVO2 paper \cite{svo2} compares some measurements based on EuRoC. Our measurements are not in the range of any modern SLAM algorithm. The problem is that the current implementation doesn't do an relocation (local or global). Therefore, it can't profit if it sees the same scene more than once what increases the drift. For completeness an initial result is shown anyhow for EuRoC Machine Hall 2.
 
 \begin{figure}[H]
   \subfloat[Top View]{\includegraphics[width=0.9\textwidth]{img/euroc_svo_top.png}}\\
@@ -1226,16 +1235,20 @@ EuRoC is a widely used testset for SLAM algorithms \cite{euroc}. Figure \ref{fig
   \caption{EuRoC }\label{fig:euroc}
 \end{figure}
 
-As we can see in figure \ref{fig:euroc} we have a huge drift over the whole sequence. In the end we measure an error of more than one meter in each direction. However, this was measured without doing a lot of parameter tuning. SVO2 states that they can achieve an RMSW of only 8 cm. SVO 1 where this thesis is based on can't follow the sequence. It is possible that better results could be achieved with our implementation by tweaking the parameters but it's unrealistic to get close to what SVO2 measured. The average frame rate was 37.13 fps.
+As we see in figure \ref{fig:euroc} we have a huge drift over the whole sequence. In the end we measure an error of more than one meter in each direction. However, this was measured without doing a lot of parameter tuning. SVO2 states that they can achieve an RMSE of only 8 cm. SVO 1 where this thesis is based on can't follow the sequence at all. It is possible that better results could be achieved with our implementation by tweaking the parameters but it's unrealistic to get close to what SVO2 measured. The average frame rate was 37.13 fps.
 
 \chapter{Discussion}\label{ch:discussion}
 
-We showed that the principle of SVO works and can be faster than e.g. ORB SLAM. Our implementation does not achieve the same frame rate as the reference implementation. There can be a lot of reasons why this happens. First we only use gradient descent for optimization. Probably a Gauss Newton like algorithm would find the minimum faster. We've chosen gradient descent because it is easy understandable and convenient to debug. However, a rework should definitely address this issue. Further we don't use OpenMP. The code is prepared for it but it is no activated because on the test system with an i7 processor the algorithm runs slower. The assumption is that it has to do with optimization and that for some reason the compiler can't vectorize the code when OpenMP is used. On an ARM iMX8QM based system activating OpenMP showed a speedup of around 3. However, even with this speed up the algorithm run with 10fps. Therefore, we did not document this test in more detail. However, two things would be interesting to analyze. Can the compiler vectorize all critical parts of the code and can in parallel enable OpenMP. If we would achieve a speed up of at least 2 with OpenMP frame rates of > 60fps should be achievable.\\\\
-The accuracy of our implementation is behind modern SLAM implementations. This could be improved by projection old keypoints into the current frame. We don't do that at the moment because of speed concerns and to keep the algorithm simple. However, it could lead to more stable results because some kind of local loop closing would be possible.\\\\
-We implemented a 3D viewer which can be used over a network connection. This approach would allow us to debug devices that are further away e.g. via Wifi or Ethernet. The viewer could be optimized by only asking for differences from the target and not for all keyframes. This would reduce the bandwidth when e.g. using Wifi. However, as a proof of concept this seems to be a good approach.\\\\
-We showed an easy way to generate test scenes by using Blender animations. This allows us to make debugging much easier because we know all movements in detail and we can have predefined movements in exactly one direction. Such scenes help debugging algorithms a lot and makes also the comparison of results easy. Generating such scenes is simple, cheap and quick.\\\\
+We showed that the SVO works and is faster than e.g. ORB SLAM. Our implementation does not yet achieve the same frame rate as the reference implementation. There was no time for deeper optimizations left. Some initial tests with OpenMP and TBB failed because the single threaded version was faster. It seems that the task size per iteration is too small so that the overhead of multiprocessing is too big. By increasing the task size this could probably be improved. However, more important seems to be to actively use vectorization. By consistently using OpenCV Vectors and Matrixes, the compiler can optimize the code. Already at least factor 2 was gained by doing so. The depth filter implementation is the worst part in the current implementation. However, it was also optimized the least. Therefore, we could gain the most by optimizing this part at the moment.\\
+First tests on an ARM iMX8QM (Cortex A72) based system showed frame rates of around 10fps vs around 5fps for ORB SLAM. However, here no optimization or analysis was done yet. ARM NEON vectorization is used by the compiler but no tracing of the library was done yet.\\
+The accuracy of our implementation is behind modern SLAM implementations. We could improve this by projection old keypoints into the current frame to have some kind of local re-localization. We don't do that at the moment because of speed concerns and to keep the algorithm simple.\\\\
+We implemented a 3D viewer which can be used over a network connection. This allows us to debug devices that are further away e.g. via Wifi or Ethernet. The viewer can be optimized by asking for differences instead of querying all keyframes each time. This would reduce the bandwidth when using Wifi. However, as a proof of concept this seems to be a good approach.\\\\
+We showed an easy way to generate test scenes by using Blender animations. This allows us to make debugging much easier because we know all movements in detail and we can create movements in only one direction. Such scenes help debugging algorithms a lot and make also comparing results easy. Generating such scenes is simple, cheap and quick.\\\\
 A demo application shows what is possible with SLAM. It is a simple augmented reality application that can be used as a quick demo to show what SLAM can be used for.\\\\
-The current library is in the state of a proof of concept. It is far from productive but it shows that SVO works and that it is promising. The implementation showed to be faster than ORB SLAM but it is not as robust yet. The current state could be used as starting point for further development. It is open source and has only dependencies to OpenCV. This makes it much easier to compile it for other platforms like ARM based devices.
+The current library is in the state of a proof of concept. It is far from productive but it shows that SVO works and that it is promising. The implementation showed to be faster than ORB SLAM but it is not as robust yet. The current state could be used as starting point for further development. It is open source and has only dependencies to OpenCV. This makes it much easier to compile it for other platforms like ARM based devices.\\\\
+The CPVR lab today uses ORB SLAM for their augmented reality projects. The benefit of SVO would only be performance wise but not in terms of accuracy. Therefore, the effort to port their current projects to SVO doesn't seem to be justifiable. However, for future project a combination of SVO and ORB SLAM could be an efficient solution for mobile devices. SVO could be used for tracking between keyframes, while ORB SLAM is used to do re-location. Inserting new keyframes and computing descriptors would still be done by ORB SLAM but the pose estimation would only involve sparse image alignment and pose refinement without triangulation. This could speed up the frame processing by factor 2-3.\\\\§
+For embedded devices which are below modern mobile phones, SVO should be preferred over ORB SLAM. First results of our implementation proofed that it is faster than ORB SLAM. Tweaking and optimizing the code would probably allow frame rates of around 20-30 fps which is fast enough for most task.\\\\
+We conclude that SVO shows great potential for the use on embedded devices. The current implementation is not ready to use yet and would need more tuning. However, it shows that it is faster than other SLAM algorithms like e.g. ORB SLAM.
 
 \printbibliography
 
