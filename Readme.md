@@ -3,11 +3,11 @@
 This repository contains a proof of concept for a SVO based stereo camera SLAM library.
 
 The repository is organized as follows:
-| Direcotry | Description                                                                  |
-|-----------|------------------------------------------------------------------------------|
-| doc       | Documentation of the whole algorithm, implementation, etc.                   |
-| src       | Source code of library, test application, demo, qt viewer and python wrapper |
-| test      | Test scripts, test videos, etc.                                              |
+ Direcotry | Description                                                                  
+-----------|------------------------------------------------------------------------------
+ doc       | Documentation of the whole algorithm, implementation, etc.                   
+ src       | Source code of library, test application, demo, qt viewer and python wrapper 
+ test      | Test scripts, test videos, etc.                                              
 
 The source code includes some doxygen comments. Check out the documentation folder for indepth information.
 
