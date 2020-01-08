@@ -6,13 +6,16 @@
 
 #include "image_input.hpp"
 
+/*!
+ * \brief Data received from IMU
+ */
 struct ImuData{
-    float acceleration_x;
-    float acceleration_y;
-    float acceleration_z;
-    float gyro_x;
-    float gyro_y;
-    float gyro_z;
+    float acceleration_x;   //!< Acceleration in x direction
+    float acceleration_y;   //!< Acceleration in y direction
+    float acceleration_z;   //!< Acceleration in z direction
+    float gyro_x;           //!< Angle velocity around x axis
+    float gyro_y;           //!< Angle velocity around y axis
+    float gyro_z;           //!< Angle velocity around z axis
 };
 
 /*!
@@ -37,14 +40,14 @@ public:
 
     virtual bool read(cv::Mat &left, cv::Mat &right, float &time_stamp);
     virtual void get_camera_settings(CameraSettings &camera_settings);
-    virtual bool set_manual_exposure(int exposure);
-    virtual bool configure_imu();
-    virtual bool get_imu_data(ImuData &imu_data);
-    virtual bool set_hdr(bool hdr);
-    virtual bool read_temperature(float &temperature);
+    virtual bool set_manual_exposure(int exposure); //!< Set the exposure value (1 = auto exposure -> 30000)
+    virtual bool configure_imu();   //!< Configure IMU (e.g. frequency, resolution, etc.)
+    virtual bool get_imu_data(ImuData &imu_data); //!< Read IMU data
+    virtual bool set_hdr(bool hdr); //!< Set HDR mode to on or off
+    virtual bool read_temperature(float &temperature);  //!< Read camera temperature
     float get_freqency() { return frequency; }
-    void calibrate_imu();
-    bool imu_available();
+    void calibrate_imu();   //!< Calibrate the IMU
+    bool imu_available();   //!< Check if IMU is available
 
 private:
     const std::string &hidraw;

@@ -73,9 +73,9 @@ struct KeyPoint3d {
  * \brief Color representation
  */
 struct Color {
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
+    uint8_t r;  //!< red
+    uint8_t g;  //!< green
+    uint8_t b;  //!< blue
 };
 
 /*!

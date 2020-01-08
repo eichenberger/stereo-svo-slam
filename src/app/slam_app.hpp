@@ -16,11 +16,28 @@
 #include "image_input.hpp"
 #include "econ_input.hpp"
 
+/*!
+ * \brief Class which wraps camera handling, and StereoSlam
+ *
+ * This class allows us to have a shared code base between e.g. ar-app and app
+ */
+
 class SlamApp {
 public:
     SlamApp();
     ~SlamApp();
-
+    /*!
+     * \brief Initalize the SLAM Applicaiton
+     *
+     * @param[in] camera_type Can be econ, euroc or video
+     * @param[in] video The path to the video file or device
+     * @param[in] trajecotry_file Where to store the trajectory (empty-> don't save)
+     * @param[in] hidraw_settings Path to hidraw device for Settings
+     * @param[in] expusre Exposure for econ camera
+     * @param[in] hdr Enable/Disable HDR for econ
+     * @param[in] move Skip n frames for video or EuRoC input
+     * @param[in] hidraw_imu The hidraw device to receive IMU data from
+     */
     bool initialize(const QString &camera_type,
             const QString &video,
             const QString &settings,
@@ -31,12 +48,12 @@ public:
             int move = 0,
             const QString &hidraw_imu = QString());
 
-    bool start();
-    bool stop();
+    bool start();   //!< Start the SLAM App and threads
+    bool stop();    //!< Stop the SLAM App and threads
 
-    void read_imu_data();
-    void read_image();
-    bool process_image();
+    void read_imu_data();   //!< Read data from IMU
+    void read_image();  //!< Read image from camera
+    bool process_image();   //!< Process image
 
     StereoSlam *slam;
 private:

@@ -5,6 +5,12 @@
 #include <fstream>
 
 #include "image_input.hpp"
+/*!
+ * \brief Class for Video File input
+ *
+ * Video Files need to have the images aligned horizontally
+ * | video left | video right |
+ */
 
 class VideoInput: public ImageInput
 {
