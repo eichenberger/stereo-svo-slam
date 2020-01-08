@@ -874,24 +874,9 @@ Now we derive the Taylor approximation to be able to minimize it. This is shown 
 We can reuse the same definition for the Jacobian as we did for pose estimation in equation \ref{eq:se3_jacobian}. The only difference is that this time we use the repojection error instead of the intensity gradient to calculate the gradient.
 
 \chapter{Implementation}\label{ch:implementation}
+In this chapter we discuss the implementation that was written during this thesis. It should give a ruff overview of the code base. All the source code written during this thesis as well as the document sources can be found on github under the following link:\\
+\url{https://github.com/eichenberger/stereo_svo_slam}
 
-In this chapter we discuss the implementation that was written during this thesis. It should give a ruff overview of the code base. The whole project is GNU Makefile based. Table \ref{tab:envvars} shows the environment variables be used to control the make process.
-\begin{table}[H]
-  \centering
-  \begin{tabular}{|l|l|}
-    Variable & Description\\
-    \hline
-    OPENCV\_INC\_DIR & Include directory for OpenCV (opencv2/..)\\
-    OPENCV\_LIB\_DIR & Where to find the opencv libraries if not in standard path\\
-    QT\_INC\_DIR & Where to find the QT include files if not in standard path\\
-    QMAKE & Which qmake should be used\\
-    CXX & Which compiler should be use\\
-    CXXFLAGS & Additional compiler flags (e.g. -O0/-O3)\\
-    LDFLAGS & Additional linker flags (e.g.  additional library paths)
-  \end{tabular}
-\caption{Environment variables for GNU Make}
-\label{tab:envvars}
-\end{table}
 
 The git repository is organized as follows:
 \begin{table}[H]
@@ -911,6 +896,34 @@ The git repository is organized as follows:
 \caption{Repository organization}
 \label{tab:organization}
 \end{table}
+
+The source code uses GNU Makefiles for compilation. Table \ref{tab:envvars} shows the environment variables be used to control the make process.
+\begin{table}[H]
+  \centering
+  \begin{tabular}{|l|l|}
+    Variable & Description\\
+    \hline
+    OPENCV\_INC\_DIR & Include directory for OpenCV (opencv2/..)\\
+    OPENCV\_LIB\_DIR & Where to find the opencv libraries if not in standard path\\
+    QT\_INC\_DIR & Where to find the QT include files if not in standard path\\
+    QMAKE & Which qmake should be used\\
+    CXX & Which compiler should be use\\
+    CXXFLAGS & Additional compiler flags (e.g. -O0/-O3)\\
+    LDFLAGS & Additional linker flags (e.g.  additional library paths)
+  \end{tabular}
+\caption{Environment variables for GNU Make}
+\label{tab:envvars}
+\end{table}
+
+The following make commands are available under the src directory:
+\begin{lstlisting}
+# Compile library, app (test applicaiton) and ar-app (demo application)
+make 
+# Compile the python wrapper
+make python 
+# Compile the qt-viewer
+make qt-viewer
+\end{lstlisting}
 
 All applications beside the qt-viewer accept some command line arguments. It is possible to query the help text by providing a -h argument:\\
 \begin{lstlisting}
@@ -937,11 +950,11 @@ Arguments:
                                  euroc
 \end{lstlisting}
 
+Most applications require a camera settings file which describe the camera parameters and algorithm settings. An example file for Blender including comments is provided under src/app/Blender.yaml.
+
 \section{Library}
 
-The stereo SVO Library (libstereosvo) is written as shared library. It can be used in other project by dynamically linking against it. The source code for this project can be found under:\\
-\url{https://github.com/eichenberger/stereo_svo_slam}
-
+The stereo SVO Library (libstereosvo) is written as shared library. It can be used in other project by dynamically linking against it.
 \begin{figure}[H]
   \centering
   \includegraphics[width=1.0\textwidth]{img/class_diagram.png}
