@@ -912,6 +912,30 @@ The git repository is organized as follows:
 \label{tab:organization}
 \end{table}
 
+All applications beside the qt-viewer accept some command line arguments. It is possible to query the help text by providing a -h argument:\\
+\begin{lstlisting}
+./slam_app -h
+Usage: ./slam_app [options] camera
+SVO stereo SLAM application
+
+Options:
+  -h, --help                     Displays this help.
+  -v, --video <video>            Path to camera or video (/dev/videoX,
+                                 video.mov)
+  -s, --settings <settings>      Path to the settings file (Econ.yaml)
+  -r, --hidraw <hidraw>          econ: HID device to control the camera
+                                 (/dev/hidrawX)
+  -i, --hidrawimu <hidrawimu>    econ: HID device to control the imu
+                                 (/dev/hidrawX)
+  -e, --exposure <exposure>      econ: The exposure for the camera 1-30000
+  -t, --trajectory <trajectory>  File to store trajectory
+  -m, --move <move>              video: skip first n frames
+  -d, --hdr                      econ: Use HDR video
+
+Arguments:
+  camera                         The camera type to use can be econ, video or
+                                 euroc
+\end{lstlisting}
 
 \section{Library}
 

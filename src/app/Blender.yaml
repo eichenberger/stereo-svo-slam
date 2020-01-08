@@ -4,53 +4,56 @@
 # Camera Parameters. Adjust them!
 #--------------------------------------------------------------------------------------------
 
-# Camera calibration and distortion parameters (OpenCV) 
-#
-# fx = 20mm/(32mm/752px) = 470.0 px
-Camera1.fx: 470.0 
+
+# Focal lenght of Camera1
+Camera1.fx: 470.0 # fx = 20mm/(32mm/752px) = 470.0 px
 Camera1.fy: 470.0
+# Principal point of Camera1
 Camera1.cx: 376.0
 Camera1.cy: 240.0
 
 
+# Focal lenght of Camera2
 Camera2.fx: 470.0
 Camera2.fy: 470.0
+# Principal point of Camera2
 Camera2.cx: 376.0
 Camera2.cy: 240.0
 
-Camera.image_width: 752
-Camera.image_height: 480
-
+# Camera baseline multiplied by focal length
 # baselien in m * fx = baseline
-# 0.06 * 470px = 28.2
-Camera.baseline: 28.2
+Camera.baseline: 28.2 # 0.06 * 470px = 28.2
 
+# Camera1 distortion parameters (k radial, p tangential)
 Camera1.k1: 0.0
 Camera1.k2: 0.0
 Camera1.k3: 0.0
 Camera1.p1: 0.0
 Camera1.p2: 0.0
 
+# Camera2 distortion parameters (k radial, p tangential)
 Camera2.k1: 0.0
 Camera2.k2: 0.0
 Camera2.k3: 0.0
 Camera2.p1: 0.0
 Camera2.p2: 0.0
 
+# Grid size for SVO. There will be (width/grid_width)*(height/grid_height) points used for tracking
 Camera.grid_width: 75
 Camera.grid_height: 48
+
+# Search window for depth calculation search_x is maximum disparity search_y can correct some missallignment
 Camera.search_x: 50
 Camera.search_y: 6
+
+# Window size or patch size for pose estimator 
 Camera.window_size_pose_estimator: 4
+# Window size or patch size for optical flow
 Camera.window_size_opt_flow: 31
+# Window size or patch size for depth calculation
 Camera.window_size_depth_calculator: 31
+# Maximum pyramid levels for pose estimation
 Camera.max_pyramid_levels: 6
+# Minimum pyramid level used for pose estimation (e.g. 6..2->4 levels are used for pose estimation)
+# Optical flow for pose refinement will always use the maximum levels
 Camera.min_pyramid_level_pose_estimation: 2
-
-Camera.dist_window_k0: 5.0
-Camera.dist_window_k1: 10.0
-Camera.dist_window_k2: 20.0
-Camera.dist_window_k3: 30.0
-
-Camera.cost_k0: 50000
-Camera.cost_k1: 100000
