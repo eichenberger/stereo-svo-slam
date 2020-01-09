@@ -1110,7 +1110,7 @@ For the first test we use the Blender Classroom Scene \cite{blender}. A snapshot
   \caption{Blender classroom trajectory}\label{fig:blender_classroom_simple_traj}
 \end{figure}
 
-Figure \ref{fig:blender_classroom_simple_diff} shows the trajectory difference measured by our implementation, the SVO edgeled reference and the orignal SVO implementation. Both reference implementations are scaled to make a comparison possible. Table \ref{tab:maximas} show the maximum error, table \ref{tab:average} the average error and table \ref{tab:fps} shows the average frames per seconds when doing the measurement. Figure \ref{fig:blender_classroom_simple_comp} shows what is expected. Monocular SLAM is much less accurate than Stereo SLAM. While ORB SLAM matches the trajectory almost perfect, our implementation of SVO has a slight offset when tracking the transverse movement (figure \ref{fig:blender_classroom_simple_comp}a).
+Figure \ref{fig:blender_classroom_simple_diff} shows the trajectory difference measured by our implementation, the SVO edgeled reference and the orignal SVO implementation. Both reference implementations are scaled to make a comparison possible. Table \ref{tab:maximas} show the maximum error, table \ref{tab:average} the average error and table \ref{tab:fps} shows the average frames per seconds when doing the measurement. Figure \ref{fig:blender_classroom_comp} shows what is expected. Monocular SLAM is much less accurate than Stereo SLAM. While ORB SLAM matches the trajectory almost perfect, our implementation of SVO has a slight offset when tracking the transverse movement (figure \ref{fig:blender_classroom_comp}a).
 
 \begin{table}[H]
   \centering
@@ -1159,18 +1159,18 @@ As we see in the results all implementations struggle to track the ry angle and 
 
 \begin{figure}[H]
 	\centering
-	\subfloat[Top View (x,z axes)]{\includegraphics[width=0.9\textwidth]{img/blender_classroom_simple_comp_top.png}}\\
-	\subfloat[Side View (z,y axes)]{\includegraphics[width=0.9\textwidth]{img/blender_classroom_simple_comp_side.png}}
-	\caption{Blender Classroom scene comparison of our implementation, ORB, SVO and SVO Edglet}\label{fig:blender_classroom_comp}
-\end{figure}
-
-\begin{figure}[H]
-	\centering
   \subfloat[Our implementation]{\includegraphics[width=0.5\textwidth]{img/blender_classroom_simple_our_diff.png}}
   \subfloat[SVO Edgled implementation]{\includegraphics[width=0.5\textwidth]{img/blender_classroom_simple_ref_diff.png}}\\
   \subfloat[SVO Original implementation]{\includegraphics[width=0.5\textwidth]{img/blender_classroom_simple_orig_diff.png}}
   \subfloat[ORB SLAM]{\includegraphics[width=0.5\textwidth]{img/blender_classroom_simple_orb_diff.png}}
   \caption{Blender Classroom scene errors. Distances in meter, angels in Degree.}\label{fig:blender_classroom_simple_diff}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\subfloat[Top View (x,z axes)]{\includegraphics[width=0.9\textwidth]{img/blender_classroom_simple_comp_top.png}}\\
+	\subfloat[Side View (z,y axes)]{\includegraphics[width=0.9\textwidth]{img/blender_classroom_simple_comp_side.png}}
+	\caption{Blender Classroom scene comparison of our implementation, ORB, SVO and SVO Edglet}\label{fig:blender_classroom_comp}
 \end{figure}
 
 \section{Barcelona}
@@ -1226,16 +1226,16 @@ As we see in figure \ref{fig:blender_barcelona_diff} both algorithm struggle for
 \end{table}
 
 \begin{figure}[H]
+  \subfloat[Our implementation]{\includegraphics[width=0.9\textwidth]{img/blender_barcelona_our_diff.png}}\\
+  \subfloat[ORB SLAM]{\includegraphics[width=0.9\textwidth]{img/blender_barcelona_orb_diff.png}}
+  \caption{Blender Barcelona scene errors. Distances in meter, angels in Degree.}\label{fig:blender_barcelona_diff}
+\end{figure}
+
+\begin{figure}[H]
 	\centering
 	\subfloat[Top View (x,z axes)]{\includegraphics[width=0.9\textwidth]{img/blender_barcelona_comp_top.png}}\\
 	\subfloat[Side View (z,y axes)]{\includegraphics[width=0.9\textwidth]{img/blender_barcelona_comp_side.png}}
 	\caption{Blender Barcelona scene comparison of our implementation, ORB, SVO and SVO Edglet}\label{fig:blender_barcelona_comp}
-\end{figure}
-
-\begin{figure}[H]
-  \subfloat[Our implementation]{\includegraphics[width=0.9\textwidth]{img/blender_barcelona_our_diff.png}}\\
-  \subfloat[ORB SLAM]{\includegraphics[width=0.9\textwidth]{img/blender_barcelona_orb_diff.png}}
-  \caption{Blender Barcelona scene errors. Distances in meter, angels in Degree.}\label{fig:blender_barcelona_diff}
 \end{figure}
 
 \section{EuRoC Machine Hall 2}
@@ -1265,7 +1265,7 @@ We showed an easy way to generate test scenes by using Blender animations. This 
 A demo application shows the possibilities of SLAM. It is a simple augmented reality application which we can use to showcase our algorithm.\\\\
 The current library is in the state of a proof of concept. It is far from production ready but it shows that SVO works and that it is promising. The implementation showed to be faster than ORB SLAM but it is not as robust yet. The current state could be used as starting point for further development. It is open source and has only dependencies to OpenCV. This makes it easier to compile it for other platforms and systems.\\\\
 The CPVR lab today uses ORB SLAM for their augmented reality projects. The benefit of SVO would only be performance wise but not in terms of accuracy. Therefore, the effort to port their current projects to SVO doesn't seem to be justifiable. However, for future project a combination of SVO and ORB SLAM could be an efficient solution for mobile devices. SVO could be used for tracking between keyframes, while ORB SLAM could be used to do re-location. Inserting new keyframes and computing descriptors would still be done by ORB SLAM but the pose estimation would only involve sparse image alignment and pose refinement without triangulation. This could speed up the frame processing by factor 2-3.\\\\
-For embedded devices which have less performance than mobile phones SVO should be the preferred choice. First results of our implementation proofed that it is faster than ORB SLAM. Tweaking and optimizing the code would probably allow frame rates of around 20-30 fps which is fast enough for most applications.\\\\
+For embedded devices which have less performance than mobile phones SVO should be the preferred choice. First results of our implementation proofed that it is faster than ORB SLAM. Tweaking and optimizing the code would probably allow frame rates of around 20-30 fps which is fast enough for most .\\\\
 We conclude that SVO shows great potential for use on embedded devices. The current implementation would need more tuning to achieve higher frame rates. However, it already shows that it is faster than e.g. indirect SLAM algorithms like ORB SLAM.
 
 \printbibliography
