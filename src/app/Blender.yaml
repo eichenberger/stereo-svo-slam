@@ -53,7 +53,7 @@ Camera.window_size_opt_flow: 31
 # Window size or patch size for depth calculation
 Camera.window_size_depth_calculator: 31
 # Maximum pyramid levels for pose estimation
-Camera.max_pyramid_levels: 6
+Camera.max_pyramid_levels: 5
 # Minimum pyramid level used for pose estimation (e.g. 6..2->4 levels are used for pose estimation)
 # Optical flow for pose refinement will always use the maximum levels
 Camera.min_pyramid_level_pose_estimation: 2
