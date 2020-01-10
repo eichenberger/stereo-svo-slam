@@ -24,14 +24,23 @@ def main():
 
     x_axis = list(range(0, reference_data.shape[0]))
 
+    fig, (ax1, ax2) = plt.subplots(2)
+
+    ax1.set_xlabel('Frame number')
+    ax1.set_ylabel('Position (m)')
     # Show error in degrees
-    plt.plot(x_axis, reference_data[:,1], 'b', label='x')
-    plt.plot(x_axis, reference_data[:,2], 'r', label='y')
-    plt.plot(x_axis, reference_data[:,3], 'g', label='z')
-    plt.plot(x_axis, reference_data[:,4], 'c', label='rx')
-    plt.plot(x_axis, reference_data[:,5], 'y', label='ry')
-    plt.plot(x_axis, reference_data[:,6], 'm', label='rz')
-    plt.legend()
+    ax1.plot(x_axis, reference_data[:,1], 'b', label='x')
+    ax1.plot(x_axis, reference_data[:,2], 'r', label='y')
+    ax1.plot(x_axis, reference_data[:,3], 'g', label='z')
+    ax2.set_xlabel('Frame number')
+    ax2.set_ylabel('Angle (°)')
+    ax2.plot(x_axis, reference_data[:,4]/math.pi*180.0, 'c', label='rx')
+    ax2.plot(x_axis, reference_data[:,5]/math.pi*180.0, 'y', label='ry')
+    ax2.plot(x_axis, reference_data[:,6]/math.pi*180.0, 'm', label='rz')
+
+    fig.tight_layout()
+    ax1.legend(loc="upper left")
+    ax2.legend(loc="upper left")
     plt.show()
 
 

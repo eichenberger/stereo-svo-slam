@@ -50,8 +50,10 @@ def main():
     # Show error in degrees
     x_axis_test = np.asarray(axis_test[0])[0]
     y_axis_test = -np.asarray(axis_test[1])[0]
-    plt.plot(x_axis_test, y_axis_test, 'b', label='svo')
-    plt.plot(x_axis_ref, y_axis_ref, 'r', label='ground truth')
+    plt.plot(x_axis_ref, y_axis_ref, 'r', label='Ground Truth')
+    plt.plot(x_axis_test, y_axis_test, 'b', label='Our SVO')
+    plt.xlabel("z (m)")
+    plt.ylabel("y (m)")
     plt.legend()
     plt.show()
 

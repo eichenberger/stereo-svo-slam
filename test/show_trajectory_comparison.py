@@ -32,8 +32,8 @@ def main():
         test_data4 = np.array(read_csv(args.test4), dtype='f')
     reference_data = np.array(read_csv(args.ref), dtype='f')
 
-    xaxis = 3
-    yaxis = 2
+    xaxis = 1
+    yaxis = 3
 
     x_axis = reference_data[:,xaxis]
     y_axis = reference_data[:,yaxis]
@@ -54,6 +54,34 @@ def main():
         plt.plot(x_axis, y_axis, 'c', label='SVO Edglet')
 
     plt.legend()
+    plt.xlabel("x (m)")
+    plt.ylabel("z (m)")
+    plt.figure()
+
+    xaxis = 3
+    yaxis = 2
+
+    x_axis = reference_data[:,xaxis]
+    y_axis = reference_data[:,yaxis]
+    plt.plot(x_axis, y_axis, 'r', label='Ground Truth')
+    x_axis = test_data1[:,xaxis]
+    y_axis = test_data1[:,yaxis]
+    plt.plot(x_axis, y_axis, 'g', label='Our SVO')
+    x_axis = test_data2[:,xaxis]
+    y_axis = test_data2[:,yaxis]
+    plt.plot(x_axis, y_axis, 'b', label='ORB SLAM')
+    if args.test3:
+        x_axis = test_data3[:,xaxis]
+        y_axis = test_data3[:,yaxis]
+        plt.plot(x_axis, y_axis, 'y', label='SVO')
+    if args.test4:
+        x_axis = test_data4[:,xaxis]
+        y_axis = test_data4[:,yaxis]
+        plt.plot(x_axis, y_axis, 'c', label='SVO Edglet')
+    plt.legend()
+    plt.xlabel("z (m)")
+    plt.ylabel("y (m)")
+
     plt.show()
 
 
