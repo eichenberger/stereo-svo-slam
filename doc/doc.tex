@@ -483,7 +483,7 @@ We know all parameters in equation \ref{eq:lk_dp} and can calculate $\Delta p$. 
 \end{equation}
 We call $H$ the Hessian matrix. It is the same formulation used by Gauss-Newton optimization. Therefore, this is the optimization method of choice for finding the minima. We need to calculate the Hessian matrix for each iteration. Because this is time consuming, we normally use the Inverse Compositional Lucas Kanade algorithm. It tries to solve the problem by warping the template to the current image instead of the current image to the template. We see that in the next section.
 
-\section{Inverse Compositional Lucas Kanade}
+\section{Inverse Compositional Lucas Kanade}\label{sec:inv_comp_lk}
 The problem the Inverse Compositional Lucas Kanade algorithm solves stays the same as before. However, we switch the role of the template and the image as shown in equation \ref{eq:iclk_problem}.
 \begin{equation}\label{eq:iclk_problem}
 	minimize(\sum_x^m\sum_y^n(I_{k-1}(x'',y'')-I_{k}(x',y'))^2)
@@ -753,7 +753,53 @@ $\xi$ in \ref{eq:pe_lie} is the change in angle and position in se(3). We can tr
   \end{gathered}
 \end{equation}
 
-We use $\Delta t_x,\Delta t_y,\Delta t_z,\Delta r_x,\Delta r_y,\Delta r_z$ as our gradient for optimizing the pose. To get $\xi$ we again do the first order Taylor approximation as shown in equation \ref{eq:pe_taylor}.
+We use $\Delta t_x,\Delta t_y,\Delta t_z,\Delta r_x,\Delta r_y,\Delta r_z$ as our gradient to update the pose. We need to rotate the gradient by the current pose because we use the Inverse Compositional Lucas Kanade algorithm (see \ref{sec:inv_comp_lk}). We show the update step in equation \ref{eq:pe_update}.
+\begin{equation}\label{eq:pe_update}
+	\begin{gathered}
+		\begin{pmatrix}
+			t_x\\
+			t_y\\
+			t_z
+		\end{pmatrix}=
+		\begin{pmatrix}
+			t_x\\
+			t_y\\
+			t_z
+		\end{pmatrix}+
+		\begin{pmatrix}
+			r_{11} & r_{12} & r_{13}\\
+			r_{21} & r_{22} & r_{23}\\
+			r_{31} & r_{32} & r_{33}
+		\end{pmatrix}*
+		\begin{pmatrix}
+			\Delta t_x\\
+			\Delta t_y\\
+			\Delta t_z
+		\end{pmatrix}\\
+		\begin{pmatrix}
+			r_x\\
+			r_y\\
+			r_z
+		\end{pmatrix}=
+		\begin{pmatrix}
+			r_x\\
+			r_y\\
+			r_z
+		\end{pmatrix}+
+		\begin{pmatrix}
+			r_{11} & r_{12} & r_{13}\\
+			r_{21} & r_{22} & r_{23}\\
+			r_{31} & r_{32} & r_{33}
+		\end{pmatrix}*
+		\begin{pmatrix}
+			\Delta r_x\\
+			\Delta r_y\\
+			\Delta r_z
+		\end{pmatrix}
+	\end{gathered}
+\end{equation}
+
+To get $\xi$ we again do the first order Taylor approximation as shown in equation \ref{eq:pe_taylor}.
 \begin{equation}\label{eq:pe_taylor}
   \sum_x^m\sum_y^n(I_{k-1}(x,y)+\nabla I_{k-1}*\frac{\sigma h(e^{\xi}*p)}{\sigma \xi}*\xi-I_{k}(x',y'))^2
 \end{equation}
@@ -800,7 +846,7 @@ We have to find a solution for $\frac{\sigma h(e^{\xi}p)}{\sigma \xi}$ to calcul
   x,y,z    &:  \text{3D point position}\\
 \end{align*}
 
-Given the Jacobian and all 3D points, we can calculate the gradient for a given pose. We then iteratively optimize the pose based on the gradient as we did for the Inverse Compositional Lucas Kanade algorithm. We can use image pyramids to track bigger movements. Instead of one optimization we do an optimization round for each pyramid level. We use an estimate from a lower pyramid as an initial guess for an upper pyramid.
+Given the Jacobian and all 3D points, we can calculate the gradient for a given pose. We then iteratively optimize the pose based on the gradient as we did for the Inverse Compositional Lucas Kanade algorithm. We can use image pyramids to track bigger movements. Instead of one optimization we do an optimization round for each pyramid level.
 
 \chapter{Pose Refinement}\label{ch:pose_refinement}
 
@@ -892,7 +938,7 @@ Now we derive the Taylor approximation, which is shown in equation \ref{eq:refin
   \end{gathered}
 \end{equation}
 
-We use the same definition for the Jacobian as we did for Sparse Image Alignment in equation \ref{eq:se3_jacobian}. This time we use the re-projection $h(p)-L^{'}$ error instead of the intensity gradient to calculate the update step. We use again Gauss-Newton optimization to minimize the re-projection error.
+We use the same definition for the Jacobian as we did for Sparse Image Alignment in equation \ref{eq:se3_jacobian}. To get the gradient in SE(3) we use equation \ref{eq:pe_closed_form}. However, the resulting $\Delta t_x,\Delta t_y,\Delta t_z,\Delta r_x,\Delta r_y,\Delta r_z$ are already our update steps. We don't have to multiply the gradient with the current rotation matrix as we did in section \ref{sec:pose_estimation}.
 
 \chapter{Implementation}\label{ch:implementation}
 In this chapter, we discuss how we implemented the algorithm during this thesis. It should give a rough overview of the code base. All the source code written during this thesis is available on Github under the following link:\\
