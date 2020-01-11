@@ -149,18 +149,15 @@ Chapter \ref{ch:depth} shows the details on how we calculate the depth and the w
 
 \section{Sparse Image Alignment}\label{sec:sia}
 
-\begin{figure}
+\begin{figure}[H]
   \centering
-  \subfloat[Sparse Image Alignment with previous frame $I_{k-1}$ and current frame $I_{k}$. Keypoint position u' by projecting p with $T_{k,k-1}$ to the image]{\includegraphics[scale=0.4]{img/pose_estimation_sparse.png}}
-  \quad
-  \subfloat[Optical Flow with keyframes $I_{r1,2}$. New keypoint position u' found with optical flow]{\includegraphics[scale=0.4]{img/pose_estimation_opt_flow.png}}
-  \quad
-  \subfloat[Pose $T_{\omega,k}$ refinement based on difference between keypoint position from sparse image alignemnt and optical flow]{\includegraphics[scale=0.4]{img/pose_estimation_refinement.png}}
-  \caption{Pose Estimation \cite{svo}}\label{fig:pose_estimation}
+  \includegraphics[width=0.99\textwidth]{img/pose_estimation_sparse.png}
+  \caption{Sparse Image Alignment with previous frame $I_{k-1}$ and current frame $I_{k}$. Keypoint position g' by projecting G with $T_{k,k-1}$ to the image}
+  \label{fig:sparse_image_alignment}
 \end{figure}
 
 
-From the keyframe generation step we get an initial point cloud. We use this point cloud to estimate the pose and motion of the camera. We try to find a pose that minimizes the photometric error of small patches around the keypoints. The photometric error is the intensity difference between two subsequent images. We do this by minimizing the formula shown in equation \ref{eq:intensity}. We use equation \ref{eq:camera_model} to project the 3D point cloud to the current frame. This step is shown in figure \ref{fig:pose_estimation}a. T corresponds to our extrinsic matrix written as rotation and translation matrix in equation \ref{eq:camera_model}. By using Gradient Descent we can minimize the intensity difference by changing the values of the extrinsic matrix $r_{ij}$ and $t_{x,y,z}$. As an initial guess for the pose we use the current pose and add the motion model. The motion model is the difference between the pose in the previous frame $t-1$ and frame $t-2$. If we have an additional IMU available, we can also improve the motion model by adding information from this sensor (e.g. angle velocity from gyroscope).
+From the keyframe generation step we get an initial point cloud. We use this point cloud to estimate the pose and motion of the camera. We try to find a pose that minimizes the photometric error of small patches around the keypoints. The photometric error is the intensity difference between two subsequent images. We do this by minimizing the formula shown in equation \ref{eq:intensity}. We use equation \ref{eq:camera_model} to project the 3D point cloud to the current frame. This step is shown in figure \ref{fig:sparse_image_alignment}. T corresponds to our extrinsic matrix written as rotation and translation matrix in equation \ref{eq:camera_model}. By using Gradient Descent we can minimize the intensity difference by changing the values of the extrinsic matrix $r_{ij}$ and $t_{x,y,z}$. As an initial guess for the pose we use the current pose and add the motion model. The motion model is the difference between the pose in the previous frame $t-1$ and frame $t-2$. If we have an additional IMU available, we can also improve the motion model by adding information from this sensor (e.g. angle velocity from gyroscope).
 
 \begin{equation}\label{eq:camera_model}
   \begin{gathered}
@@ -227,8 +224,14 @@ From the keyframe generation step we get an initial point cloud. We use this poi
 The SVO paper \cite{svo} describes this step in section IV.A. By performing the sparse image alignment, we get a first estimate of the pose. However, because we estimate the current pose by using the previous frame we get a drift in the long term. Therefore, we need to refine the pose by using the keyframes as reference. This is what we describe in the next section. Section \ref{sec:pose_estimation} will describe the optimization in more detail.
 
 \section{Pose Refinement}\label{sec:refinement}
+\begin{figure}[H]
+  \centering
+  \subfloat[Optical Flow with keyframes $I_{r1,2}$. New keypoint position g' found with optical flow]{\includegraphics[width=0.99\textwidth]{img/pose_estimation_opt_flow.png}}\\
+  \subfloat[Pose $T_R$ refinement based on difference between keypoint position from sparse image alignemnt and optical flow]{\includegraphics[width=0.99\textwidth]{img/pose_estimation_refinement.png}}
+  \caption{Pose Refinement}\label{fig:pose_refinement}
+\end{figure}
 
-The refinement step is necessary to reduce the drift over time by using the keyframe where we first saw the keypoint. We use the Inverse Compositional Lucas Kanade algorithm to find an updated position of the point in the current image. We show this step in figure \ref{fig:pose_estimation}b. By using the pose from sparse image alignment we get an estimate of the 2D point position in the current image. After that we use optical flow to get a more accurate 2D point position. Afterwards we start to optimize the pose by minimizing the re-projection error shown in equation \ref{eq:refinement_problem}. We show this process in figure \ref{fig:pose_estimation}b.
+The refinement step is necessary to reduce the drift over time by using the keyframe where we first saw the keypoint. We use the Inverse Compositional Lucas Kanade algorithm to find an updated position of the point in the current image. We show this step in figure \ref{fig:pose_refinement}a. By using the pose from sparse image alignment we get an estimate of the 2D point position in the current image. After that we use optical flow to get a more accurate 2D point position. Afterwards we start to optimize the pose by minimizing the re-projection error shown in equation \ref{eq:refinement_problem}. We show this process in figure \ref{fig:pose_refinement}b.
 
 \begin{equation}\label{eq:refinement_problem}
   \begin{gathered}
@@ -256,7 +259,14 @@ We base outlier detection on two steps. First, we check the intensity difference
 We use a second mechanism to detect outliers after pose refinement. We use the stereo image and calculate the disparity for a keypoint $d_{current}$. We then transfer the global 3D keypoint to local coordinates. By calculating $d_{expected}=z_{local}/baseline$ we get the expected disparity. We consider the estimate as inlier if the difference is smaller than 2.5 pixel $abs(d_{current}-d_{expected})<2.5$. We take the standard deviation of 0.5 pixel for disparity and want to include 99.99\% which corresponds to 5 Tau. If a point has more outlier than inlier, we remove it from the keypoints. This mechanism eliminates weak keypoints with low contrast.
 
 \subsection{Point Refinement}
-In section \ref{sec:refinement} we refined the keypoint position in the image with optical flow. We then refined the pose by minimizing the re-projection error. If we use the refined pose to project the points to the image we still have a small error between this points and the points from optical flow. This comes because of some inaccuracy in the depth estimation. We use movements of the camera, that are bigger than the baseline of the camera, to improve the accuracy of the 3D point cloud. We update the 3D points by using a Kalman filter with an update and state equation shown in \ref{eq:point_refinement}. We use the same definitions for the Kalman Filter as \cite{statdig}. The error of our new depth estimate is smaller the bigger the movement is. For the first measurement we know that the movement has the length of the baseline of the camera. This means that instead of $\sqrt{\Delta x^2+\Delta y^2}$ we just use the baseline in meter. The disparity has a close to normal distribution with a standard deviation of 0.5 pixel. Therefore, we use the inverse depth to update our Kalman filter. Therefore we update $z^{-1}$ and not $z$. The standard deviation of 0.5 pixel is because we have a maximum resolution for disparity of one pixel. The variance for new information $w$ should be a small number close to zero.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.99\textwidth]{img/pose_estimation_point_update.png}
+  \caption{3D Point Refinement based on 2D point position from optical flow}
+  \label{fig:point_update}
+\end{figure}
+
+In section \ref{sec:refinement} we refined the keypoint position in the image with optical flow. We then refined the pose by minimizing the re-projection error. If we use the refined pose to project the points to the image we still have a small error between this points and the points from optical flow. This comes because of some inaccuracy in the depth estimation. We use movements of the camera, that are bigger than the baseline of the camera, to improve the accuracy of the 3D point cloud (figure \ref{fig:point_update}). We update the 3D points by using a Kalman filter with an update and state equation shown in \ref{eq:point_refinement}. We use the same definitions for the Kalman Filter as \cite{statdig}. The error of our new depth estimate is smaller the bigger the movement is. For the first measurement we know that the movement has the length of the baseline of the camera. This means that instead of $\sqrt{\Delta x^2+\Delta y^2}$ we just use the baseline in meter. The disparity has a close to normal distribution with a standard deviation of 0.5 pixel. Therefore, we use the inverse depth to update our Kalman filter. Therefore we update $z^{-1}$ and not $z$. The standard deviation of 0.5 pixel is because we have a maximum resolution for disparity of one pixel. The variance for new information $w$ should be a small number close to zero.
 \begin{equation}\label{eq:point_refinement}
   \begin{gathered}
     z^{-1}(t)=z^{-1}(t-1)+w(t)\\
