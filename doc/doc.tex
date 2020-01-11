@@ -193,7 +193,7 @@ From the keyframe generation step we get an initial point cloud. We use this poi
       \frac{u}{s}\\
       \frac{v}{s}
     \end{pmatrix}\\
-    =>g=h(CEG)=h(PG)
+    =>g=h(CTG)=h(PG)
   \end{gathered}
 \end{equation}
 \begin{align*}
@@ -207,7 +207,7 @@ From the keyframe generation step we get an initial point cloud. We use this poi
   g         &: \text{2D point x,y}\\
   G         &: \text{3D point X,Y,Z}\\
   C         &: \text{Intrinsic Camera Matrix}\\
-  E         &: \text{Extrinsic Camera Matrix}\\
+  T         &: \text{Extrinsic Camera Matrix (Pose)}\\
   h         &: \text{Camera coordinates (u,v,s) to pixel coordinate (x,y) function}\\
   P         &: \text{Projection Matrix}
 \end{align*}
@@ -231,12 +231,15 @@ The SVO paper \cite{svo} describes this step in section IV.A. By performing the 
 The refinement step is necessary to reduce the drift over time by using the keyframe where we first saw the keypoint. We use the Inverse Compositional Lucas Kanade algorithm to find an updated position of the point in the current image. We show this step in figure \ref{fig:pose_estimation}b. By using the pose from sparse image alignment we get an estimate of the 2D point position in the current image. After that we use optical flow to get a more accurate 2D point position. Afterwards we start to optimize the pose by minimizing the re-projection error shown in equation \ref{eq:refinement_problem}. We show this process in figure \ref{fig:pose_estimation}b.
 
 \begin{equation}\label{eq:refinement_problem}
-  \min_T(\sum_n ((x'-x(T))^2+(y'-y(T))^2))
+  \begin{gathered}
+    \min_P(\sum_{a \in A|x'=a_x,y'=a_y}((x'-x(P))^2+(y'-y(P))^2))\\
+  \end{gathered}
 \end{equation}
 \begin{align*}
-  x',y'   &: \text{Keypoint position found by optical flow}\\
-  x,y     &: \text{Keypoint projection from 3D cloud}\\
-  T       &: \text{Extrinsic Camera matrix to optimize}
+  x',y'   &: \text{2D Point position found by optical flow}\\
+  x,y     &: \text{2D Point projected from 3D (see \ref{eq:camera_model})}\\
+  P       &: \text{Projection matrix}\\
+  A       &: \text{For all keypoints}\\
 \end{align*}
 
 Chapter \ref{ch:opt_flow} describes optical flow and Lucas Kanade in more details. Chapter \ref{ch:pose_refinement} describes how we calculate the gradient for minimizing the re-projection error in equation \ref{eq:refinement_problem}.
@@ -308,7 +311,7 @@ If we know the pose of the camera we can transform the depth to the global coord
   x,y      &: \text{2D point in image}
 \end{align*}
 
-Now we can transform the 3D point from the cameras local coordinate system to the global coordinate system by using the camera pose. We show this in equation \ref{eq:depth_global}.
+Now we can transform the 3D point from the cameras local coordinate system to the global coordinate system by using the camera pose. We show this in equation \ref{eq:depth_global}. Note that we set camera pose = extrinsic camera matrix. This can be different in other documents and implementations.
 
 \begin{equation}\label{eq:depth_global}
   \begin{pmatrix}
@@ -320,23 +323,25 @@ Now we can transform the 3D point from the cameras local coordinate system to th
     r_{11} & r_{12} & r_{13}\\
     r_{21} & r_{22} & r_{23}\\
     r_{31} & r_{32} & r_{33}\\
-  \end{pmatrix}
+  \end{pmatrix}^{-1}
+  \left(
   \begin{pmatrix}
     X\\
     Y\\
     Z
   \end{pmatrix}
-  +\begin{pmatrix}
+  -\begin{pmatrix}
     t_x\\
     t_y\\
     t_z
   \end{pmatrix}
+  \right)
 \end{equation}
 \begin{align*}
   X,Y,Z     &: \text{Point coordinates with local camera coordinates}\\
   X',Y',Z'  &: \text{Global point coordinates}\\
   r_{ij}    &: \text{Camera rotation parameter}\\
-  t_{x,y,z} &: \text{Camera location}
+  t_{x,y,z} &: \text{Camera transition}
 \end{align*}
 
 We use this coordinates to create and maintain our point cloud.
@@ -431,7 +436,7 @@ In the previous section we showed the basic idea of optical flow. It is oversimp
   \end{pmatrix}
 \end{equation}
 \begin{align*}
-  P       &:  \text{warp matrix}\\
+  P       &:  \text{Warp matrix}\\
   p_{ij}  &:  \text{parameter of warp matrix}
 \end{align*}
 This warp matrix describes movements along the x and y axis($p_{11},p_{22}$), a rotation ($p_{13},p_{21}$) and shearing ($p_{13},p_{23}$). The goal of Lucas Kanade is to find this warp matrix. It does that by minimizing the intensity difference between a patch of pixels in the template (reference image) and a patch of pixels with the same size in the current image as shown in equation \ref{eq:lk_problem}. 
@@ -445,7 +450,6 @@ This warp matrix describes movements along the x and y axis($p_{11},p_{22}$), a 
   x',y'     &: \text{Pixel position in current image}\\
   I_{k-1}   &: \text{Template image}\\
   I_{k}     &: \text{Current image}\\
-  P         &: \text{Warp matrix see \ref{eq:lk_warp}}
 \end{align*}
 
 We describe the transformation of a pixel from the reference image to the current image as a matrix multiplication as shown in equation \ref{eq:lk_warped}. Because \ref{eq:lk_problem} is a non-linear problem, we have to solve it with a non-linear solver (Gradient Descent). The problem is solved by iteratively changing the warp matrix in direction of the gradient until the difference of the intensities are minimal:
@@ -474,10 +478,7 @@ We describe the transformation of a pixel from the reference image to the curren
   \end{gathered}
 \end{equation}
 \begin{align*}
-  W                &: \text{Warp function}\\
-  x',y'           &: \text{Pixel position in current image}\\
-  x,y             &: \text{Pixel position in template}\\
-  p_{ij}          &: \text{parameter of warp matrix}\\
+  W               &: \text{Warp function}\\
   \Delta p_{ij}   &: \text{change of $p_{ij}$ per iteration}
 \end{align*}
 
@@ -488,12 +489,7 @@ Equation \ref{eq:lk_problem} describes the Lucas Kanade problem which is non-lin
   \sum_x^m\sum_y^n(I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k}*\frac{\sigma W}{\sigma P}*\Delta P-I_{k-1}(x,y))^2
 \end{equation}
 \begin{align*}
-  m,n         &: \text{Patch size}\\
-  x,y        &: \text{Pixel position in template}\\
-  x',y'      &: \text{Pixel position in current image}\\
-  I_{k-1}    &: \text{Template image}\\
-  I_{k}      &: \text{Current image}\\
-  \nabla I  &:  \text{Intensity gradient in image I at position x',y'}
+  \nabla I_k  &:  \text{Intensity gradient in current image at position x',y'}
 \end{align*}
 We want to find $\Delta P$ which is our gradient. We derive equation \ref{eq:lk_taylor}. This gives us:
 \begin{equation}
@@ -528,12 +524,12 @@ The problem the Inverse Compositional Lucas Kanade algorithm solves stays the sa
   \min_P(\sum_x^m\sum_y^n(I_{k-1}(x''(P),y''(P))-I_{k}(x',y'))^2)
 \end{equation}
 \begin{align*}
-  m,n         &: \text{Patch size}\\
+  m,n        &: \text{Patch size}\\
   x'',y''    &: \text{Warped pixel position in the template}\\
   x',y'      &: \text{Pixel position in the current image}\\
   I_{k-1}    &: \text{Template image}\\
   I_{k}      &: \text{Current image}\\
-  P           &: \text{Warp matrix see \ref{eq:lk_warp}}
+  P          &: \text{Warp matrix see \ref{eq:lk_warp}}
 \end{align*}
 
 This time we warp the template with $\Delta P$ as shown in equation \ref{eq:inv_lk_warp}. 
@@ -552,35 +548,29 @@ This time we warp the template with $\Delta P$ as shown in equation \ref{eq:inv_
       x\\
       y\\
       1
+    \end{pmatrix}\\
+    \begin{pmatrix}
+      x' \\
+      y'
+    \end{pmatrix}=
+    \begin{pmatrix}
+      p_{11} & p_{12} & p_{13} \\
+      p_{21} & p_{22} & p_{23}
+    \end{pmatrix}*
+    \begin{pmatrix}
+      x\\
+      y\\
+      1
     \end{pmatrix}
   \end{gathered}
 \end{equation}
 \begin{align*}
-  x,y            &:  \text{Original pixel position in template}\\
-  x'',y''        &:  \text{Warped pixel position in template}\\
-  \Delta p_{ij}  &:  \text{change of $p_{ij}$ per iteration}
+  x,y            &: \text{Original pixel position in the template}\\
+  x'',y''        &: \text{Warped pixel position in the template}\\
+  p_{ij}         &: \text{parameter of warp matrix}\\
+  \Delta p_{ij}  &: \text{change of $p_{ij}$ per iteration}
 \end{align*}
 
-\begin{equation}
-  \begin{pmatrix}
-    x' \\
-    y'
-  \end{pmatrix}=
-  \begin{pmatrix}
-    p_{11} & p_{12} & p_{13} \\
-    p_{21} & p_{22} & p_{23}
-  \end{pmatrix}*
-  \begin{pmatrix}
-    x\\
-    y\\
-    1
-  \end{pmatrix}
-\end{equation}
-\begin{align*}
-  x',y'          &:  \text{Pixel position in current image}\\
-  x,y            &:  \text{Original pixel position in template}\\
-  p_{ij}        &:  \text{parameter of warp matrix}\\
-\end{align*}
 
 We separate the update step from the warping of the image. We now show the update step in equation \ref{eq:iclk_update}. Note that the update step is not additive as for Lucas Kanade. We can argue this is because the new warp depends on the old warps rotation. We can express this with the matrix multiplication shown in equation \ref{eq:iclk_update}.
 \begin{equation}\label{eq:iclk_update}
@@ -602,18 +592,17 @@ We separate the update step from the warping of the image. We now show the updat
     \end{pmatrix}
   \end{gathered}
 \end{equation}
+\begin{align*}
+  W               &: \text{Warp function}\\
+  \Delta P        &: \text{Update of warp matrix}
+\end{align*}
 
 From equation \ref{eq:iclk_problem} we need to do the first order Taylor approximation as we did for the normal Lucas Kanade algorithm (equation \ref{eq:iclk_taylor}).
 \begin{equation}\label{eq:iclk_taylor}
   \sum_x^m\sum_y^m(I_{k-1}(x,y)+\nabla I_{k-1}*\frac{\sigma W}{\sigma P}*\Delta P-I_{k}(x',y'))^2
 \end{equation}
 \begin{align*}
-  m,n         &: \text{Patch size}\\
-  x,y        &: \text{Original pixel position in template}\\
-  x',y'      &: \text{Pixel position in current image}\\
-  I_{k-1}    &: \text{Template image}\\
-  I_{k}      &: \text{Current image}\\
-  \nabla I  &:  \text{Gradient in image I at position x',y'}
+  \nabla I_{k-1}  &:  \text{Intensity gradient in template at position x,y}
 \end{align*}
 
 We derive equation \ref{eq:iclk_taylor} and set it to zero to minimize the problem (equation \ref{eq:iclk_derivative}).
@@ -640,7 +629,7 @@ We use Inverse Compositional Lukas Kanade in SVO to calculate the optical flow f
 \section{Sparse Image Alignment}\label{sec:pose_estimation}
 We use a slightly different optical flow method to get a first estimate of the pose in SVO. Instead of searching a warp matrix we directly optimize a 3D pose. We start again with the idea of minimizing the intensity differences over a patch of pixels shown in equation \ref{eq:pe_problem}.
 \begin{equation}\label{eq:pe_problem}
-  \min_T(\sum_{a \in A}\sum_{x=a_x-\frac{m}{2}}^m\sum_{y=a_y-\frac{n}{2}}^n(I_{k-1}(x''(T),y''(T))-I_{k}(x',y'))^2)
+  \min_P(\sum_{a \in A}\sum_{x=a_x-\frac{m}{2}}^m\sum_{y=a_y-\frac{n}{2}}^n(I_{k-1}(x''(P),y''(P))-I_{k}(x',y'))^2)
 \end{equation}
 \begin{align*}
   m,n       &: \text{Patch size}\\
@@ -649,7 +638,7 @@ We use a slightly different optical flow method to get a first estimate of the p
   I_{k-1}   &: \text{Template image}\\
   I_{k}     &: \text{Current image}\\
   A         &: \text{For all keypoints a}\\
-  T         &: \text{Extrinsic Camera Matrix \ref{eq:camera_model}}
+  P         &: \text{Projection matrix \ref{eq:pe_warped}}
 \end{align*}
 
 This time we use 3D points instead of pixel positions. Therefore, we use a projection matrix instead of a warp matrix. The projection matrix $P$ is shown in equation \ref{eq:pe_warped}. 
@@ -693,12 +682,15 @@ This time we use 3D points instead of pixel positions. Therefore, we use a proje
 \end{equation}
 \begin{align*}
   u,v,s     &: \text{Scaled pixel position}\\
-  X,Y,Z     &: \text{3D Pixel position}\\
+  X,Y,Z     &: \text{3D Point position}\\
+  x,y       &: \text{2D Point position in image}\\
   p_{ij}    &: \text{Parameters of projection matrix P}\\
   r_{ij}    &: \text{Rotation matrix}\\
-  t_{i}      &: \text{Translation}\\
-  f_x,f_y    &: \text{Focal length}\\
-  c_x,c_y    &: \text{Principal point}
+  t_{x,y,z} &: \text{Translation}\\
+  f_x,f_y   &: \text{Focal length}\\
+  c_x,c_y   &: \text{Principal point}\\
+  P         &: \text{Projection matrix}\\
+  G         &: \text{3D Point position (vector)}
 \end{align*}
 
 We need to find 12 gradients if we use the formulation in equation \ref{eq:pe_projection} for the inverse compositional Lucas Kanade. However, the rotational factors $r_{nm}$ in equation \ref{eq:pe_warped} depend on each other. We could express the whole matrix based on 6 unknowns which are 3 times rotation and 3 times translation. It is easy to see that this formulation gets rather complex and it is untraceable to find a Jacobian for such a matrix.\\
@@ -719,10 +711,10 @@ We need to find 12 gradients if we use the formulation in equation \ref{eq:pe_pr
     \begin{pmatrix}
       x'' \\
       y'' 
-    \end{pmatrix}=W(x,y,z;\Delta P)\\
+    \end{pmatrix}=W(X,Y,Z;\Delta P)\\
     =>\begin{pmatrix}
-      \frac{u'}{s'} \\
-      \frac{v'}{s'} 
+      \frac{u''}{s''} \\
+      \frac{v''}{s''} 
     \end{pmatrix}=
     \begin{pmatrix}
       \frac{\Delta p_{11}*X + \Delta p_{12}*Y + \Delta p_{13}*Z + \Delta p_{14}}{\Delta p_{31}*X + \Delta p_{32}*Y + \Delta p_{33}*Z + \Delta p_{34}}  \\
@@ -731,9 +723,8 @@ We need to find 12 gradients if we use the formulation in equation \ref{eq:pe_pr
   \end{gathered}
 \end{equation}
 \begin{align*}
-  u,v,s      &:  \text{Pixel position scaled with s}\\
-  X,Y,Z      &:  \text{3D Pixel position}\\
-  p_{ij}    &:  \text{Projection matrix}\\
+  \Delta p_{ij}   &: \text{Update of projection parameters}\\
+  \Delta P        &: \text{Update of projection matrix}
 \end{align*}
 
 We reformulate the problem by using Lie algebra \cite{se3_explain}. We use two terms SE(3) and se(3). SE(3) describes our ``normal'' projection matrices with a rotational and transitional part as shown in equation \ref{eq:pe_warped}. If we use Lie algebra, we write se(3) instead of SE(3). We move from se(3) to SE(3) by using the exponential map and from SE(3) to se(3) by using the logarithm map. The problem we need to solve stays the same as in equation \ref{eq:pe_problem}. However, we need to find $x''$ and $y''$ differently. We use the following formulation:
@@ -743,7 +734,7 @@ We reformulate the problem by using Lie algebra \cite{se3_explain}. We use two t
       x''\\
       y''
     \end{pmatrix}
-    =h(e^{\xi}*p)\\
+    =h(e^{\xi}*G)\\
     \xi=\begin{pmatrix}
       v_x\\
       v_y\\
@@ -757,10 +748,9 @@ We reformulate the problem by using Lie algebra \cite{se3_explain}. We use two t
 \begin{align*}
   h                            &: \text{Mapping function from u,v,s to x,y}\\
   e                            &: \text{Exponential map}\\
-  \xi                          &: \text{Pose change between reference frame and current frame as vector in se(3)}\\
-  p                            &: \text{point in 3D cloud}\\
+  \xi                          &: \text{Pose gradient as vector in se(3)}\\
   v_x,v_y,v_z                  &: \text{Position change in se3}\\
-  \omega_x,\omega_y,\omega_z  &: \text{Angle change in se3}
+  \omega_x,\omega_y,\omega_z   &: \text{Angle change in se3}
 \end{align*}
 
 $\xi$ in \ref{eq:pe_lie} is the change in angle and position in se(3). We can transfer from se(3) back to SE(3) by using the exponential map $e$. The exponential map is the pendant to the Euler function for matrices. In our case it has the closed form solution shown in \ref{eq:pe_closed_form} \cite{rvc}.
@@ -794,6 +784,10 @@ $\xi$ in \ref{eq:pe_lie} is the change in angle and position in se(3). We can tr
     \end{pmatrix}
   \end{gathered}
 \end{equation}
+\begin{align*}
+  \Delta t_{x,y,z}    &: \text{Translational update step}\\
+  \Delta r_{x,y,z}    &: \text{Rotational update step}
+\end{align*}
 
 We use $\Delta t_x,\Delta t_y,\Delta t_z,\Delta r_x,\Delta r_y,\Delta r_z$ as our gradient to update the pose. We need to rotate the gradient by the current pose because we use the Inverse Compositional Lucas Kanade algorithm (see \ref{sec:inv_comp_lk}). We show the update step in equation \ref{eq:pe_update}.
 \begin{equation}\label{eq:pe_update}
@@ -843,50 +837,39 @@ We use $\Delta t_x,\Delta t_y,\Delta t_z,\Delta r_x,\Delta r_y,\Delta r_z$ as ou
 
 To get $\xi$ we again do the first order Taylor approximation as shown in equation \ref{eq:pe_taylor}.
 \begin{equation}\label{eq:pe_taylor}
-  \sum_x^m\sum_y^n(I_{k-1}(x,y)+\nabla I_{k-1}*\frac{\sigma h(e^{\xi}*p)}{\sigma \xi}*\xi-I_{k}(x',y'))^2
+  \sum_x^m\sum_y^n(I_{k-1}(x,y)+\nabla I_{k-1}*\frac{\sigma h(e^{\xi}*G)}{\sigma \xi}*\xi-I_{k}(x',y'))^2
 \end{equation}
 \begin{align*}
-  m,n          &: \text{Patch size}\\
-  h            &: \text{Mapping function from u,v,s to x,y}\\
   x,y          &: \text{Original pixel position in template}\\
-  x',y'        &: \text{Pixel position in current image}\\
-  I_{k-1}      &: \text{Template image}\\
-  I_{k}        &: \text{Current image}\\
-  \nabla I    &: \text{Gradient in image I at position x',y'}\\
-  \xi          &: \text{Twist formulated in Lie algebra}\\
-  p            &: \text{point in 3D space}  
+  \nabla I     &: \text{Gradient in image I at position x',y'}\\
 \end{align*}
 
 We again derive equation \ref{eq:pe_taylor} from $\xi$ and set it to zero as shown in equation \ref{eq:pe_derivative}. This finally allows us to find $\xi$.
 
 \begin{equation}\label{eq:pe_derivative}
-  2\sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k-1}\frac{\sigma h(e^{\xi}p)}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k-1}\frac{\sigma h(e^{\xi} p)}{\sigma \xi}\xi-I_{k-1}(x,y)\end{bmatrix}
+  2\sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k-1}\frac{\sigma h(e^{\xi}G)}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k-1}\frac{\sigma h(e^{\xi} G)}{\sigma \xi}\xi-I_{k-1}(x,y)\end{bmatrix}
 \end{equation}
 
 We want to find $\xi$ which leads us to equation \ref{eq:pe_xi}.
 
 \tiny
 \begin{equation}\label{eq:pe_xi}
-  \xi=(\sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k-1}\frac{\sigma h(e^{\xi}p)}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k-1}\frac{\sigma h(e^{\xi}p)}{\sigma \xi}\end{bmatrix})^{-1}
-  \sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k-1}\frac{\sigma h(e^{\xi}p)}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}') - I_{k-1}(x,y)\end{bmatrix}
+  \xi=(\sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k-1}\frac{\sigma h(e^{\xi}G)}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k-1}\frac{\sigma h(e^{\xi}G)}{\sigma \xi}\end{bmatrix})^{-1}
+  \sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k-1}\frac{\sigma h(e^{\xi}G)}{\sigma \xi}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}') - I_{k-1}(x,y)\end{bmatrix}
 \end{equation}
 \normalsize
 
-We have to find a solution for $\frac{\sigma h(e^{\xi}p)}{\sigma \xi}$ to calculate $\xi$. This Jacobian matrix is shown in equation \ref{eq:se3_jacobian} (see \cite{se3_explain} for derivation).
+We have to find a solution for $\frac{\sigma h(e^{\xi}G)}{\sigma \xi}$ to calculate $\xi$. This Jacobian matrix is shown in equation \ref{eq:se3_jacobian} (see \cite{se3_explain} for derivation).
 \begin{equation}\label{eq:se3_jacobian}
-  \frac{h(e^{\xi}p)}{\delta \xi}=
+  \frac{h(e^{\xi}G)}{\delta \xi}=
   \begin{pmatrix}
     f_x & f_y
   \end{pmatrix}
   \begin{pmatrix}
-    \frac{1}{z} & 0 & -\frac{x}{z^2} & -\frac{x*y}{z^2} & 1 + \frac{x^2}{z^2} & -\frac{y}{z} \\
-    0 & \frac{1}{z}  & -\frac{y}{z^2} & -1 - \frac{y^2}{z^2} & \frac{x*y}{z^2} &  \frac{x}{z}
+    \frac{1}{Z} & 0 & -\frac{X}{z^2} & -\frac{X*Y}{Z^2} & 1 + \frac{X^2}{Z^2} & -\frac{Y}{Z} \\
+    0 & \frac{1}{Z}  & -\frac{Y}{z^2} & -1 - \frac{Y^2}{Z^2} & \frac{X*Y}{Z^2} &  \frac{X}{Z}
   \end{pmatrix}
 \end{equation}
-\begin{align*}
-  f_x,f_y  &:  \text{Focal length}\\
-  x,y,z    &:  \text{3D point position}\\
-\end{align*}
 
 Given the Jacobian and all 3D points, we can calculate the gradient for a given pose. We then iteratively optimize the pose based on the gradient as we did for the Inverse Compositional Lucas Kanade algorithm. We can use image pyramids to track bigger movements. Instead of one optimization we do an optimization round for each pyramid level.
 
@@ -895,15 +878,16 @@ Given the Jacobian and all 3D points, we can calculate the gradient for a given 
 We use pose refinement in SVO to decrease the drift over time and to increase the accuracy of the sparse image alignment. In a first step we use Inverse Compositional Lucas Kanade to locate keypoints in the current image. Then we try to minimize the re-projection error shown in equation \ref{eq:refinement_reprojection}.
 \begin{equation}\label{eq:refinement_reprojection}
   \begin{gathered}
-    minimize(\sum_n ((x'-x(P))^2+(y'-y(P))^2))\\
-    =>minimize(\sum_n ((L'-L)^T(L'-L))
+    \min_P(\sum_{a \in A|x'=a_x,y'=a_y}((x'-x(P))^2+(y'-y(P))^2))\\
+    =>\min_P(\sum_{a \in A|g=a}((g'-g(P))^T(g'-g(P)))
   \end{gathered}
 \end{equation}
 \begin{align*}
-  x',y'   &: \text{Keypoint position found by optical flow}\\
-  x,y     &: \text{Keypoint projection from 3D cloud see \ref{eq:camera_model}}\\
-  n       &: \text{count of keypoints}\\
-  L,L'    &: \text{x,y and x',y' as vector}
+  x',y'   &: \text{2D Point position found by optical flow}\\
+  x,y     &: \text{2D Point projected from 3D (see \ref{eq:camera_model})}\\
+  g,g'    &: \text{x,y and x',y' as vector}\\
+  P       &: \text{Projection matrix}\\
+  A       &: \text{For all keypoints}\\
 \end{align*}
 
 We can achieve that with heuristic gradient descent but it's not efficient. Therefore, we use a similar approach as we use for optical flow. We try to find the gradient mathematically. Based on the camera model we use the formulation shown in equation \ref{eq:refinement_projection} for optimization. As we saw for pose estimation, we can not use this formulation directly because we can not find a Jacobian.
@@ -927,8 +911,8 @@ We can achieve that with heuristic gradient descent but it's not efficient. Ther
 \begin{align*}
   u,v,s           &:  \text{Pixel position scaled with s}\\
   X,Y,Z           &:  \text{3D Pixel position}\\
-  p_{ij}          &:  \text{Projection matrix}\\
-  \Delta p_{ij}   &:  \text{Projection matrix change per iteration}\\
+  p_{ij}          &:  \text{Projection parameters}\\
+  \Delta p_{ij}   &:  \text{Projection parameter change per iteration}\\
 \end{align*}
 
 We formulate the problem with the help of Lie algebra as shown in equation \ref{eq:refinement_lie}.
@@ -938,7 +922,7 @@ We formulate the problem with the help of Lie algebra as shown in equation \ref{
       x\\
       y
     \end{pmatrix}
-    =h(e^{\xi}*p)\\
+    =h(e^{\xi}*G)\\
     \xi=\begin{pmatrix}
       v_x\\
       v_y\\
@@ -952,31 +936,31 @@ We formulate the problem with the help of Lie algebra as shown in equation \ref{
 \begin{align*}
   P     &: \text{Current projection matrix}\\
   e     &: \text{Exponential map}\\
-  \xi   &: \text{Pose change between reference frame and current frame as vector in SE(3)}\\
-  p     &: \text{3D point in camera local coordinates}\\
-  h     &: \text{u,v,s to x,y}
+  \xi   &: \text{Pose gradient as vector in se(3)}\\
+  G     &: \text{3D point}\\
+  h     &: \text{Mapping function from u,v,s to x,y}
 \end{align*}
 
 If we formulate the problem of equation \ref{eq:refinement_reprojection} with the knowledge of equation \ref{eq:refinement_lie}, we end in equation \ref{eq:refinement_solve}.
 
 \begin{equation}\label{eq:refinement_solve}
   \begin{gathered}
-    \sum_n ((L'-L)^T(L'-L))\\
-    =>\sum_n (L'-h(e^{\xi}*p))^2
+    \sum_n ((g'-g)^T(g'-g))\\
+    =>\sum_n (g'-h(e^{\xi}*G))^2
   \end{gathered}
 \end{equation}
 
 We do a Taylor approximation of the inner part as shown in equation \ref{eq:refinement_taylor}.
 \begin{equation}\label{eq:refinement_taylor}
-  (L'-h(p)+\frac{h(e^{\xi}*p)}{\xi}(\xi))^2
+  (g'-h(e^{\xi}*G)+\frac{h(e^{\xi}*G)}{\xi}(\xi))^2
 \end{equation}
 
 Now we derive the Taylor approximation, which is shown in equation \ref{eq:refinement_derived}.
 \begin{equation}\label{eq:refinement_derived}
   \begin{gathered}
-    (\frac{h(e^{\xi}*p)}{\xi})^T2*(L'-h(p)+\frac{h(e^{\xi}*p)}{\xi}(\xi))=0\\
-    (\frac{h(e^{\xi}*p)}{\xi})^T(L'-h(p))+\frac{h(e^{\xi}*p)}{\xi}\frac{h(e^{\xi}*p)}{\xi}\xi=0\\
-    ((\frac{h(e^{\xi}*p)}{\xi})^T(\frac{h(e^{\xi}*p)}{\xi}))^{-1}(\frac{h(e^{\xi}*p)}{\xi})^T(h(p)-L')=\xi
+    (\frac{h(e^{\xi}*G)}{\xi})^T2*(g'-h(e^{\xi}*G)+\frac{h(e^{\xi}*G)}{\xi}(\xi))=0\\
+    (\frac{h(e^{\xi}*G)}{\xi})^T(g'-h(e^{\xi}*G))+\frac{h(e^{\xi}*G)}{\xi}\frac{h(e^{\xi}*G)}{\xi}\xi=0\\
+    ((\frac{h(e^{\xi}*G)}{\xi})^T(\frac{h(e^{\xi}*G)}{\xi}))^{-1}(\frac{h(e^{\xi}*G)}{\xi})^T(h(e^{\xi}*G)-g')=\xi
   \end{gathered}
 \end{equation}
 
