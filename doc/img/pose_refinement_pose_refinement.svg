@@ -204,7 +204,7 @@
      id="namedview5788"
      showgrid="false"
      inkscape:zoom="1.2400645"
-     inkscape:cx="1296.5821"
+     inkscape:cx="1131.2681"
      inkscape:cy="726.35031"
      inkscape:window-x="0"
      inkscape:window-y="30"
@@ -399,42 +399,42 @@
   <text
      xml:space="preserve"
      style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:53.33333206px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#cecd00;fill-opacity:1;stroke:none"
-     x="1437.5189"
-     y="321.23279"
+     x="1457.8125"
+     y="308.69791"
      id="text6503"
      inkscape:export-filename="/home/eichest/projects/master_thesis/doc/img/pose_estimation_refinement.png"
      inkscape:export-xdpi="96"
      inkscape:export-ydpi="96"><tspan
        sodipodi:role="line"
        id="tspan6501"
-       x="1437.5189"
-       y="321.23279">g4'</tspan></text>
+       x="1457.8125"
+       y="308.69791">g4'</tspan></text>
   <text
      xml:space="preserve"
      style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:53.33333206px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#01ce16;fill-opacity:1;stroke:none"
-     x="1531.0345"
-     y="398.78241"
+     x="1528.2075"
+     y="399.80792"
      id="text6507"
      inkscape:export-filename="/home/eichest/projects/master_thesis/doc/img/pose_estimation_refinement.png"
      inkscape:export-xdpi="96"
      inkscape:export-ydpi="96"><tspan
        sodipodi:role="line"
        id="tspan6505"
-       x="1531.0345"
-       y="398.78241">g1'</tspan></text>
+       x="1528.2075"
+       y="399.80792">g1'</tspan></text>
   <text
      xml:space="preserve"
-     style="font-style:normal;font-weight:bold;font-size:53.33333333px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#ce0027;fill-opacity:1;stroke:none;-inkscape-font-specification:'sans-serif, Bold';font-stretch:normal;font-variant:normal;text-anchor:start;text-align:start;writing-mode:lr;font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;"
-     x="1732.3215"
-     y="381.67587"
+     style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:53.33333206px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#ce0027;fill-opacity:1;stroke:none"
+     x="1725.8705"
+     y="373.61191"
      id="text6511"
      inkscape:export-filename="/home/eichest/projects/master_thesis/doc/img/pose_estimation_refinement.png"
      inkscape:export-xdpi="96"
      inkscape:export-ydpi="96"><tspan
        sodipodi:role="line"
        id="tspan6509"
-       x="1732.3215"
-       y="381.67587">g2'</tspan></text>
+       x="1725.8705"
+       y="373.61191">g2'</tspan></text>
   <text
      xml:space="preserve"
      style="font-style:normal;font-weight:bold;font-size:53.33333333px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#0f00ce;fill-opacity:1;stroke:none;-inkscape-font-specification:'sans-serif, Bold';font-stretch:normal;font-variant:normal;text-anchor:start;text-align:start;writing-mode:lr;font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;"
@@ -522,54 +522,54 @@
      inkscape:export-ydpi="96" />
   <text
      xml:space="preserve"
-     style="font-style:normal;font-weight:bold;font-size:53.33333333px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;-inkscape-font-specification:'sans-serif, Bold';font-stretch:normal;font-variant:normal;text-anchor:start;text-align:start;writing-mode:lr;font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;"
-     x="2050.8206"
-     y="273.97079"
+     style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:53.33333206px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
+     x="2054.0593"
+     y="276.96432"
      id="text5106-7"
      inkscape:export-filename="/home/eichest/projects/master_thesis/doc/img/pose_estimation_refinement.png"
      inkscape:export-xdpi="96"
      inkscape:export-ydpi="96"><tspan
        sodipodi:role="line"
        id="tspan5104-9"
-       x="2050.8206"
-       y="273.97079">I<tspan
-   style="font-size:53.33333333px;baseline-shift:sub;-inkscape-font-specification:'sans-serif, Bold';font-family:sans-serif;font-weight:bold;font-style:normal;font-stretch:normal;font-variant:normal;text-anchor:start;text-align:start;writing-mode:lr;font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;"
+       x="2054.0593"
+       y="276.96432">I<tspan
+   style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:53.33333206px;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;baseline-shift:sub;text-anchor:start"
    id="tspan12957">k</tspan></tspan></text>
   <text
      xml:space="preserve"
      style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:53.33333206px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
-     x="815.41138"
-     y="411.32718"
+     x="785.58728"
+     y="409.48132"
      id="text12961"
      inkscape:export-filename="/home/eichest/projects/master_thesis/doc/img/pose_estimation_refinement.png"
      inkscape:export-xdpi="96"
      inkscape:export-ydpi="96"><tspan
        sodipodi:role="line"
        id="tspan12959"
-       x="815.41138"
-       y="411.32718">I<tspan
+       x="785.58728"
+       y="409.48132">I<tspan
    style="font-size:64.99999762%;baseline-shift:sub"
    id="tspan12963">r2</tspan></tspan></text>
   <text
      xml:space="preserve"
      style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:53.33333206px;line-height:1.25;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none"
-     x="201.85709"
-     y="905.13574"
+     x="158.32329"
+     y="912.96735"
      id="text12967"
      inkscape:export-filename="/home/eichest/projects/master_thesis/doc/img/pose_estimation_refinement.png"
      inkscape:export-xdpi="96"
      inkscape:export-ydpi="96"><tspan
        sodipodi:role="line"
        id="tspan12965"
-       x="201.85709"
-       y="905.13574">I<tspan
-   style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;baseline-shift:sub;text-anchor:start;font-size:65%"
+       x="158.32329"
+       y="912.96735">I<tspan
+   style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:64.99999762%;font-family:sans-serif;-inkscape-font-specification:'sans-serif, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;baseline-shift:sub;text-anchor:start"
    id="tspan12971">r1</tspan></tspan></text>
   <ellipse
      style="fill:#b8b276;fill-opacity:1;stroke:#000000;stroke-width:3.12675047;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
      id="path6519"
-     cx="1509.6796"
-     cy="348.18509"
+     cx="1508.3898"
+     cy="344.29056"
      rx="20.751364"
      ry="13.292073"
      inkscape:export-filename="/home/eichest/projects/master_thesis/doc/img/pose_estimation_refinement.png"
@@ -578,8 +578,8 @@
   <ellipse
      style="fill:#78e676;fill-opacity:1;stroke:#000000;stroke-width:2.18645191;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
      id="path6519-3"
-     cx="1556.4512"
-     cy="442.13181"
+     cx="1555.1613"
+     cy="438.23798"
      rx="14.041047"
      ry="9.605794"
      inkscape:export-filename="/home/eichest/projects/master_thesis/doc/img/pose_estimation_refinement.png"
@@ -588,8 +588,8 @@
   <ellipse
      style="fill:#dc7678;fill-opacity:1;stroke:#000000;stroke-width:2.49863052;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
      id="path6519-6"
-     cx="1794.9468"
-     cy="435.27731"
+     cx="1793.6565"
+     cy="431.38318"
      rx="18.033211"
      ry="9.7675114"
      inkscape:export-filename="/home/eichest/projects/master_thesis/doc/img/pose_estimation_refinement.png"
@@ -598,8 +598,8 @@
   <ellipse
      style="fill:#7677e5;fill-opacity:1;stroke:#000000;stroke-width:2.746176;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;stroke-opacity:1"
      id="path6815"
-     cx="1869.2069"
-     cy="408.13266"
+     cx="1867.9169"
+     cy="404.23807"
      rx="18.884737"
      ry="12.231856"
      inkscape:export-filename="/home/eichest/projects/master_thesis/doc/img/pose_estimation_refinement.png"
