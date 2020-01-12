@@ -37,6 +37,7 @@ EconInput::EconInput(const std::string &camera_path, const std::string &hidraw_p
     cap->set(CAP_PROP_FRAME_WIDTH, 752);
     cap->set(CAP_PROP_FRAME_HEIGHT, 480);
     cap->set(CAP_PROP_FPS, fps);
+
     fhidraw.open(hidraw, ios::binary |ios::in | ios::out);
     if (!fhidraw.is_open())
         cout << "Can't open hidraw device: " << hidraw << endl;
@@ -47,6 +48,14 @@ EconInput::EconInput(const std::string &camera_path, const std::string &hidraw_p
     }
 
     memset(&imu_calibration.acceleration_x, 0, sizeof(ImuData));
+
+    // Econ seems to send some black images until it runs smoothly
+    Mat dummy;
+    for (size_t i = 0; i < 60; i++) {
+        cap->read(dummy);
+    }
+
+
 }
 
 bool EconInput::set_manual_exposure(int exposure)
