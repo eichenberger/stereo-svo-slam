@@ -57,7 +57,7 @@ def draw_frame(keyframe, frame):
         else:
             marker = cv2.MARKER_SQUARE
 
-        marker_size = int(18*frame.kps.info[i].confidence + 2);
+        marker_size = 20;
         _left = cv2.drawMarker(_left, kp, color, markerType=marker, markerSize=marker_size)
         kp3d = frame.kps.kps3d[i]
         text = f'{kp3d.x:.1f},{kp3d.y:.1f},{kp3d.z:.1f}'

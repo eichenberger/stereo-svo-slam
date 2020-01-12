@@ -293,14 +293,14 @@ cdef class CameraSettings:
             py_result = <int>_r
             return py_result
 
-    property window_size:
-        def __set__(self,  window_size):
+    property window_size_pose_estimator:
+        def __set__(self,  window_size_pose_estimator):
 
-            self.inst.window_size = (<int>window_size)
+            self.inst.window_size_pose_estimator = (<int>window_size_pose_estimator)
 
 
         def __get__(self):
-            cdef int _r = self.inst.window_size
+            cdef int _r = self.inst.window_size_pose_estimator
             py_result = <int>_r
             return py_result
 
@@ -557,18 +557,6 @@ cdef class KeyPointInformation:
             cdef _KeyPointType _r = self.inst.type
             py_result = <int>_r
             return py_result
-
-    property confidence:
-        def __set__(self, float confidence):
-
-            self.inst.confidence = (<float>confidence)
-
-
-        def __get__(self):
-            cdef float _r = self.inst.confidence
-            py_result = <float>_r
-            return py_result
-
 
     property keyframe_id:
         def __set__(self, uint64_t id):

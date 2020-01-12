@@ -64,7 +64,6 @@ cdef extern from "stereo_slam_types.hpp":
         float score
         int level
         KeyPointType type
-        float confidence
         uint64_t keyframe_id
         size_t keypoint_index;
         Color color
@@ -72,6 +71,7 @@ cdef extern from "stereo_slam_types.hpp":
         bool ignore_completely
         int outlier_count
         int inlier_count
+        bool ignore_temporary
         KalmanFilter kf
 
     cdef struct StereoImage:
@@ -93,22 +93,11 @@ cdef extern from "stereo_slam_types.hpp":
         int grid_width
         int search_x
         int search_y
-        int window_size
+        int window_size_pose_estimator
         int window_size_opt_flow
         int window_size_depth_calculator
         int max_pyramid_levels
         int min_pyramid_level_pose_estimation
-
-        int image_width
-        int image_height
-
-        float dist_window_k0
-        float dist_window_k1
-        float dist_window_k2
-        float dist_window_k3
-
-        float cost_k0
-        float cost_k1
 
     cdef struct KeyPoints:
         vector[KeyPoint2d] kps2d

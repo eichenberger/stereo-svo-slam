@@ -84,7 +84,7 @@ class BlenderInput():
         self.camera_settings.grid_height = 30
         self.camera_settings.search_x = 30
         self.camera_settings.search_y = 6
-        self.camera_settings.window_size = 4
+        self.camera_settings.window_size_pose_estimator = 4
         self.camera_settings.window_size_opt_flow = 31
         self.camera_settings.window_size_depth_calculator = 31
         self.camera_settings.max_pyramid_levels = 5
@@ -181,7 +181,7 @@ def main():
     camera = args.func(args)
 
     # Size of window for depth estimation and pose estimation
-    camera.camera_settings.window_size = 4
+    camera.camera_settings.window_size_pose_estimator = 4
     # Size of window for optical flow
     camera.camera_settings.window_size_opt_flow = 8
     camera.camera_settings.max_pyramid_levels = 3
