@@ -61,7 +61,7 @@ As mentioned, we implement an SVO-like algorithm in this thesis. It is part of t
 
 \section{Stereo and Monocular SLAM}
 
-In this thesis we focus on stereo SLAM. Many recent papers focus on monocular SLAM because monocular cameras are cheaper and available on mobile phones. Monocular SLAM has two problems that do not prevail with stereo SLAM. First, an initialization process needs to estimate an initial point cloud over several images. It is not possible to calculate depth with only one image. Second, monocular SLAM cannot guess the scale of the point cloud. To understand this, we imagine a small model of a city. With one camera we can not distinguish between a camera movement in the model and a camera movement in the original city. With stereo SLAM we do not have this issue. For each camera pose we get two images with a known distance between the two camera sensors (baseline). Therefore, we can calculate the depth of points on the basis of a known scale. From this, we can generate 3D point clouds. We therefore have an instantaneous initialization and can calculate the pose in a known unit (e.g. meters). Tracking between two camera poses is however identical for monocular and stereo SLAM.
+In this thesis we focus on stereo SLAM. Many recent papers focus on monocular SLAM because monocular cameras are cheaper and available on mobile phones. Monocular SLAM has two problems that do not prevail with stereo SLAM. First, an initialization process needs to estimate an initial point cloud over several images. It is not possible to calculate depth with only one image. Second, monocular SLAM cannot guess the scale of the point cloud. To understand this, we imagine a small model of a city. With one camera we can not distinguish between a camera movement in the city and a movement in the model of the city. With stereo SLAM we do not have this issue. For each camera pose we get two images with a known distance between the two camera sensors (baseline). Therefore, we can calculate the depth of points on the basis of a known scale. From this, we can generate 3D point clouds. We therefore have an instantaneous initialization and can calculate the pose in a known unit (e.g. meters). Tracking between two camera poses is however identical for monocular and stereo SLAM.
 
 \section{Camera}
 
@@ -1278,8 +1278,8 @@ As we see in the results, tracking ry and z is specially challenging for monocul
 
 \begin{figure}[H]
   \centering
-  \subfloat[Top View]{\includegraphics[width=0.9\textwidth]{img/blender_classroom_simple_comp_top.png}}\\
-  \subfloat[Side View]{\includegraphics[width=0.9\textwidth]{img/blender_classroom_simple_comp_side.png}}
+  \subfloat[Top View]{\includegraphics[width=0.8\textwidth]{img/blender_classroom_simple_comp_top.png}}\\
+  \subfloat[Side View]{\includegraphics[width=0.8\textwidth]{img/blender_classroom_simple_comp_side.png}}
   \caption{Blender Classroom scene trajectory of our implementation, ORB, SVO and SVO Edglet}\label{fig:blender_classroom_comp}
 \end{figure}
 
