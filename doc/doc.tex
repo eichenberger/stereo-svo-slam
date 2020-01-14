@@ -44,12 +44,13 @@ We show that the algorithm works as outlined and can estimate the 3D pose as des
 
 \chapter{Introduction}
 
-Humans use different sensors to estimate the pose of their head in a room. Everyone who ever tried to stand on one leg and closed the eyes knows that closing eyes makes finding the balance harder. From this, we can guess that our eyes are an import factor for us humans to balance. In this thesis we try to use optical information from a camera to estimate the angle and position (pose) relative to the first image. We call this visual odometry (VO). Most algorithms that implement visual odometry also require SLAM (Simultaneous Localization and Mapping). Such algorithms create a map of the environment while constantly estimating the camera pose. Therefore, we use this term interchangeably in this document. Knowing the position of an object is important in various applications and becomes always more important for autonomous navigation. Examples of such applications are e.g. drone navigation, robot navigation or augmented reality. Those applications require a flexible and ideally mobile device. Therefore, we can’t use a PC with a huge power supply. In consequence, such an algorithm should ideally be able to run on embedded devices without the requirement of powerful GPUs or CPUs.\\
-The lab for Computer Perception and Virtual Reality (CPVR) at the Bern University of Applied Science uses an algorithm called ORB SLAM \cite{orbslam} for projects related to augmented reality. It tweaked the algorithm to achieve an acceptable frame rate of 10-20 frames per second(fps) on mobile phones. However, a faster frame rate would mean that no interpolation is needed or that the algorithm could run on lower end devices. Therefore, we test a different SLAM algorithm which is called Semi-Dens Visual Odometry (SVO) \cite{svo}. The second SVO paper \cite{svo2} from the same author states that the duration to process one frame on a modern processor is below 5ms when running on two CPUs. Even though SVO SLAM is open source, the reference implementation is over 4 years old and has many third party dependencies. A newer version, based on the second paper is available but its implementation is closed source. In this document, we describe our own implementation of the SVO algorithm but we focus on stereo camera SLAM while the original implementation uses monocular cameras. We analyse the robustness of SVO and how suitable it is to run on embedded systems.
+Humans use different sensors to estimate the pose of their head in a room. Everyone who ever tried to stand on one leg and closed the eyes knows that closing eyes makes finding the balance harder. This experiment shows that our eyes are an import factor for us humans to balance. In this thesis we try to use optical information from a camera to estimate the angle and position (pose) relative to the first image. We call this visual odometry (VO). Most algorithms that implement visual odometry also require SLAM (Simultaneous Localization and Mapping). Such algorithms create a map of the environment while constantly estimating the camera pose. Therefore, we use this terms interchangeably in this document. Knowing the position of an object is important in various applications and becomes always more important for autonomous navigation. Examples of such applications are e.g. drone navigation, robot navigation or augmented reality. Those applications require a flexible and ideally mobile device. Therefore, we can’t use a PC with a huge power supply. In consequence, such an algorithm should ideally be able to run on embedded devices without the necessity of powerful GPUs or CPUs.\\
+The lab for Computer Perception and Virtual Reality (CPVR) at the Bern University of Applied Science uses an algorithm called ORB SLAM \cite{orbslam} for projects related to augmented reality. It tweaked the algorithm to achieve an acceptable frame rate of 10-20 frames per second(fps) on mobile phones. However, a faster frame rate would mean that no interpolation is needed or that the algorithm could run on lower end devices. Therefore, we test a different SLAM algorithm which is called Semi-Dens Visual Odometry (SVO) \cite{svo}. The second SVO paper \cite{svo2} from the same author states that the duration to process one frame on a modern processor is below 5 ms when running on two CPUs. Even though SVO SLAM is open source, the reference implementation is over 4 years old and has many third party dependencies. A newer version, based on the second paper is available but its implementation is closed source. In this document, we describe our own implementation of the SVO algorithm but we focus on stereo camera SLAM while the original implementation uses monocular cameras. We analyse the robustness of SVO and how suitable it is to run on embedded systems.
 
 \section{SLAM}
 
-SLAM is a technology that takes images as input and generates a map of its environment while simultaneously estimating the pose of the camera. There are two groups of SLAM algorithms. On the one side, indirect SLAM algorithms extract features from an image and then try to match this feature based on descriptors. For each image it is necessary to detect features, extract descriptors, compare the descriptors to previous images and triangulate the camera pose. On the other side, there are direct SLAM algorithms. They directly match one frame to another by their intensity differences. They optimize the pose and try to minimize the intensity difference over the whole image (dense) or at some sparse points (sparse). Figure \ref{fig:slammodes} shows an overview of the different SLAM types.
+SLAM is a technology that takes images as input and generates a map of its environment while simultaneously estimating the pose of the camera.\\
+There are two groups of SLAM algorithms. On the one side, indirect SLAM algorithms extract features from an image and then try to match this feature based on descriptors. For each image it is necessary to detect features, extract descriptors, compare the descriptors to previous images and triangulate the camera pose. On the other side, there are direct SLAM algorithms. They directly match one frame to another by their intensity differences. They optimize the pose and try to minimize the intensity difference over the whole image (dense) or at some sparse points (sparse). Figure \ref{fig:slammodes} shows an overview of the different SLAM types.
 
 \begin{figure}[H]
   \centering
@@ -61,11 +62,11 @@ As mentioned, we implement an SVO-like algorithm in this thesis. It is part of t
 
 \section{Stereo and Monocular SLAM}
 
-In this thesis we focus on stereo SLAM. Many recent papers focus on monocular SLAM because monocular cameras are cheaper and available on mobile phones. Monocular SLAM has two problems that do not prevail with stereo SLAM. First, an initialization process needs to estimate an initial point cloud over several images. It is not possible to calculate depth with only one image. Second, monocular SLAM cannot guess the scale of the point cloud. To understand this, we imagine a small model of a city. With one camera we can not distinguish between a camera movement in the city and a movement in the model of the city. With stereo SLAM we do not have this issue. For each camera pose we get two images with a known distance between the two camera sensors (baseline). Therefore, we can calculate the depth of points on the basis of a known scale. From this, we can generate 3D point clouds. We therefore have an instantaneous initialization and can calculate the pose in a known unit (e.g. meters). Tracking between two camera poses is however identical for monocular and stereo SLAM.
+In this thesis we focus on stereo SLAM. Many recent papers focus on monocular SLAM because monocular cameras are cheaper and available on mobile phones. Monocular SLAM has two problems that do not prevail with stereo SLAM. First, an initialization process needs to estimate an initial point cloud over several images. It is not possible to calculate depth with only one image. Second, monocular SLAM cannot guess the scale of the point cloud. To understand this, we imagine a small model of a city. With one camera we can not distinguish between a camera movement in the city and a movement in the model of the city. With stereo SLAM we do not have this issue. For each camera pose we get two images with a known distance between the two camera sensors (baseline). This enables us to calculate the depth of points on basis of a known scale. Based on these points we can now generate a 3D point cloud. We therefore have an instantaneous initialization and can calculate the pose in a known unit (e.g. meters). Tracking between two camera poses is however identical for monocular and stereo SLAM.
 
 \section{Camera}
 
-To perform stereo computer vision, we need a stereo camera. There are a few stereo cameras available on the market. It is also possible to build a stereo camera with two monocular cameras. However, we decide against this option because it would require a mechanism to synchronize the images from both streams. We analyze three stereo cameras available on the market. An ideal camera would have a high frame rate, a high resolution, a global shutter, USB3.0 with UVC driver and a high baseline while being cheap. Table \ref{tab:cameras} shows a comparison of a ZED camera from Stereolabs \cite{zed}, a Tara from Econ \cite{tara} and a Realsense D435 from Intel \cite{realsense}.
+To perform stereo computer vision, we need a stereo camera. There are a few stereo cameras available on the market. It is also possible to build a stereo camera with two monocular cameras. However, we decide against this option because it would require a mechanism to synchronize the images from both streams. We analyze three stereo cameras that are available on the market. An ideal camera would have a high frame rate, a high resolution, a global shutter, USB3.0 with UVC driver and a high baseline while being cheap. Table \ref{tab:cameras} shows a comparison of a ZED camera from Stereolabs \cite{zed}, a Tara from Econ \cite{tara} and a Realsense D435 from Intel \cite{realsense}.
 
 \tiny
 \begin{table}[H]
@@ -73,9 +74,9 @@ To perform stereo computer vision, we need a stereo camera. There are a few ster
   \begin{tabular}{|c|c|c|c|c|c|c|c|}
   Camera & Resolution & FPS & Shutter & Driver & Baseline & IMU & Price \\
   \hline
-  ZED & 1920x1080 & 30 & rolling &  UVC & 120mm & 6DoF & 449\\
-  Tara & 752x480& 60 & global &  UVC &  60mm & 6DoF & 149\\
-  D435 & 1280x720& 90 & global & UVC &  50mm & 6DoF & 179\\
+  ZED & 1920x1080 & 30 & rolling &  UVC & 120 mm & 6DoF & 449\\
+  Tara & 752x480& 60 & global &  UVC &  60 mm & 6DoF & 149\\
+  D435 & 1280x720& 90 & global & UVC &  50 mm & 6DoF & 179\\
 \end{tabular}
 \caption{Tested Camera Types}
 \label{tab:cameras}
@@ -85,7 +86,9 @@ To perform stereo computer vision, we need a stereo camera. There are a few ster
 \begin{figure}[H]
   \centering
   \subfloat[Stereolabs ZED]{\includegraphics[width=0.3\textwidth]{img/zed_cam.jpg}}
+  \quad
   \subfloat[Econ Tara]{\includegraphics[width=0.3\textwidth]{img/tara_cam.jpg}}
+  \quad
   \subfloat[Intel Realsense D435]{\includegraphics[width=0.3\textwidth]{img/d435_cam.jpg}}
   \caption{Tested Stereo Cameras}\label{fig:cameras}
 \end{figure}
@@ -93,7 +96,7 @@ To perform stereo computer vision, we need a stereo camera. There are a few ster
 
 For this thesis we use the Econ Tara because it has an outstanding price ratio and because it is a conventional stereo camera.\\
 The Intel RealSense camera can calculate depth images directly on the camera. For this thesis this is not required because we calculate the depth on our own.\\
-The ZED camera has a huge baseline of 120mm. This allows depth estimation over higher range. We decide against this camera mainly because of its high price.
+The ZED camera has a huge baseline of 120 mm. This allows depth estimation over higher range. We decide against this camera mainly because of its high price.
 
 \section{Purpose of this Thesis}
 
@@ -101,19 +104,25 @@ This thesis implements SVO SLAM as an open source library. Next, based on this i
 
 \section{Outline}
 
-This document is organised as follows. We describe the SVO algorithm in chapter \ref{ch:svo}. We keep the chapter succinct by providing the mathematical details in later chapters. Chapter \ref{ch:depth} describes how we receive depth information from a stereo camera. In chapter \ref{ch:opt_flow} we describe optical flow. We first start with an intuitive section and then move forward to the mathematical details. In chapter \ref{ch:pose_refinement} we present the mathematics for refining  the pose after a first estimate. The implementation of the algorithm is the subject of chapter \ref{ch:implementation}. We then compare the results of the implementation with previous work in chapter \ref{ch:results}. Ultimately, in chapter \ref{ch:discussion}, we discuss the final results.
+This document is organised as follows. We describe the SVO algorithm in chapter \ref{ch:svo}. We keep the chapter succinct by providing the mathematical details in later chapters.\\
+Chapter \ref{ch:depth} describes how we receive depth information from a stereo camera.\\
+In chapter \ref{ch:opt_flow} we describe optical flow. We first start with an intuitive section and then move forward to the mathematical details.\\
+In chapter \ref{ch:pose_refinement} we present the mathematics for refining  the pose after a first estimate.\\
+The implementation of the algorithm is the subject of chapter \ref{ch:implementation}.\\
+We then compare the results of the implementation with previous work in chapter \ref{ch:results}.\\
+Ultimately, in chapter \ref{ch:discussion}, we discuss the final results.
 
-\section{Planing}
-The master thesis is honored with 27 ECTS. 1 ECTS consumes 30h which results in 810h. Assuming 8.5 working hours per day, we have to spend 95.29 working days. Because the thesis is done part time, we can use a full year. We assume one year has 48 working weeks. During the first 16 weeks, we can only spend 1.5 days per week for the thesis (because of additional modules). This means that during the first 16 weeks we only work 24 days on the project. 71.29 days are left for the last 32 weeks. This results in 2.228 days work during the 32 weeks. Figure \ref{fig:gantt} shows the initial and the final planning.\\
+\section{Planning}
+The master thesis is honored with 27 ECTS. 1 ECTS consumes 30 hours which results in 810 hours. Assuming 8.5 working hours per day, we have to spend 95.29 working days. Because the thesis is done part time, we can use a full year. We assume one year has 48 working weeks. During the first 16 weeks, we can only spend 1.5 days per week for the thesis (because of additional modules). This means that during the first 16 weeks we only work 24 days on the project. 71.29 days are left for the last 32 weeks. This results in 2.228 days work during these weeks. Figure \ref{fig:gantt} shows the initial and the final planning.\\
 Implementing the library took more time than expected. Therefore, plane detection and mesh creation have been removed. If this is required an additional library like the open source ``Point Cloud Library'' \cite{pcl} can be used.
 
 \begin{figure}[H]
-  \subfloat[Inital planing]{\includegraphics[width=1.0\textwidth]{img/gantt_orig.png}}\\
-  \subfloat[Final planing]{\includegraphics[width=1.0\textwidth]{img/gantt_final.png}}
-  \caption{Planing}\label{fig:gantt}
+  \subfloat[Inital planning]{\includegraphics[width=1.0\textwidth]{img/gantt_orig.png}}\\
+  \subfloat[Final planning]{\includegraphics[width=1.0\textwidth]{img/gantt_final.png}}
+  \caption{Planning}\label{fig:gantt}
 \end{figure}
 
-As the final planning shows we first started with a Python based implementation of the algorithm. The idea was that Python code is more readable and better suited for experimenting. However, the problem was that the code was slow even when using Numpy to speed up matrix multiplications. Therefore, we implemented the library completely in C++. However, in parallel we developed a Python wrapper for debugging. The final version still provides the wrapper but we didn't document it.\\
+As the final planning shows we first started with a Python based implementation of the algorithm. The idea was, that Python code is more readable and better suited for experimenting. However, the problem was that the code was slow even when using Numpy to speed up matrix multiplications. Therefore, we implemented the library completely in C++. However, in parallel we developed a Python wrapper for debugging. The final version still provides the wrapper but we didn't document it.\\
 Initially, there was no plan to write a 3D viewer. However, to have a flexible tool for debugging we developed a viewer which can receive data over network. This allows us to analyse 3D data remotely and to separate the code base of the algorithm between the code base of the viewer. Because of the issue with Python and implementing the additional viewer, we reduced the scope and set the focus on the library.
 
 \chapter{SVO}\label{ch:svo}
@@ -121,23 +130,23 @@ The subject of this chapter is the description of the basic idea behind SVO SLAM
 
 \section{Architecture}
 
-Figure \ref{fig:svo_slam} shows the architecture of SVO compared to our implementation. It depicts many differences between the original implementation and what we do. However, the two main steps, which are sparse model based image alignment and pose refinement, are the same. Our implementation does not use multi-threading, such that everything is done sequential. This decision makes the duration for processing one frame more deterministic. Because we focus on stereo cameras, we do not have to implement the mapping task in the same complexity as in the monocular implementation.
+Figure \ref{fig:svo_slam} shows the architecture of SVO compared to our implementation. It depicts many differences between the original implementation and what we do. However, the two main steps, sparse model based image alignment and pose refinement, are the same. Our implementation does not use multi-threading, such that everything is done sequential. This decision makes the duration for processing one frame more deterministic. Because we focus on stereo cameras, we do not have to implement the mapping task in the same complexity as in the monocular implementation.
 
 \begin{figure}[H]
   \centering
   \subfloat[Original SVO]{\includegraphics[height=0.25\textheight]{img/svo1_flow.png}}
   \qquad
   \subfloat[Our SVO]{\includegraphics[height=0.25\textheight]{img/our_svo_slam.png}}
-  \caption{Orignal SVO SLAM vs modified version}\label{fig:svo_slam}
+  \caption{SVO Flowchart comparison}\label{fig:svo_slam}
 \end{figure}
 
 \section{Keyframe Generation}\label{sec:initialization}
-The original SVO implementation uses a monocular camera. It is therefore not possible to estimate depth with the first image. In order to estimate the depth at a given point in the image, a movement along x or y axis is required. However, in this thesis we use a stereo camera with a known baseline. Therefore, we can estimate the depth of a point with the first image.\\
+The original SVO implementation uses a monocular camera by which it is not possible to estimate depth with the first image. In order to estimate the depth at a given point in the image, a movement along x or y axis is required. In this thesis, we use a stereo camera with a known baseline. Therefore, we can estimate the depth of a point from the first image.\\
 We only calculate the depth at certain points in the image which we call keypoints. Keypoints are pixels in the image that have an outstanding characteristic compared to their neighbouring pixels (e.g. corners). We add new keypoints when we do not see enough keypoints in the current image. We call images where we insert new keypoints keyframes. For each keyframe we perform the following steps:
 \begin{enumerate}
   \item{Search FAST corners in the image \cite{fast}}
   \item{Do Sobel filtering of the image in horizontal direction}
-  \item{Divide image in $n*m$ blocks (e.g. 16x10)}
+  \item{Divide image in $n \cdot m$ blocks (e.g. 16x10)}
   \item{Select one FAST corner in each block as keypoint}
     \begin{enumerate}
       \item{If we cannot find a FAST corner, we use the point with the biggest gradient from Sobel filtering as keypoint}
@@ -193,7 +202,7 @@ From the keyframe generation step we get an initial point cloud. We use this poi
       \frac{u}{s}\\
       \frac{v}{s}
     \end{pmatrix}\\
-    =>g=h(CTG)=h(PG)
+    =>g=h(C \cdot T \cdot G)=h(P \cdot G)
   \end{gathered}
 \end{equation}
 \begin{align*}
@@ -213,15 +222,16 @@ From the keyframe generation step we get an initial point cloud. We use this poi
 \end{align*}
 
 \begin{equation}\label{eq:intensity}
-  \sum_{a \in A}\sum_{x=a_x-\frac{m}{2}}^m\sum_{y=a_y-\frac{n}{2}}^n(I_{k-1}(x'',y'')-I_{k}(x',y'))^2
+  E_p=\min_P(\sum_{a \in A}\sum_{x=a_x-\frac{m}{2}}^m\sum_{y=a_y-\frac{n}{2}}^n(I_{k-1}(x'',y'')-I_{k}(x'(P),y'(P)))^2)
 \end{equation}
 \begin{align*}
-  m,n         &: \text{Patch size}\\
+  m,n        &: \text{Patch size}\\
   x'',y''    &: \text{Warped pixel position in the template}\\
   x',y'      &: \text{Pixel position in the current image}\\
   I_{k-1}    &: \text{Template image}\\
   I_{k}      &: \text{Current image}\\
-  A          &: \text{For all keypoints}
+  A          &: \text{For all keypoints}\\
+  E_p        &: \text{Remaining photometric error}
 \end{align*}
 
 The SVO paper \cite{svo} describes this step in section IV.A. By performing the sparse image alignment, we get a first estimate of the pose. However, because we estimate the current pose by using the previous frame, we get a drift in the long term. Therefore, we need to refine the pose by using the keyframes as reference. This is what we describe in the next section. In section \ref{sec:pose_estimation} we describe sparse image alignment in more detail.
@@ -238,7 +248,7 @@ The refinement step is necessary to reduce the drift over time by using the keyf
 
 \begin{equation}\label{eq:refinement_problem}
   \begin{gathered}
-    \min_P(\sum_{a \in A|x'=a_x,y'=a_y}((x'-x(P))^2+(y'-y(P))^2))\\
+    E_r=\min_P(\sum_{a \in A|x'=a_x,y'=a_y}((x'-x(P))^2+(y'-y(P))^2))\\
   \end{gathered}
 \end{equation}
 \begin{align*}
@@ -246,6 +256,7 @@ The refinement step is necessary to reduce the drift over time by using the keyf
   x,y     &: \text{2D Point projected from 3D (see \ref{eq:camera_model})}\\
   P       &: \text{Projection matrix}\\
   A       &: \text{For all keypoints}\\
+  E_r     &: \text{Remaining re-projection error}
 \end{align*}
 
 Chapter \ref{ch:opt_flow} describes optical flow and Lucas Kanade in more details. Chapter \ref{ch:pose_refinement} describes how we calculate the gradient for minimizing the re-projection error in equation \ref{eq:refinement_problem}.
@@ -258,7 +269,7 @@ In every frame we should see one keypoint for each grid. Because some keypoints 
 The update of 3D points is different from what SVO \cite{svo} describes. The reason is again that we can measure the keypoint depth in the first frame by using the stereo image. SVO uses a bayesian filter approach to estimate the keypoint depth over time. Instead, we use a mechanism to detect outliers and a simple Kalman Filter to update the 3D position of 3D keypoints.
 
 \subsection{Outlier Detection}
-We base outlier detection on two steps. First, we check the intensity difference returned by optical flow during pose refinement. If it exceeds a value of 20, which was determined empirically, we drop the corresponding point from the point cloud. This can happen if points get occluded by objects and are therefore no longer visible in the new image. Another mechanism that does not mark a point as an outlier but masks it during refinement, is if a point moves more than 9 pixels. This happens for points in areas with low texture. We do not use such points during refinement. However, such points can still help to improve the position during sparse image alignment.\\
+We base outlier detection on two steps. First, we check the intensity difference returned by optical flow during pose refinement. If it exceeds a value of 20, which was determined empirically, we drop the corresponding point from the point cloud. This can happen if points get occluded by objects and are therefore no longer visible in the new image. Another mechanism that does not mark a point as an outlier, but masks it during refinement, is when a point moves more than 9 pixels. This happens for points in areas with low texture. We do not use such points during refinement. However, such points can still help to improve the position during sparse image alignment.\\
 We use a second mechanism to detect outliers after pose refinement. We use the stereo image and calculate the disparity for a keypoint $d_{current}$. Then we transfer the global 3D keypoint to local coordinates. By calculating $d_{expected}=z_{local}/baseline$, we get the expected disparity. We consider the estimate as an inlier if the difference is lower than 2.5 pixel $abs(d_{current}-d_{expected})<2.5$. We take the standard deviation of 0.5 pixel for disparity and include 99.99\%, which corresponds to 5 Tau. If a point has more outlier than inlier, we remove it from the keypoints. This mechanism eliminates weak keypoints with low contrast.
 
 \subsection{Point Refinement}
@@ -291,7 +302,7 @@ To find the depth at a certain point (x,y) we match the intensities of the left 
 
 \begin{figure}[H]
   \begin{center}
-    \includegraphics[width=0.6\textwidth]{img/disparity_concept.png}
+    \includegraphics[width=0.5\textwidth]{img/disparity_concept.png}
   \end{center}
   \caption{Sparse Disparity\\
   The 3D object (top) shown as left image (bottom left) and right image (bottom right)\\
@@ -302,7 +313,7 @@ To find the depth at a certain point (x,y) we match the intensities of the left 
 From the disparity we can calculate the depth by using equation \ref{eq:depth_disp}.
 
 \begin{equation}\label{eq:depth_disp}
-  Z=\frac{f_m*b}{s_{px}*d}=\frac{f_x*b}{d}
+  Z=\frac{f_m  \cdot  b}{s_{px}  \cdot  d}=\frac{f_x  \cdot  b}{d}
 \end{equation}
 \begin{align*}
   Z       &: \text{Depth/Distance from camera}\\
@@ -317,8 +328,8 @@ Then we need to calculate the X and Y position in local camera coordinates. We s
 
 \begin{equation}\label{eq:depth_xy}
   \begin{gathered}
-    X = Z*\frac{x-c_x}{f_x}\\
-    Y = Z*\frac{y-c_y}{f_y}\\
+    X = Z \cdot \frac{x-c_x}{f_x}\\
+    Y = Z \cdot \frac{y-c_y}{f_y}\\
   \end{gathered}
 \end{equation}
 \begin{align*}
@@ -383,9 +394,9 @@ Figure \ref{fig:optical_flow_intuitive}b shows that we cannot track points that 
 
 \begin{figure}[H]
   \centering
-  \subfloat[]{\includegraphics[height=0.1\textheight]{img/optical_flow_intuitive_1.png}}\\
-  \subfloat[]{\includegraphics[height=0.1\textheight]{img/optical_flow_intuitive_2.png}}\\
-  \subfloat[]{\includegraphics[height=0.1\textheight]{img/optical_flow_intuitive_3.png}}
+  \subfloat[]{\includegraphics[height=0.08\textheight]{img/optical_flow_intuitive_1.png}}\\
+  \subfloat[]{\includegraphics[height=0.08\textheight]{img/optical_flow_intuitive_2.png}}\\
+  \subfloat[]{\includegraphics[height=0.08\textheight]{img/optical_flow_intuitive_3.png}}
   \caption{Optical Flow Intuitive see table \ref{tab:optical_flow_intuitive} for description}
   \label{fig:optical_flow_intuitive}
 \end{figure}
@@ -404,7 +415,7 @@ Figure \ref{fig:optical_flow_intuitive}b shows that we cannot track points that 
       r & Gradient points right\\
       + & Current pixel - reference pixel > 0\\
       - & Current pixel - reference pixel < 0\\
-      Multiply & -*l=r,-*r=l\\
+      Multiply & -$\cdot$l=r,-$\cdot$r=l\\
       Long arrow & Sum of gradients (e.g. l+l+l=l, r+r+l=r)
    \end{tabular}
    \caption{Optical Flow Intuitive Description}
@@ -457,7 +468,7 @@ In the previous section, we showed the basic idea of optical flow. It is oversim
 This warp matrix describes movements along the x and y axis($p_{13},p_{23}$), a rotation ($p_{11},p_{12},p_{21},p_{22}$) and a shearing ($p_{12},p_{22}$). The goal of Lucas Kanade is to find this warp matrix. It does that by minimizing the intensity difference between a patch of pixels in the template (reference image) and a patch of pixels with the same size in the current image as shown in equation \ref{eq:lk_problem}. 
 
 \begin{equation}\label{eq:lk_problem}
-  \min_P(\sum_x^m\sum_y^n(I_{k}(x',y')-I_{k-1}(x(P),y(P)))^2)
+  E_p=\min_P(\sum_x^m\sum_y^n(I_{k}(x',y')-I_{k-1}(x(P),y(P)))^2)
 \end{equation}
 \begin{align*}
   m,n       &: \text{Patch size}\\
@@ -465,6 +476,7 @@ This warp matrix describes movements along the x and y axis($p_{13},p_{23}$), a 
   x',y'     &: \text{Pixel position in current image}\\
   I_{k-1}   &: \text{Template image}\\
   I_{k}     &: \text{Current image}\\
+  E_p       &: \text{Remaining photometric error}
 \end{align*}
 
 We describe the transformation of a pixel from the reference image to the current image as a matrix multiplication as shown in equation \ref{eq:lk_warped}. Because \ref{eq:lk_problem} is a non-linear problem, we have to solve it with a non-linear solver (Gradient Descent). The problem is solved by iteratively changing the warp matrix in direction of the gradient until the difference of the intensities are minimal:
@@ -501,18 +513,16 @@ After each iteration we set $P=P_{n-1}+\Delta P$, where P stands for all $p_{ij}
 Equation \ref{eq:lk_problem} describes the Lucas Kanade problem, which is non-linear. It is not possible to find $\Delta P$, our gradient, analytically. Therefore, we need to linearise the problem by doing a first order Taylor approximation as shown in equation \ref{eq:lk_taylor} \cite{taylor_series}. $\nabla I$ is the exterior derivative when using the chain rule, while $\frac{\sigma W}{\sigma P}$ is the inner derivative. 
 
 \begin{equation}\label{eq:lk_taylor}
-  E=\sum_x^m\sum_y^n(I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k}*\frac{\sigma W}{\sigma P}*\Delta P-I_{k-1}(x,y))^2
+  E=\sum_x^m\sum_y^n(I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k}\frac{\sigma W}{\sigma P}\Delta P-I_{k-1}(x,y))^2
 \end{equation}
 \begin{align*}
   \nabla I_k  &: \text{Intensity gradient in current image at position x',y'}\\
   E           &: \text{Error} 
 \end{align*}
 We want to find $\Delta P$. To do so, we minimize the equation \ref{eq:lk_taylor} with respect to $\Delta P$ by setting its derivative to zero:
-\tiny
 \begin{equation}
-  \frac{\sigma E}{\sigma \Delta P}=2*\sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma P}\end{bmatrix}^T*\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k}*\frac{\sigma W}{\sigma P}*\Delta P-I_{k-1}(x,y)\end{bmatrix}=0
+  \frac{\sigma E}{\sigma \Delta P}=2\sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k}\frac{\sigma W}{\sigma P}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k}\frac{\sigma W}{\sigma P}\Delta P-I_{k-1}(x,y)\end{bmatrix}=0
 \end{equation}
-\normalsize
 We now solve \ref{eq:lk_dp} for $\Delta P$.
 \tiny
 \begin{equation}\label{eq:lk_dp}
@@ -532,14 +542,14 @@ We find $\frac{\sigma W}{\sigma P}$ by using equation \ref{eq:lk_warped} and do 
 
 We know all parameters in equation \ref{eq:lk_dp} and can calculate $\Delta P$. However, the following part of equation \ref{eq:lk_dp} is time consuming to calculate:
 \begin{equation}
-  H^{-1}=(\sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma P}\end{bmatrix}^T*\begin{bmatrix}\nabla I_{k}*\frac{\sigma W}{\sigma P}\end{bmatrix})^{-1}
+  H^{-1}=(\sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k}\frac{\sigma W}{\sigma P}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k}\frac{\sigma W}{\sigma P}\end{bmatrix})^{-1}
 \end{equation}
 Here $H$ is the Hessian matrix. It is the same formulation used by Gauss-Newton optimization. Therefore, this is the optimization method of choice for finding the minima. We need to calculate the Hessian matrix for each iteration. Because this is time consuming, we normally use the Inverse Compositional Lucas Kanade algorithm. It tries to solve the problem by warping the template to the current image instead of the current image to the template. We see that in the next section.
 
 \section{Inverse Compositional Lucas Kanade}\label{sec:inv_comp_lk}
 The problem which the Inverse Compositional Lucas Kanade algorithm solves is the same as before \cite{inverse_compositional}. However, we switch the role of the template and the image as shown in equation \ref{eq:iclk_problem}.
 \begin{equation}\label{eq:iclk_problem}
-  \min_P(\sum_x^m\sum_y^n(I_{k-1}(x''(P),y''(P))-I_{k}(x',y'))^2)
+  E_p=\min_P(\sum_x^m\sum_y^n(I_{k-1}(x''(P),y''(P))-I_{k}(x',y'))^2)
 \end{equation}
 \begin{align*}
   m,n        &: \text{Patch size}\\
@@ -547,7 +557,8 @@ The problem which the Inverse Compositional Lucas Kanade algorithm solves is the
   x',y'      &: \text{Pixel position in the current image}\\
   I_{k-1}    &: \text{Template image}\\
   I_{k}      &: \text{Current image}\\
-  P          &: \text{Warp matrix see \ref{eq:lk_warp}}
+  P          &: \text{Warp matrix see \ref{eq:lk_warp}}\\
+  E_p        &: \text{Remaining photometric error}
 \end{align*}
 
 This time, we warp the template with $\Delta P$ as shown in equation \ref{eq:inv_lk_warp}. 
@@ -574,7 +585,7 @@ This time, we warp the template with $\Delta P$ as shown in equation \ref{eq:inv
     \begin{pmatrix}
       p_{11} & p_{12} & p_{13} \\
       p_{21} & p_{22} & p_{23}
-    \end{pmatrix}*
+    \end{pmatrix}
     \begin{pmatrix}
       x\\
       y\\
@@ -617,7 +628,7 @@ We separate the update step from the warping of the image. We now show the updat
 
 From equation \ref{eq:iclk_problem} we need to do the first order Taylor approximation as we did for the normal Lucas Kanade algorithm (equation \ref{eq:iclk_taylor}).
 \begin{equation}\label{eq:iclk_taylor}
-  E=\sum_x^m\sum_y^m(I_{k-1}(x,y)+\nabla I_{k-1}*\frac{\sigma W}{\sigma P}*\Delta P-I_{k}(x',y'))^2
+  E=\sum_x^m\sum_y^m(I_{k-1}(x,y)+\nabla I_{k-1}\frac{\sigma W}{\sigma P}\Delta P-I_{k}(x',y'))^2
 \end{equation}
 \begin{align*}
   \nabla I_{k-1}  &: \text{Intensity gradient in template at position x,y}\\
@@ -625,11 +636,12 @@ From equation \ref{eq:iclk_problem} we need to do the first order Taylor approxi
 \end{align*}
 
 We derivate equation \ref{eq:iclk_taylor} with respect to $\Delta P$ and set it to zero to minimize the problem (equation \ref{eq:iclk_derivative}).
-\tiny
 \begin{equation}\label{eq:iclk_derivative}
-  \frac{\sigma E}{\sigma \Delta P}=2\sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma P}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k-1}\frac{\sigma W}{\sigma P}\Delta P-I_{k-1}(x,y)\end{bmatrix}=0
+  \begin{gathered}
+  \frac{\sigma E}{\sigma \Delta P}=2\sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma P}\end{bmatrix}^T\begin{bmatrix}I_{k}(x_{i-1}',y_{i-1}')+\nabla I_{k-1}\frac{\sigma W}{\sigma P}\Delta P-I_{k-1}(x,y)\end{bmatrix}\\
+  =>0
+  \end{gathered}
 \end{equation}
-\normalsize
 
 This allows us to find the gradient $\Delta P$ (equation \ref{eq:iclk_dp}) for the non-linear optimization.
 \tiny
@@ -641,7 +653,7 @@ This allows us to find the gradient $\Delta P$ (equation \ref{eq:iclk_dp}) for t
 
 Compared to the normal Lucas-Kanade algorithm, the Hessian Matrix H is now constant for all iterations.
 \begin{equation}
-  H=\sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k-1}*\frac{\sigma W}{\sigma P}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k-1}*\frac{\sigma W}{\sigma P}\end{bmatrix}
+  H=\sum_x^m\sum_y^n\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma P}\end{bmatrix}^T\begin{bmatrix}\nabla I_{k-1}\frac{\sigma W}{\sigma P}\end{bmatrix}
 \end{equation}
 
 Because we only have to calculate the Hessian matrix once, the Inverse Compositional Lucas Kanade is more efficient than the Lucas Kanade algorithm.\\
@@ -650,7 +662,7 @@ We use the Inverse Compositional Lukas Kanade in SVO to calculate the optical fl
 \section{Sparse Image Alignment}\label{sec:pose_estimation}
 We use a slightly different optical flow method to get a first estimate of the pose in SVO. Instead of searching a warp matrix we directly optimize a 3D pose. We start again with the idea of minimizing the intensity differences over a patch of pixels shown in equation \ref{eq:pe_problem}.
 \begin{equation}\label{eq:pe_problem}
-  \min_P(\sum_{a \in A}\sum_{x=a_x-\frac{m}{2}}^m\sum_{y=a_y-\frac{n}{2}}^n(I_{k-1}(x''(P),y''(P))-I_{k}(x',y'))^2)
+  E_p=\min_P(\sum_{a \in A}\sum_{x=a_x-\frac{m}{2}}^m\sum_{y=a_y-\frac{n}{2}}^n(I_{k-1}(x''(P),y''(P))-I_{k}(x',y'))^2)
 \end{equation}
 \begin{align*}
   m,n       &: \text{Patch size}\\
@@ -659,7 +671,8 @@ We use a slightly different optical flow method to get a first estimate of the p
   I_{k-1}   &: \text{Template image}\\
   I_{k}     &: \text{Current image}\\
   A         &: \text{For all keypoints a}\\
-  P         &: \text{Projection matrix \ref{eq:pe_warped}}
+  P         &: \text{Projection matrix \ref{eq:pe_warped}}\\
+  E_p       &: \text{Remaining photometric error}
 \end{align*}
 
 This time we use 3D points instead of pixel positions. Therefore, we use a projection matrix instead of a warp matrix. The projection matrix $P$ is shown in equation \ref{eq:pe_warped}. 
@@ -675,12 +688,12 @@ This time we use 3D points instead of pixel positions. Therefore, we use a proje
     f_x & 0 & c_x \\
     0 & f_y & c_y \\
     0 & 0 & 1
-  \end{pmatrix}*
+  \end{pmatrix}
   \begin{pmatrix}
     r_{11} & r_{12} & r_{13} & t_x \\
     r_{21} & r_{22} & r_{23} & t_y \\
     r_{31} & r_{32} & r_{33} & t_z
-  \end{pmatrix}*
+  \end{pmatrix}
   \begin{pmatrix}
     X\\
     Y\\
@@ -691,14 +704,14 @@ This time we use 3D points instead of pixel positions. Therefore, we use a proje
     p_{11} & p_{12} & p_{13} & p_{14} \\
     p_{21} & p_{22} & p_{23} & p_{24} \\
     p_{31} & p_{32} & p_{33} & p_{34}
-  \end{pmatrix}*
+  \end{pmatrix}
   \begin{pmatrix}
     X\\
     Y\\
     Z\\
     1
   \end{pmatrix}\\
-  =>P*G
+  =>P \cdot G
 \end{split}
 \end{equation}
 \begin{align*}
@@ -726,8 +739,8 @@ We need to find 12 gradients if we use the formulation in equation \ref{eq:pe_pr
       \frac{v}{s} 
     \end{pmatrix}=
     \begin{pmatrix}
-      \frac{p_{11}*X + p_{12}*Y + p_{13}*Z + p_{14}}{p_{31}*X + p_{32}*Y + p_{33}*Z + p_{34}}  \\
-      \frac{p_{21}*X + p_{22}*Y + p_{23}*Z + p_{24}}{p_{31}*X + p_{32}*Y + p_{33}*Z + p_{34}}
+      \frac{p_{11} \cdot X + p_{12} \cdot Y + p_{13} \cdot Z + p_{14}}{p_{31} \cdot X + p_{32} \cdot Y + p_{33} \cdot Z + p_{34}}  \\
+      \frac{p_{21} \cdot X + p_{22} \cdot Y + p_{23} \cdot Z + p_{24}}{p_{31} \cdot X + p_{32} \cdot Y + p_{33} \cdot Z + p_{34}}
     \end{pmatrix}\\
     \begin{pmatrix}
       x'' \\
@@ -738,8 +751,8 @@ We need to find 12 gradients if we use the formulation in equation \ref{eq:pe_pr
       \frac{v''}{s''} 
     \end{pmatrix}=
     \begin{pmatrix}
-      \frac{\Delta p_{11}*X + \Delta p_{12}*Y + \Delta p_{13}*Z + \Delta p_{14}}{\Delta p_{31}*X + \Delta p_{32}*Y + \Delta p_{33}*Z + \Delta p_{34}}  \\
-      \frac{\Delta p_{21}*X + \Delta p_{22}*Y + \Delta p_{23}*Z + \Delta p_{24}}{\Delta p_{31}*X + \Delta p_{32}*Y + \Delta p_{33}*Z + \Delta p_{34}}
+      \frac{\Delta p_{11} \cdot X + \Delta p_{12} \cdot Y + \Delta p_{13} \cdot Z + \Delta p_{14}}{\Delta p_{31} \cdot X + \Delta p_{32} \cdot Y + \Delta p_{33} \cdot Z + \Delta p_{34}}  \\
+      \frac{\Delta p_{21} \cdot X + \Delta p_{22} \cdot Y + \Delta p_{23} \cdot Z + \Delta p_{24}}{\Delta p_{31} \cdot X + \Delta p_{32} \cdot Y + \Delta p_{33} \cdot Z + \Delta p_{34}}
     \end{pmatrix}\\
   \end{gathered}
 \end{equation}
@@ -755,7 +768,7 @@ We reformulate the problem by using Lie algebra \cite{se3_explain}. We use the t
       x''\\
       y''
     \end{pmatrix}
-    =h(e^{\xi}*G)\\
+    =h(e^{\xi} \cdot G)\\
     \xi=\begin{pmatrix}
       v_x\\
       v_y\\
@@ -788,7 +801,7 @@ $\xi$ in \ref{eq:pe_lie} is the change in angle and position in se(3). We can tr
       \Delta t_y\\
       \Delta t_z
     \end{pmatrix}=
-    I+(1-cos(1))w_{skew}+(1-sin(1))*w_{skew}^2*\begin{pmatrix}
+    I+(1-cos(1))w_{skew}+(1-sin(1)) w_{skew}^2 \begin{pmatrix}
       v_x\\
       v_y\\
       v_z
@@ -827,7 +840,7 @@ We use $\Delta t_x,\Delta t_y,\Delta t_z,\Delta r_x,\Delta r_y,\Delta r_z$ as ou
       r_{11} & r_{12} & r_{13}\\
       r_{21} & r_{22} & r_{23}\\
       r_{31} & r_{32} & r_{33}
-    \end{pmatrix}*
+    \end{pmatrix}
     \begin{pmatrix}
       \Delta t_x\\
       \Delta t_y\\
@@ -847,7 +860,7 @@ We use $\Delta t_x,\Delta t_y,\Delta t_z,\Delta r_x,\Delta r_y,\Delta r_z$ as ou
       r_{11} & r_{12} & r_{13}\\
       r_{21} & r_{22} & r_{23}\\
       r_{31} & r_{32} & r_{33}
-    \end{pmatrix}*
+    \end{pmatrix}
     \begin{pmatrix}
       \Delta r_x\\
       \Delta r_y\\
@@ -858,7 +871,7 @@ We use $\Delta t_x,\Delta t_y,\Delta t_z,\Delta r_x,\Delta r_y,\Delta r_z$ as ou
 
 To get $\xi$ we again use the first order Taylor approximation as shown in equation \ref{eq:pe_taylor}.
 \begin{equation}\label{eq:pe_taylor}
-  E=\sum_x^m\sum_y^n(I_{k-1}(x,y)+\nabla I_{k-1}*\frac{\sigma h(e^{\xi}*G)}{\sigma \xi}*\xi-I_{k}(x',y'))^2
+  E=\sum_x^m\sum_y^n(I_{k-1}(x,y)+\nabla I_{k-1}\frac{\sigma h(e^{\xi} G)}{\sigma \xi} \xi-I_{k}(x',y'))^2
 \end{equation}
 \begin{align*}
   x,y          &: \text{Original pixel position in template}\\
@@ -889,8 +902,8 @@ We have to find a solution for $\frac{\sigma h(e^{\xi}G)}{\sigma \xi}$ to calcul
     f_x & f_y
   \end{pmatrix}
   \begin{pmatrix}
-    \frac{1}{Z} & 0 & -\frac{X}{z^2} & -\frac{X*Y}{Z^2} & 1 + \frac{X^2}{Z^2} & -\frac{Y}{Z} \\
-    0 & \frac{1}{Z}  & -\frac{Y}{z^2} & -1 - \frac{Y^2}{Z^2} & \frac{X*Y}{Z^2} &  \frac{X}{Z}
+    \frac{1}{Z} & 0 & -\frac{X}{z^2} & -\frac{X \cdot Y}{Z^2} & 1 + \frac{X^2}{Z^2} & -\frac{Y}{Z} \\
+    0 & \frac{1}{Z}  & -\frac{Y}{z^2} & -1 - \frac{Y^2}{Z^2} & \frac{X \cdot Y}{Z^2} &  \frac{X}{Z}
   \end{pmatrix}
 \end{equation}
 
@@ -901,7 +914,7 @@ Given the Jacobian and all 3D points, we can calculate the gradient for a given 
 We use pose refinement in SVO to decrease the drift over time and to increase the accuracy of the sparse image alignment. In a first step, we use Inverse Compositional Lucas Kanade to locate keypoints in the current image. Then we try to minimize the re-projection error shown in equation \ref{eq:refinement_reprojection}.
 \begin{equation}\label{eq:refinement_reprojection}
   \begin{gathered}
-    \min_P(\sum_{a \in A|x'=a_x,y'=a_y}((x'-x(P))^2+(y'-y(P))^2))\\
+    E_r=\min_P(\sum_{a \in A|x'=a_x,y'=a_y}((x'-x(P))^2+(y'-y(P))^2))\\
     =>\min_P(\sum_{a \in A|g=a}((g'-g(P))^T(g'-g(P)))
   \end{gathered}
 \end{equation}
@@ -911,6 +924,7 @@ We use pose refinement in SVO to decrease the drift over time and to increase th
   g,g'    &: \text{x,y and x',y' as vector}\\
   P       &: \text{Projection matrix}\\
   A       &: \text{For all keypoints}\\
+  E_r     &: \text{Remaining re-projection error}
 \end{align*}
 
 We can achieve that with heuristic gradient descent but it is not efficient. Therefore, we use a similar approach as the one we used for optical flow. We try to find the gradient mathematically. Based on the camera model, we use the formulation shown in equation \ref{eq:refinement_projection} for optimization. As we saw for pose estimation, we cannot use this formulation directly because we cannot find a Jacobian.
@@ -926,8 +940,8 @@ We can achieve that with heuristic gradient descent but it is not efficient. The
       \frac{v}{s} 
     \end{pmatrix}=
     \begin{pmatrix}
-      \frac{(p_{11} + \Delta p_{11})*X + (p_{12} + \Delta p_{12})*Y + (p_{13} + \Delta p_{13})*Z + (p_{14} + \Delta p_{14})}{(p_{31}+\Delta p_{31})*X + (p_{32} + \Delta p_{32})*Y + (p_{33} + \Delta p_{33})*Z + (p_{34} + \Delta p_{34})}  \\
-      \frac{(p_{21} + \Delta p_{21})*X + (p_{22} + \Delta p_{22})*Y + (p_{23} + \Delta p_{23})*Z + (p_{24} + \Delta p_{24})}{(p_{31}+\Delta p_{31})*X + (p_{32} + \Delta p_{32})*Y + (p_{33} + \Delta p_{33})*Z + (p_{34} + \Delta p_{34})}
+      \frac{(p_{11} + \Delta p_{11}) \cdot X + (p_{12} + \Delta p_{12}) \cdot Y + (p_{13} + \Delta p_{13}) \cdot Z + (p_{14} + \Delta p_{14})}{(p_{31}+\Delta p_{31}) \cdot X + (p_{32} + \Delta p_{32}) \cdot Y + (p_{33} + \Delta p_{33}) \cdot Z + (p_{34} + \Delta p_{34})}  \\
+      \frac{(p_{21} + \Delta p_{21}) \cdot X + (p_{22} + \Delta p_{22}) \cdot Y + (p_{23} + \Delta p_{23}) \cdot Z + (p_{24} + \Delta p_{24})}{(p_{31}+\Delta p_{31}) \cdot X + (p_{32} + \Delta p_{32}) \cdot Y + (p_{33} + \Delta p_{33}) \cdot Z + (p_{34} + \Delta p_{34})}
     \end{pmatrix}
   \end{gathered}
 \end{equation}
@@ -945,7 +959,7 @@ We formulate the problem with the help of Lie algebra as shown in equation \ref{
       x\\
       y
     \end{pmatrix}
-    =h(e^{\xi}*G)\\
+    =h(e^{\xi}G)\\
     \xi=\begin{pmatrix}
       v_x\\
       v_y\\
@@ -968,22 +982,22 @@ If we formulate the problem of equation \ref{eq:refinement_reprojection} with th
 
 \begin{equation}\label{eq:refinement_solve}
   \begin{gathered}
-    \min_P(\sum_n ((g'-g)^T(g'-g)))\\
-    =>\min_{\xi}(\sum_n (g'-h(e^{\xi}*G))^2)
+    E_r=\min_P(\sum_n ((g'-g)^T(g'-g)))\\
+    =>\min_{\xi}(\sum_n (g'-h(e^{\xi}G))^2)
   \end{gathered}
 \end{equation}
 
 We do a Taylor approximation of the inner part as shown in equation \ref{eq:refinement_taylor}.
 \begin{equation}\label{eq:refinement_taylor}
-  E=(g'-h(e^{\xi}*G)+\frac{h(e^{\xi}*G)}{\xi}(\xi))^2
+  E=(g'-h(e^{\xi}G)+\frac{h(e^{\xi}G)}{\xi}(\xi))^2
 \end{equation}
 
 Now we derive the Taylor approximation of equation \ref{eq:refinement_taylor}, which is shown in equation \ref{eq:refinement_derived}.
 \begin{equation}\label{eq:refinement_derived}
   \begin{gathered}
-    \frac{\sigma E}{\sigma \xi}=2*(\frac{h(e^{\xi}*G)}{\xi})^T*(g'-h(e^{\xi}*G)+\frac{h(e^{\xi}*G)}{\xi}(\xi))=0\\
-    =>(\frac{h(e^{\xi}*G)}{\xi})^T(g'-h(e^{\xi}*G))+\frac{h(e^{\xi}*G)}{\xi}\frac{h(e^{\xi}*G)}{\xi}\xi\\
-    ((\frac{h(e^{\xi}*G)}{\xi})^T(\frac{h(e^{\xi}*G)}{\xi}))^{-1}(\frac{h(e^{\xi}*G)}{\xi})^T(h(e^{\xi}*G)-g')=\xi
+    \frac{\sigma E}{\sigma \xi}=2(\frac{h(e^{\xi} G)}{\xi})^T (g'-h(e^{\xi} G)+\frac{h(e^{\xi} G)}{\xi}(\xi))=0\\
+    =>(\frac{h(e^{\xi} G)}{\xi})^T(g'-h(e^{\xi} G))+\frac{h(e^{\xi} G)}{\xi}\frac{h(e^{\xi} G)}{\xi}\xi\\
+    ((\frac{h(e^{\xi} G)}{\xi})^T(\frac{h(e^{\xi} G)}{\xi}))^{-1}(\frac{h(e^{\xi} G)}{\xi})^T(h(e^{\xi} G)-g')=\xi
   \end{gathered}
 \end{equation}
 
@@ -1088,8 +1102,7 @@ The Stereo SLAM class implements the basic algorithm described in chapter \ref{c
   \caption{Stereo SLAM Flowchart}\label{fig:flow_stereo_slam}
 \end{figure}
 
-
-\subsection{Depth Calculator}
+\newpage\subsection{Depth Calculator}
 
 The depth calculator divides the image into grids and searches for new keypoints, merges keypoints from previous keyframes and estimates the depth. It is only used when a new keyframe is required. Figure \ref{fig:flow_depth_calculator} shows the flowchart for the depth calculator.
 
@@ -1099,7 +1112,7 @@ The depth calculator divides the image into grids and searches for new keypoints
   \caption{Depth Calculator Flowchart}\label{fig:flow_depth_calculator}
 \end{figure}
 
-\subsection{Pose Estimator}
+\newpage\subsection{Pose Estimator}
 
 The pose estimator does a first estimate of the pose, based on the previous image. It does that by using sparse image alignment described in section \ref{sec:sia}. Figure \ref{fig:flow_pose_estimator} shows the flowchart for the pose estimator.
 
@@ -1109,7 +1122,7 @@ The pose estimator does a first estimate of the pose, based on the previous imag
   \caption{Pose Estimator Flowchart}\label{fig:flow_pose_estimator}
 \end{figure}
 
-\subsection{Pose Refiner}
+\newpage\subsection{Pose Refiner}
 
 The pose refiner updates the pose by using the keyframes where a keypoint was first seen. This reduces the drift over time. It uses the algorithm described in chapter \ref{ch:pose_refinement}. Figure \ref{fig:flow_pose_refiner} shows the flowchart of the pose refiner.
 
@@ -1119,7 +1132,7 @@ The pose refiner updates the pose by using the keyframes where a keypoint was fi
   \caption{Pose Refiner Flowchart}\label{fig:flow_pose_refiner}
 \end{figure}
 
-\subsection{Depth Filter}\label{sec:depth_filter}
+\newpage\subsection{Depth Filter}\label{sec:depth_filter}
 
 The depth filter removes outlier and updates the 3D point position of keypoints as described in section \ref{sec:point_update}. Figure \ref{fig:flow_depth_filter} shows two flows. The first flow in figure \ref{fig:flow_depth_filter}a describes the outlier detection, while the second figure b describes the 3D point update.
 
@@ -1266,12 +1279,13 @@ As we see in the results, tracking ry and z is specially challenging for monocul
 
 \begin{figure}[H]
   \centering
-  \subfloat[Our Implementation]{\includegraphics[width=0.9\textwidth]{img/blender_classroom_simple_our_diff.png}}\\
-  \subfloat[SVO Edgled Implementation]{\includegraphics[width=0.9\textwidth]{img/blender_classroom_simple_ref_diff.png}}\\
-  \subfloat[SVO Original Implementation]{\includegraphics[width=0.9\textwidth]{img/blender_classroom_simple_orig_diff.png}}\\
+  \subfloat[Our Implementation]{\includegraphics[width=0.9\textwidth]{img/blender_classroom_simple_our_diff.png}}
 \end{figure}%
+
 \begin{figure}[H]\ContinuedFloat
   \centering
+  \subfloat[SVO Edgled Implementation]{\includegraphics[width=0.9\textwidth]{img/blender_classroom_simple_ref_diff.png}}\\
+  \subfloat[SVO Original Implementation]{\includegraphics[width=0.9\textwidth]{img/blender_classroom_simple_orig_diff.png}}\\
   \subfloat[ORB SLAM]{\includegraphics[width=0.9\textwidth]{img/blender_classroom_simple_orb_diff.png}}
   \caption{Blender Classroom Scene Errors}\label{fig:blender_classroom_simple_diff}
 \end{figure}
