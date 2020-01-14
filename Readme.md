@@ -14,7 +14,7 @@ The source code includes some doxygen comments. Check out the documentation fold
 
 ## Library
 
-The library allows to process stereo images and calculates the camera position based on this images
+The library allows to process stereo images and calculates the camera position based on this images.
 
 ## Test application
 
