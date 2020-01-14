@@ -348,8 +348,8 @@ void PoseEstimatorCallback::calculate_hessian(const PoseManager pose)
         for (size_t r = 0; r < PATCH_SIZE; r++)
         {
             for (size_t c = 0; c < PATCH_SIZE; c++, it++) {
-                if ((kp2d.x-1.5) < 0 || (kp2d.y-1.5) < 0 || (kp2d.x+2.5) >= previous_image.cols ||
-                        (kp2d.y+2.5) >= previous_image.rows) {
+                if ((kp2d.x-2.0) < 0 || (kp2d.y-2.0) < 0 || (kp2d.x+3.0) >= previous_image.cols ||
+                        (kp2d.y+3.0) >= previous_image.rows) {
                     *it = Matx16f::zeros();
                     kp2d.x ++;
                     continue;
@@ -446,12 +446,12 @@ void PoseEstimatorCallback::get_gradient(const PoseManager pose, Vec6f &grad)
         {
             for (size_t c = 0; c < PATCH_SIZE; c++, kp2d.x++, kp2d_ref.x++, diff++) {
 
-                if (!((kp2d_ref.x-0.5) < 0 || (kp2d.x-0.5) < 0 ||
-                        (kp2d_ref.y - 0.5) < 0  || (kp2d.y-0.5) < 0 ||
-                        (kp2d_ref.x + 1.5) > previous_image.cols ||
-                        (kp2d.x + 1.5) > current_image.cols ||
-                        (kp2d_ref.y + 1.5) > previous_image.rows||
-                        (kp2d.y + 1.5) > current_image.rows)){
+                if (!((kp2d_ref.x-1.0) < 0 || (kp2d.x-1.0) < 0 ||
+                        (kp2d_ref.y - 1.0) < 0  || (kp2d.y-1.0) < 0 ||
+                        (kp2d_ref.x + 2.0) > previous_image.cols ||
+                        (kp2d.x + 2.0) > current_image.cols ||
+                        (kp2d_ref.y + 2.0) > previous_image.rows||
+                        (kp2d.y + 2.0) > current_image.rows)){
                     float int1 = get_patch_sum(previous_image, kp2d_ref);
                     float int2 = get_patch_sum(current_image, kp2d);
                     *diff = int2 - int1;

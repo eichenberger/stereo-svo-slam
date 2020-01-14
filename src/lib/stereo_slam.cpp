@@ -217,8 +217,11 @@ void StereoSlam::new_image(const Mat &left, const Mat &right, const float time_s
 
             kp3d = updated_kps3d[i];
             frame->kps.kps3d[i] = kp3d;
-            keyframe->kps.info[i].inlier_count = info.inlier_count;
-            keyframe->kps.info[i].outlier_count = info.outlier_count;
+            KeyPointInformation &kp_info = keyframe->kps.info[info.keypoint_index];
+            kp_info.ignore_temporary = info.ignore_temporary;
+            kp_info.ignore_completely = info.ignore_completely;
+            kp_info.inlier_count = info.inlier_count;
+            kp_info.outlier_count = info.outlier_count;
 
         }
         END_MEASUREMENT("Filter update");
