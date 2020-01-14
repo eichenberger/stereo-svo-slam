@@ -44,8 +44,8 @@ We show that the algorithm works as outlined and can estimate the 3D pose as des
 
 \chapter{Introduction}
 
-Humans use different sensors to estimate the pose of their head in a room. Everyone who ever tried to stand on one leg and closed the eyes knows that closing eyes makes finding the balance harder. This experiment shows that our eyes are an import factor for us humans to balance. In this thesis we try to use optical information from a camera to estimate the angle and position (pose) relative to the first image. We call this visual odometry (VO). Most algorithms that implement visual odometry also require SLAM (Simultaneous Localization and Mapping). Such algorithms create a map of the environment while constantly estimating the camera pose. Therefore, we use this terms interchangeably in this document. Knowing the position of an object is important in various applications and becomes always more important for autonomous navigation. Examples of such applications are e.g. drone navigation, robot navigation or augmented reality. Those applications require a flexible and ideally mobile device. Therefore, we can’t use a PC with a huge power supply. In consequence, such an algorithm should ideally be able to run on embedded devices without the necessity of powerful GPUs or CPUs.\\
-The lab for Computer Perception and Virtual Reality (CPVR) at the Bern University of Applied Science uses an algorithm called ORB SLAM \cite{orbslam} for projects related to augmented reality. It tweaked the algorithm to achieve an acceptable frame rate of 10-20 frames per second(fps) on mobile phones. However, a faster frame rate would mean that no interpolation is needed or that the algorithm could run on lower end devices. Therefore, we test a different SLAM algorithm which is called Semi-Dens Visual Odometry (SVO) \cite{svo}. The second SVO paper \cite{svo2} from the same author states that the duration to process one frame on a modern processor is below 5 ms when running on two CPUs. Even though SVO SLAM is open source, the reference implementation is over 4 years old and has many third party dependencies. A newer version, based on the second paper is available but its implementation is closed source. In this document, we describe our own implementation of the SVO algorithm but we focus on stereo camera SLAM while the original implementation uses monocular cameras. We analyse the robustness of SVO and how suitable it is to run on embedded systems.
+Humans use different sensors to estimate the pose of their head in a room. Everyone who ever tried to stand on one leg and closed the eyes knows that closing eyes makes finding the balance harder. This experiment shows that our eyes are an import factor for us humans to balance. In this thesis we use optical information from a camera to estimate the angle and position (pose) relative to the first image. We call this visual odometry (VO). Most algorithms that implement visual odometry also require SLAM (Simultaneous Localization and Mapping). Such algorithms create a map of the environment while constantly estimating the camera pose. Therefore, we use this terms interchangeably in this document. Knowing the position of an object is important in various applications and becomes always more important for autonomous navigation. Examples of such applications are e.g. drone navigation, robot navigation or augmented reality. Those applications require a flexible and ideally mobile device. Therefore, we can’t use a PC with a huge power supply. In consequence, such an algorithm should ideally be able to run on embedded devices without the necessity of powerful GPUs or CPUs.\\
+The lab for Computer Perception and Virtual Reality (CPVR) at the Bern University of Applied Science uses an algorithm called ORB SLAM \cite{orbslam} for projects related to augmented reality. It tweaked the algorithm to achieve an acceptable frame rate of 10-20 frames per second(fps) on mobile phones. However, a faster frame rate would mean that no interpolation is needed or that the algorithm could run on lower end devices. Therefore, we test a different SLAM algorithm which is called Semi-Dens Visual Odometry (SVO) \cite{svo}. The second SVO paper \cite{svo2} from the same author states that the duration to process one frame on a modern processor is below 5 ms when running on two CPUs. Even though SVO SLAM is open source, the reference implementation is over four years old and has many third party dependencies. A newer version, based on the second paper is available but its implementation is closed source. In this document, we describe our own implementation of the SVO algorithm but we focus on stereo camera SLAM while the original implementation uses monocular cameras. We analyse the robustness of SVO and how suitable it is to run on embedded systems.
 
 \section{SLAM}
 
@@ -62,7 +62,7 @@ As mentioned, we implement an SVO-like algorithm in this thesis. It is part of t
 
 \section{Stereo and Monocular SLAM}
 
-In this thesis we focus on stereo SLAM. Many recent papers focus on monocular SLAM because monocular cameras are cheaper and available on mobile phones. Monocular SLAM has two problems that do not prevail with stereo SLAM. First, an initialization process needs to estimate an initial point cloud over several images. It is not possible to calculate depth with only one image. Second, monocular SLAM cannot guess the scale of the point cloud. To understand this, we imagine a small model of a city. With one camera we can not distinguish between a camera movement in the city and a movement in the model of the city. With stereo SLAM we do not have this issue. For each camera pose we get two images with a known distance between the two camera sensors (baseline). This enables us to calculate the depth of points on basis of a known scale. Based on these points we can now generate a 3D point cloud. We therefore have an instantaneous initialization and can calculate the pose in a known unit (e.g. meters). Tracking between two camera poses is however identical for monocular and stereo SLAM.
+In this thesis we focus on stereo SLAM. Many recent papers focus on monocular SLAM because monocular cameras are cheaper and available on mobile phones. Monocular SLAM has two problems that do not prevail with stereo SLAM. First, an initialization process needs to estimate an initial point cloud over several images. It is not possible to calculate depth with only one image. Second, monocular SLAM cannot guess the scale of the point cloud. To understand this, we imagine a small model of a city. With one camera we can not distinguish between a camera movement in the city and a movement in the model of the city. With stereo SLAM we do not have this issue. For each camera pose we get two images with a known distance between the two camera sensors (baseline). This enables us to calculate the depth of the points based on a known scale. Based on these points we can now generate a 3D point cloud. We therefore have an instantaneous initialization and can calculate the pose in a known unit (e.g. meters). Tracking between two camera poses is however identical for monocular and stereo SLAM.
 
 \section{Camera}
 
@@ -123,7 +123,7 @@ Implementing the library took more time than expected. Therefore, plane detectio
 \end{figure}
 
 As the final planning shows we first started with a Python based implementation of the algorithm. The idea was, that Python code is more readable and better suited for experimenting. However, the problem was that the code was slow even when using Numpy to speed up matrix multiplications. Therefore, we implemented the library completely in C++. However, in parallel we developed a Python wrapper for debugging. The final version still provides the wrapper but we didn't document it.\\
-Initially, there was no plan to write a 3D viewer. However, to have a flexible tool for debugging we developed a viewer which can receive data over network. This allows us to analyse 3D data remotely and to separate the code base of the algorithm between the code base of the viewer. Because of the issue with Python and implementing the additional viewer, we reduced the scope and set the focus on the library.
+Initially, there was no plan to write a 3D viewer. However, to have a flexible tool for debugging we developed a viewer which can receive data over network. This allows us to analyse 3D data remotely and to separate the code base of the algorithm from the code base of the viewer. Because of the issue with Python and implementing the additional viewer, we reduced the scope and set the focus on the library.
 
 \chapter{SVO}\label{ch:svo}
 The subject of this chapter is the description of the basic idea behind SVO SLAM. We do not dive into the mathematical details yet. We will see that most parts of the algorithm are based on the idea of optical flow. Therefore, we will handle this topic in chapter \ref{ch:opt_flow}.
@@ -137,7 +137,7 @@ Figure \ref{fig:svo_slam} shows the architecture of SVO compared to our implemen
   \subfloat[Original SVO]{\includegraphics[height=0.25\textheight]{img/svo1_flow.png}}
   \qquad
   \subfloat[Our SVO]{\includegraphics[height=0.25\textheight]{img/our_svo_slam.png}}
-  \caption{SVO Flowchart comparison}\label{fig:svo_slam}
+  \caption{SVO Flowchart Comparison}\label{fig:svo_slam}
 \end{figure}
 
 \section{Keyframe Generation}\label{sec:initialization}
@@ -145,7 +145,7 @@ The original SVO implementation uses a monocular camera by which it is not possi
 We only calculate the depth at certain points in the image which we call keypoints. Keypoints are pixels in the image that have an outstanding characteristic compared to their neighbouring pixels (e.g. corners). We add new keypoints when we do not see enough keypoints in the current image. We call images where we insert new keypoints keyframes. For each keyframe we perform the following steps:
 \begin{enumerate}
   \item{Search FAST corners in the image \cite{fast}}
-  \item{Do Sobel filtering of the image in horizontal direction}
+  \item{Do Sobel \cite{digimproc} filtering of the image in horizontal direction}
   \item{Divide image in $n \cdot m$ blocks (e.g. 16x10)}
   \item{Select one FAST corner in each block as keypoint}
     \begin{enumerate}
@@ -169,7 +169,7 @@ Chapter \ref{ch:depth} shows the details on how we calculate the depth and the w
 \end{figure}
 
 
-From the keyframe generation step we get an initial point cloud. We use this point cloud to estimate the pose and motion of the camera. We try to find a pose that minimizes the photometric error of small patches around the keypoints. The photometric error is the intensity difference between two subsequent images. We do this by minimizing the formula shown in equation \ref{eq:intensity}. We use equation \ref{eq:camera_model} to project the 3D point cloud to the current frame. This step is shown in figure \ref{fig:sparse_image_alignment}. T corresponds to our extrinsic matrix written as rotation and translation matrix in equation \ref{eq:camera_model}. By using Gradient Descent we can minimize the intensity difference by changing the values of the extrinsic matrix $r_{ij}$ and $t_{x,y,z}$. As an initial guess for the pose we use the current pose and add the motion model. The motion model is the difference between the pose in the previous frame $t-1$ and frame $t-2$. If we have an additional IMU available, we can also improve the motion model by adding information from this sensor (e.g. angle velocity from gyroscope).
+From the keyframe generation step we get an initial point cloud. We use this point cloud to estimate the pose and motion of the camera. We try to find a pose that minimizes the photometric error of small patches around the keypoints. The photometric error is the intensity difference between two subsequent images. We do this by minimizing the formula shown in equation \ref{eq:intensity}. We use equation \ref{eq:camera_model} to project the 3D point cloud to the current frame. This step is shown in figure \ref{fig:sparse_image_alignment}. T corresponds to our extrinsic matrix written as rotation and translation matrix in equation \ref{eq:camera_model}. By using Gradient Descent we can minimize the intensity difference by changing the parameters of the extrinsic matrix $r_{ij}$ and $t_{x,y,z}$. As an initial guess for the pose we use the current pose and add the motion model. The motion model is the difference between the pose in the previous frame $t-1$ and frame $t-2$. If we have an additional IMU available, we can also improve the motion model by adding information from this sensor (e.g. angle velocity from gyroscope).
 
 \begin{equation}\label{eq:camera_model}
   \begin{gathered}
@@ -449,7 +449,7 @@ We extend the above scenario from a one-dimensional movement to a two-dimensiona
   \label{tab:optical_flow_2d}
 \end{table}
 
-We showed that optical flow can track two dimensional movements. However, it does not track rotations and shearing effects. This will introduce dependencies between x and y movements which become non-linear. In the next section we extend the intuitive approach so that we can solve non-linear problems. Because these non-linearities are hard to show, we describe it mathematically.
+We showed that optical flow can track two dimensional movements. However, it does not track rotations and shearing effects. This will introduce dependencies between x and y movements which are hard to show. We therefore describe the further derivations mathematically.
 
 \section{Lucas Kanade Mathematical}
 
@@ -1054,7 +1054,7 @@ make python
 make qt-viewer
 \end{lstlisting}
 
-All applications besides the qt-viewer accepts some command line arguments. It is possible to query the help text by calling the application with -h:\\
+All applications besides the qt-viewer accept some command line arguments. It is possible to query the help text by calling the application with -h:\\
 \begin{lstlisting}
 ./slam_app -h
 Usage: ./slam_app [options] camera
@@ -1198,7 +1198,7 @@ We can use the Qt Viewer shown in figure \ref{fig:qt_viewer} to display 3D infor
   \caption{Demo Application}\label{fig:demo_application}
 \end{figure}
 
-The demo application shown in figure \ref{fig:demo_application} is a simple augmented reality application that demonstrates one usecase. If we move the camera, the Tux should stay at the same place. It is possible to disable the painting of the keypoints by not providing the -p option when starting the application. Only the econ camera is supported as input.
+The demo application shown in figure \ref{fig:demo_application} is a simple augmented reality application that demonstrates one usecase. If we move the camera, the Tux should stay at the same place. It is possible to disable the painting of the keypoints by not providing the -p option when starting the application. Only the Econ camera is supported as input.
 
 \section{Additional tools}
 
@@ -1304,7 +1304,7 @@ As we see in the results, tracking ry and z is specially challenging for monocul
   \caption{Blender Barcelona Scene}\label{fig:blender_barcelona_scene}
 \end{figure}
 
-For the second test, we use an outdoor synthetic scene called Barcelona \cite{blender}. Here we compare ORB SLAM with our SVO implementation because the monocular SLAMs are unable to track these movements. Figure \ref{fig:blender_barcelona_traj} shows the planned trajectory. The challenges for the tracker are the movements along z axis and the changes in the angle. We can find the test video in the repository under test/blender-barcelona.mkv and the trajectory under test/blender-barcelona.csv.
+For the second test, we use an outdoor synthetic scene called Barcelona \cite{blender}. Here we compare ORB SLAM with our SVO implementation because the monocular SLAMs are unable to track these movements. Figure \ref{fig:blender_barcelona_traj} shows the planned trajectory. The challenges for the tracker are the movements along the z axis and the changes in the angle. We can find the test video in the repository under test/blender-barcelona.mkv and the trajectory under test/blender-barcelona.csv.
 
 \begin{figure}[H]
   \includegraphics[width=1.0\textwidth]{img/blender_barcelona_traj.png}
