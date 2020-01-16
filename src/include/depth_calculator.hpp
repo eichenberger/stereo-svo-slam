@@ -11,6 +11,9 @@ class DepthCalculator
 {
 public:
     DepthCalculator(){}
+    /*!
+     * \brief Search corner points and calculate depth
+     */
     void calculate_depth(Frame &frame,
             const struct CameraSettings &camera_settings);
 

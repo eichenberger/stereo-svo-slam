@@ -14,6 +14,9 @@ public:
     DepthFilter(KeyFrameManager &keyframe_manager,
             const CameraSettings &camera_settings);
 
+    /*!
+     * \brief Update the 3D keypoints
+     */
     void update_depth(Frame &frame, std::vector<KeyPoint3d> &updated_kps3d);
 
 private:

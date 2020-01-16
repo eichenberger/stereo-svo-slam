@@ -5,7 +5,6 @@
 
 #include "transform_keypoints.hpp"
 #include "image_comparison.hpp"
-#include "convert_pose.hpp"
 #include "depth_filter.hpp"
 
 using namespace cv;

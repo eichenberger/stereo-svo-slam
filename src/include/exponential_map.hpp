@@ -5,6 +5,9 @@
 
 /*!
  * \brief Caclulate the exponential map (internal use)
+ *
+ * The exponential map is used to convert from se(3) to SE(3) when e.g. doing
+ * sparse image alignemnt.
  */
 static inline void exponential_map(const cv::Mat &twist, cv::Mat &pose)
 {

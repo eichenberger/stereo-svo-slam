@@ -21,6 +21,13 @@ class PoseRefiner
 public:
     PoseRefiner(const CameraSettings &camera_settings);
 
+    /*!
+     * \brief Refine the pose
+     *
+     * @param[in] keyframe_manager All keyframes
+     * @param[in] frame The frame
+     * @return re-projection error
+     */
     float refine_pose(KeyFrameManager &keyframe_manager,
             Frame &frame);
 

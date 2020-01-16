@@ -12,6 +12,12 @@ The repository is organized as follows:
 
 The source code includes some doxygen comments. Check out the documentation folder for indepth information.
 
+The thesis and source code documentation can be found here:
+
+[Thesis Documentation](https://raw.githubusercontent.com/eichenberger/stereo-svo-slam/delivery/doc/stereo-svo-slam.pdf)
+
+[Source Documentation](https://raw.githubusercontent.com/eichenberger/stereo-svo-slam/delivery/doc/stereo-svo-slam-source-documentation.pdf)
+
 ## Library
 
 The library allows to process stereo images and calculates the camera position based on this images.

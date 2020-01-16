@@ -19,7 +19,19 @@
 /*!
  * \brief Class which wraps camera handling, and StereoSlam
  *
- * This class allows us to have a shared code base between e.g. ar-app and app
+ * This class allows us to have a shared code base between e.g. ar-app and app.
+ *
+ * Example:
+ * \code{.cpp}
+ * SlamApp slam_app;
+ * slam_app.initialize("econ", "/dev/video0", "Econ.yaml", "trajectory_out.csv",
+ *          "/dev/hidraw0", 10000, false, 0, "/dev/hidraw1");
+ * slam_app.start();
+ * while (slam_app.process_image());
+ *
+ * vector<Pose> trajectory;
+ * slam_app.slam->get_trajectory(trajectory);
+ * \endcode
  */
 
 class SlamApp {
@@ -48,8 +60,8 @@ public:
             int move = 0,
             const QString &hidraw_imu = QString());
 
-    bool start();   //!< Start the SLAM App and threads
-    bool stop();    //!< Stop the SLAM App and threads
+    bool start();   //!< Start the SLAM App and all its threads
+    bool stop();    //!< Stop the SLAM App and all its threads
 
     void read_imu_data();   //!< Read data from IMU
     void read_image();  //!< Read image from camera

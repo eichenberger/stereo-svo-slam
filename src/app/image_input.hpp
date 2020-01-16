@@ -7,7 +7,8 @@
 /*!
  * \brief Abstract class for image input
  *
- * Abstract class used for all kind of input image sources
+ * Abstract class used for all kind of input image sources. Sources can be
+ * videos, image series or cameras.
  */
 class ImageInput {
 public:

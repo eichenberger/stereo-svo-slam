@@ -13,7 +13,16 @@
  *
  * This is the class used to create a SVO Stereo SLAM object. It is the main
  * class used to interact with in user programs. Creating the object requires
- * valid camera settings. After that it can be fed with new images
+ * valid camera settings. After that it can be fed with new images.
+ *
+ * Example:
+ * \code{.cpp}
+ * StereoSlam slam(camera_settings);
+ * slam.new_image(left, right, time_stamp);
+ *
+ * vector<Pose> trajectory;
+ * slam.get_trajectory(trajectory);
+ * \endcode
  */
 class StereoSlam
 {
@@ -21,15 +30,15 @@ public:
     /*!
      * \brief Create the stereo SLAM object
      *
-     * @param[in] camera_settings The camera settings that the define the camera in use
+     * @param[in] camera_settings The camera settings that define the camera in use
      */
     StereoSlam(const CameraSettings &camera_settings);
 
     /*!
      * \brief Process new image from the camera
      *
-     * @param[in] left Left stereo image (from behind the camera)
-     * @param[in] right Right stereo image (from behind the camera)
+     * @param[in] left Left stereo image (from front of the camera)
+     * @param[in] right Right stereo image (from front of the camera)
      * @param[in] time_stamp Time of when the image was taken in seconds (float)
      */
     void new_image(const cv::Mat &left, const cv::Mat &right, const float time_stamp);
@@ -40,7 +49,7 @@ public:
     void get_trajectory(std::vector<Pose> &trajectory); //!< Receive trajectory for all frames
 
     /*!
-     * \brief Update the camera pose externally
+     * \brief Update the camera pose externally (e.g. trought IMU)
      *
      * @param[in] pose A vector describeing the measured pose
      * @param[in] speed A vector describeing the measured speed (velocity) in x,y,z and rx,ry,rz direction

@@ -7,7 +7,8 @@
 #include "pose_manager.hpp"
 
 /*!
- * \brief Structure representing the settings for the SLAM algorithm for a specific Camera.
+ * \brief Structure representing the settings for the SLAM algorithm for a
+ * specific camera type.
  *
  * Each camera works best with it's own settings. Some parameters like
  * fx, fy, etc. are physicaly given, some are not (e.g. grid_height)
@@ -48,25 +49,25 @@ struct StereoImage {
  * \brief Keypoint type edgled or fast corner
  */
 enum KeyPointType {
-    KP_FAST,
-    KP_EDGELET
+    KP_FAST,    //!< Keypoint is a fast corner
+    KP_EDGELET  //!< Keypoint is an edglet
 };
 
 /*!
- * \brief A 2D keypoint representation
+ * \brief A 2D keypoint representation in the image
  */
 struct KeyPoint2d {
-    float x;
-    float y;
+    float x;    //!< X position
+    float y;    //!< Y position
 };
 
 /*!
- * \brief A 3D keypoint representation
+ * \brief A 3D keypoint representation in global coordinates
  */
 struct KeyPoint3d {
-    float x;
-    float y;
-    float z;
+    float x;    //!< X position
+    float y;    //!< Y position
+    float z;    //!< Z position
 };
 
 /*!
@@ -103,9 +104,9 @@ struct KeyPointInformation {
  * up calculation (e.g. kp2d<->kp3d mixing). The size of all elements should be the same.
  */
 struct KeyPoints {
-    std::vector<KeyPoint2d> kps2d;
-    std::vector<KeyPoint3d> kps3d;
-    std::vector<KeyPointInformation> info;
+    std::vector<KeyPoint2d> kps2d;  //!< 2D keypoints
+    std::vector<KeyPoint3d> kps3d;  //!< 3D keypoints
+    std::vector<KeyPointInformation> info;  //!< Information about the keypoint
 };
 
 /*!

@@ -6,10 +6,16 @@
 
 #include "stereo_slam_types.hpp"
 
+/*!
+ * \brief Project keypoints
+ *
+ * @param[in] pose The camera pose
+ * @param[in] in The global 3D points
+ * @param[in] camera_settings The camera settings to use
+ * @param[out] out The projected 2D points
+ */
 void project_keypoints(const PoseManager &pose,
         const std::vector<KeyPoint3d> &in, const CameraSettings &camera_settings,
         std::vector<KeyPoint2d> &out);
 
-//void transform_keypoints_inverse(const struct Pose &pose,
-//        const std::vector<KeyPoint3d> &in, std::vector<KeyPoint3d> &out);
 #endif
