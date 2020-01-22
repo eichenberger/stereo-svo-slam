@@ -1,7 +1,11 @@
 % Pdf only
-\documentclass[aspectratio=169]{beamer}
+\documentclass[aspectratio=169,12pt]{beamer}
 % For presentation
 %\documentclass[aspectratio=169, notes]{beamer}
+
+\usepackage{multimedia}
+\usepackage{hyperref}
+
 \usepackage{lmodern}
 \usepackage{pgfpages}
 %\setbeameroption{show notes on second screen}
@@ -19,6 +23,19 @@
   \usetheme[]{metropolis}           % Use metropolis theme
 } 
 
+\setbeamertemplate{note page}{%
+  \begin{columns}[c]
+    \begin{column}{0.6\linewidth}
+      \begin{center}
+        \insertslideintonotes{0.5}
+      \end{center}
+    \end{column}
+    \begin{column}{0.4\linewidth}
+      \insertnote%
+    \end{column}
+  \end{columns}
+}
+
 \begin{document}
 \obeylines
 
@@ -30,20 +47,17 @@
   \titlepage\thispagestyle{empty}
 \end{frame}
 
-\begin{frame}{Introduction}
-  \begin{columns}[c]
-    \begin{column}{0.4\linewidth}
-      \begin{itemize}
-        \item What is SLAM?
-        \item What did we do?
-        \item Why did we do it?
-      \end{itemize}
-    \end{column}
-    \begin{column}{0.4\linewidth}
-      \begin{center}
-        \includegraphics[width=0.5\textwidth]{./img/questionmark.jpg}
-      \end{center}
-    \end{column}
+
+\note[itemize]{
+  \item Beispiel mit Gleichgewicht
+  \item Überleitung zu SLAM
+}
+
+\begin{frame}{AR Demo}
+  \vspace{-6pt}
+  \begin{columns}[T]
+    \column{\dimexpr\paperwidth}\centering
+    \href{run:ar-demo.mp4?autostart&loop}{\includegraphics[height=0.98\textheight]{out/ar-demo.png}}
   \end{columns}
 \end{frame}
 
@@ -55,100 +69,152 @@
 
 \begin{frame}{Stereo Camera}
   \begin{center}
-    \includegraphics[height=0.9\textheight]{../img/tara_cam.jpg}
+    \includegraphics[height=0.9\textheight]{img/tara_cam.png}
   \end{center}
 \end{frame}
+
+\note[itemize]{
+  \item ECON Tara
+  \item Fokus auf Stereo SLAM
+}
 
 \begin{frame}{SVO SLAM}
   \begin{center}
-    \includegraphics[height=0.9\textheight]{../img/our_svo_slam.png}
+    \includegraphics[height=0.95\textheight]{../img/our_svo_slam.png}
   \end{center}
 \end{frame}
 
-\begin{frame}{Steps}
-  \begin{columns}[c]
-    \begin{column}{0.5\linewidth}
-      \begin{enumerate}
-        \item Maintain 3D point cloud
-        \item Pose estimation based on sparse image alignment
-        \item Pose refinement based on optical flow
-        \item Update 3D point cloud
-      \end{enumerate}
+\begin{frame}{Maintain 3D Point Cloud}
+  \begin{columns}[T]
+    \begin{column}{0.2\linewidth}
+      \begin{tikzpicture}
+        \node[anchor=south west,inner sep=0] (image) at (0,0) {\includegraphics[width=1.5\textwidth]{../img/our_svo_slam.png}};
+        \begin{scope}[x={(image.south east)},y={(image.north west)}]
+            \draw[red,thick] (0.7,0.78) rectangle (0.95,0.45);
+        \end{scope}
+      \end{tikzpicture}
     \end{column}
-    \begin{column}{0.3\linewidth}
-      \begin{center}
-        \includegraphics[width=0.8\textwidth]{./img/steps.jpg}
-      \end{center}
+    \begin{column}{0.8\linewidth}
+      \includegraphics[height=0.95\textheight]{../img/disparity_concept.png}
     \end{column}
   \end{columns}
 \end{frame}
 
-\begin{frame}{Maintain 3D Point Cloud}
-  \begin{center}
-    \includegraphics[height=0.9\textheight]{../img/disparity_concept.png}
-  \end{center}
-\end{frame}
-
 \begin{frame}{Sparse Image Alignment}
-  \begin{center}
-    \includegraphics[height=0.9\textheight]{../img/pose_estimation_sparse.png}
-  \end{center}
+  \begin{columns}[T]
+    \begin{column}{0.2\linewidth}
+      \begin{tikzpicture}
+        \node[anchor=south west,inner sep=0] (image) at (0,0) {\includegraphics[width=1.5\textwidth]{../img/our_svo_slam.png}};
+        \begin{scope}[x={(image.south east)},y={(image.north west)}]
+          \draw[red,thick] (0.06,0.59) rectangle (0.52,0.48);
+        \end{scope}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.8\linewidth}
+      \includegraphics[height=1.0\textheight]{../img/pose_estimation_sparse.png}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \begin{frame}{Pose Refinement}
-  \begin{center}
-    \includegraphics[height=0.9\textheight]{../img/pose_estimation_opt_flow.png}
-  \end{center}
+  \begin{columns}[T]
+    \begin{column}{0.2\linewidth}
+      \begin{tikzpicture}
+        \node[anchor=south west,inner sep=0] (image) at (0,0) {\includegraphics[width=1.5\textwidth]{../img/our_svo_slam.png}};
+        \begin{scope}[x={(image.south east)},y={(image.north west)}]
+          \draw[red,thick] (0.06,0.45) rectangle (0.52,0.34);
+        \end{scope}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.8\linewidth}
+      \includegraphics[height=0.9\textheight]{../img/pose_estimation_opt_flow.png}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \begin{frame}{Pose Refinement}
-  \begin{center}
-    \includegraphics[height=0.9\textheight]{../img/pose_estimation_refinement.png}
-  \end{center}
+  \begin{columns}[T]
+    \begin{column}{0.2\linewidth}
+      \begin{tikzpicture}
+        \node[anchor=south west,inner sep=0] (image) at (0,0) {\includegraphics[width=1.5\textwidth]{../img/our_svo_slam.png}};
+        \begin{scope}[x={(image.south east)},y={(image.north west)}]
+          \draw[red,thick] (0.06,0.45) rectangle (0.52,0.34);
+        \end{scope}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.8\linewidth}
+      \includegraphics[height=0.9\textheight]{../img/pose_estimation_refinement.png}
+    \end{column}
+  \end{columns}
 \end{frame}
 
-% TODO!!!
 \begin{frame}{3D Point Update}
-  \begin{center}
-    \includegraphics[height=0.9\textheight]{../img/pose_estimation_point_update.png}
-  \end{center}
+  \begin{columns}[T]
+    \begin{column}{0.2\linewidth}
+      \begin{tikzpicture}
+        \node[anchor=south west,inner sep=0] (image) at (0,0) {\includegraphics[width=1.5\textwidth]{../img/our_svo_slam.png}};
+        \begin{scope}[x={(image.south east)},y={(image.north west)}]
+          \draw[red,thick] (0.06,0.31) rectangle (0.52,0.20);
+        \end{scope}
+      \end{tikzpicture}
+    \end{column}
+    \begin{column}{0.8\linewidth}
+      \includegraphics[height=0.9\textheight]{../img/pose_estimation_point_update.png}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 \begin{frame}{Optical Flow}
-  \begin{center}
-    \includegraphics[scale=0.6]{../img/optical_flow_intuitive_1.png}
-  \end{center}
+  \begin{columns}[c]
+    \column{\dimexpr\paperwidth}
+    \begin{center}
+      \includegraphics[width=0.95\textwidth]{img/optical_flow_intuitive_1.png}
+    \end{center}
+  \end{columns}
 \end{frame}
 
 \begin{frame}{Optical Flow}
-  \begin{center}
-    \includegraphics[scale=0.6]{../img/optical_flow_intuitive_2.png}
-  \end{center}
+  \begin{columns}[c]
+    \column{\dimexpr\paperwidth}
+    \begin{center}
+      \includegraphics[width=0.95\textwidth]{img/optical_flow_intuitive_2.png}
+    \end{center}
+  \end{columns}
 \end{frame}
 
 \begin{frame}{Optical Flow}
-  \begin{center}
-    \includegraphics[scale=0.6]{../img/optical_flow_intuitive_3.png}
-  \end{center}
+  \begin{columns}[c]
+    \column{\dimexpr\paperwidth}
+    \begin{center}
+      \includegraphics[width=0.6\textwidth]{img/optical_flow_intuitive_3.png}
+    \end{center}
+  \end{columns}
 \end{frame}
 
 \begin{frame}{Optical Flow}
-  \begin{center}
-    \includegraphics[scale=0.3]{../img/optical_flow_2d.png}
-  \end{center}
+  \begin{columns}[c]
+    \column{\dimexpr\paperwidth}
+    \begin{center}
+      \includegraphics[width=0.95\textwidth]{../img/optical_flow_2d.png}
+    \end{center}
+  \end{columns}
 \end{frame}
-
 
 \begin{frame}{Results (Blender Scene)}
-  \begin{center}
-    \includegraphics[width=0.9\textwidth]{../img/blender_classroom_scene.png}
-  \end{center}
+  \vspace{-6pt}
+  \begin{columns}[T]
+    \column{\dimexpr\paperwidth}\centering
+    \href{run:blender-classroom.mkv?autostart&loop}{\includegraphics[height=0.98\textheight]{out/blender-classroom.png}}
+  \end{columns}
 \end{frame}
 
 \begin{frame}{Results}
-  \begin{center}
-    \includegraphics[height=0.9\textheight]{../img/blender_classroom_simple_comp_top.png}
-  \end{center}
+  \begin{columns}[c]
+    \column{\dimexpr\paperwidth}
+    \begin{center}
+      \includegraphics[height=0.9\textheight]{img/blender_classroom_simple_comp_top.png}
+    \end{center}
+  \end{columns}
 \end{frame}
 
 \begin{frame}{Conclusion}
@@ -171,9 +237,9 @@
 
 \begin{frame}{Questions}
   \begin{center}
-    \includegraphics[height=0.9\textheight]{./img/question.jpg}
+    \includegraphics[height=0.7\textheight]{./img/question.jpg}
+    https://github.com/eichenberger/stereo-svo-slam
   \end{center}
-  https://github.com/eichenberger/stereo-svo-slam
 \end{frame}
 
 
